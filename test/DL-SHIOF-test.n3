@@ -1,0 +1,66 @@
+@prefix : <http://metacognition.info/FuXi/DL-SHIOF-test.n3#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix log:  <http://www.w3.org/2000/10/swap/log#> .
+
+#Notation 3 Description Logics (SHIOF) tests
+
+{?C owl:oneOf ?L. ?X :in ?L} => {?X a ?C}.
+{?L rdf:first ?I} => {?I :in ?L}.
+{?L rdf:rest ?R. ?I :in ?R} => {?I :in ?L}.
+
+#Description Logics Nominals (O)
+:DaPonteOperaOfMozart a owl:Class;
+    owl:oneOf (
+        :Nozze_di_Figaro
+        :Don_Giovanni
+        :Cosi_fan_tutte
+    ).
+
+{?C owl:unionOf ?L. ?X :inSomeOf ?L} => {?X a ?C}.
+{?L rdf:first ?A. ?X a ?A} => {?X :inSomeOf ?L}.
+{?L rdf:rest ?R. ?X :inSomeOf ?R} => {?X :inSomeOf ?L}.
+
+#Description Logics Disjunction
+:LivingBeing a owl:Class;
+    owl:unionOf (
+        :Plant 
+        :Animal
+    ).
+
+:Lion a :Animal.
+
+#Description Logics Subsumption / Role Inclusion
+{ ?S a [ rdfs:subClassOf ?C ] } => { ?S a ?C }.
+Mother rdfs:subClassOf Human.
+marge a Mother. 
+
+#Description Logics Inverse Roles (I)
+{ ?S [ owl:inverseOf ?P ] ?O } => { ?O ?P ?S }.
+
+mother owl:inverseOf child.
+marge mother maggie.
+
+#Description Logics Inverse Functional Properties (F)  
+{ ?P a owl:InverseFunctionalProperty.
+  ?X ?P ?Z.
+  ?Y ?P ?Z.
+} => { ?X = ?Y }.
+
+name a owl:InverseFunctionalProperty.
+bart name "Bart Simpson".
+b    name "Bart Simpson".
+
+#Description Logics Transitive Closure
+{ ?P a owl:TransitiveProperty.
+  ?S ?P [ ?P ?O ] }
+ => { ?S ?P ?O }.
+ 
+knows a owl:TransitiveProperty.
+marge knows mrBurns.
+mrBurns knows smithers.
+
+#Existential Assertion 
+{ ?Person a PersonOutside } => { [] saw ?Person }.
+marge a PersonOutside. 

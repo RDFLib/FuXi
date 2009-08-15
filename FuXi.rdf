@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://usefulinc.com/ns/doap#">
+    <Project rdf:about="http://purl.org/net/chimezie/FuXi">
+        <rdf:seeAlso rdf:resource="http://rdflib.net"/>
+        <category rdf:resource="http://rdflib.net/projects#using_rdflib"/>
+        <name>FuXi</name>
+        <homepage rdf:resource="http://code.google.com/p/python-dlp/wiki/FuXi"/>
+        <created>2005-05-29</created>
+        <description xml:lang="en">FuXi (pronounced foo-shee) is a forward-chaining production system for Notation 3 Description Logic Programming. It is implemented as a companion to RDFLib – which it requires for its various RDF processing.</description>
+        
+        <shortdesc xml:lang="en">
+            forward-chaining inferencing
+            expert system for RDFLib Notation 3 Graphs
+        </shortdesc>
+        <release>
+            <Version>
+                <name>beta</name>
+                <created>2007-03-15</created>
+                <revision>0.86b.dev-r24</revision>
+            </Version>
+        </release>        
+        <wiki rdf:resource="http://code.google.com/p/python-dlp/wiki/FuXi"/>
+        <programming-language xml:lang="en-US" rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Python</programming-language> 
+        <programming-language xml:lang="en-US" rdf:datatype="http://www.w3.org/2001/XMLSchema#string">N3</programming-language> 
+        <programming-language xml:lang="en-US" rdf:datatype="http://www.w3.org/2001/XMLSchema#string">DLP</programming-language> 
+        <download-page rdf:resource="http://www.python.org/pypi/FuXi/0.85b.dev-r23"/>
+        <license rdf:resource="http://usefulinc.com/doap/licenses/bsd"/>
+        <maintainer>
+            <foaf:Person>
+                <foaf:name>Chimezie Ogbuji</foaf:name>
+                <foaf:mbox_sha1sum>03bdc2418c81b738135573b76fd4bd756aa42953</foaf:mbox_sha1sum>
+                <foaf:depiction rdf:resource="http://farm1.static.flickr.com/27/96722527_44eef4c7f2.jpg?v=0"/>
+                <rdfs:seeAlso rdf:resource="http://purl.org/net/chimezie/foaf"/>
+            </foaf:Person>
+        </maintainer>
+        <developer>
+            <foaf:Person>
+                <foaf:name>Chimezie Ogbuji</foaf:name>
+                <foaf:mbox_sha1sum>03bdc2418c81b738135573b76fd4bd756aa42953</foaf:mbox_sha1sum>
+                <foaf:depiction rdf:resource="http://farm1.static.flickr.com/27/96722527_44eef4c7f2.jpg?v=0"/>
+                <rdfs:seeAlso rdf:resource="http://purl.org/net/chimezie/foaf"/>
+            </foaf:Person>
+        </developer>
+    </Project>
+    <rdf:Description rdf:about="">
+        <foaf:maker>
+            <foaf:Person>
+                <foaf:name>Chimezie Ogbuji</foaf:name>
+                <rdfs:seeAlso rdf:resource="http://purl.org/net/chimezie/foaf"/>
+                <foaf:mbox_sha1sum>03bdc2418c81b738135573b76fd4bd756aa42953</foaf:mbox_sha1sum>
+                <foaf:depiction rdf:resource="http://farm1.static.flickr.com/27/96722527_44eef4c7f2.jpg?v=0"/>
+            </foaf:Person>
+        </foaf:maker>
+    </rdf:Description>    
+</rdf:RDF>

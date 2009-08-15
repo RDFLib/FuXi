@@ -1,0 +1,132 @@
+@prefix log: <http://www.w3.org/2000/10/swap/log#>.
+@prefix math: <http://www.w3.org/2000/10/swap/math#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix : <http://eulersharp.sourceforge.net/2003/03swap/owl-rules#>.
+@prefix fuxi: <http://metacognition.info/FuXi/builtins.rdf#>.
+@prefix rdflib: <http://rdflib.net/terms/>.
+@prefix list: <http://www.w3.org/2000/10/swap/list#>.
+
+# "We consider a weaker semantics, called the pD* semantics,.."
+## Completeness, decidability and complexity of entailment for RDF Schema 
+#    and a semantic extension involving the OWL vocabulary
+##Herman J. ter Horst
+### RDF Axiomatic Triples
+rdf:type a rdf:Property.
+rdf:first a rdf:Property.
+rdf:rest a rdf:Property.
+rdf:value a rdf:Property.
+rdf:nil a rdf:List.
+
+### RDFS Axiomatic Triples
+#rdf:type rdfs:domain rdfs:Resource;rdfs:range rdfs:Class.
+#rdfs:domain rdfs:domain rdf:Property; rdfs:range rdfs:Class.
+#rdfs:range rdfs:domain rdf:Property; rdfs:range rdfs:Class.
+#rdfs:subPropertyOf rdfs:domain rdf:Property; rdfs:range rdf:Property.
+#rdfs:subClassOf rdfs:domain rdfs:Class; rdfs:range rdfs:Class.
+#rdfs:member rdfs:domain rdfs:Container; rdfs:range rdfs:Resource.
+rdf:first rdfs:domain rdf:List.
+rdf:rest rdfs:domain rdf:List; rdfs:range rdf:List.
+rdfs:isDefinedBy rdfs:subPropertyOf rdfs:seeAlso.
+#rdfs:comment rdfs:range rdfs:Literal.
+#rdfs:label rdfs:range rdfs:Literal.
+rdf:Alt rdfs:subClassOf rdfs:Container.
+rdf:Bag rdfs:subClassOf rdfs:Container.
+rdf:Seq rdfs:subClassOf rdfs:Container.
+rdfs:ContainerMembershipProperty rdfs:subClassOf rdf:Property.
+rdf:XMLLiteral rdfs:subClassOf rdfs:Literal; a rdfs:Datatype.
+rdfs:Datatype rdfs:subClassOf rdfs:Class.
+
+### RDFS & D* Entailment rules 
+#{?S ?P ?O} => {?P a rdf:Property}.
+{?P @has rdfs:domain ?C. ?S ?P ?O} => {?S a ?C}.
+#rdfs2-D: {?S ?P ?O. ?O fuxi:termType rdflib:Literal. ?O fuxi:literalDType ?DT} => {?O a ?DT}.
+{?P @has rdfs:range ?C. ?S ?P ?O} => {?O a ?C}.
+#{?S ?P ?O} => {?S a rdfs:Resource}.
+#rdfs4b: {?S ?P ?O. ?O fuxi:termType rdflib:URIRef } => {?O a rdfs:Resource} OR {?S ?P ?O. ?O fuxi:termType rdflib:BNode } => {?O a rdfs:Resource}
+{?SP rdfs:subPropertyOf ?R. ?P rdfs:subPropertyOf ?SP} => {?P rdfs:subPropertyOf ?R}.
+#{?P a rdf:Property} => {?P rdfs:subPropertyOf ?P}.
+{?P rdfs:subPropertyOf ?SP. ?S ?P ?O} => {?S ?SP ?O}.
+#{?C a rdfs:Class} => {?C rdfs:subClassOf ?C}.
+{?C rdfs:subClassOf ?SC. ?M a ?C} => {?M a ?SC}.
+{?C rdfs:subClassOf ?SC. ?A rdfs:subClassOf ?C} => {?A rdfs:subClassOf ?SC}.
+{?X a rdfs:ContainerMembershipProperty} => {?X rdfs:subPropertyOf rdfs:member}.
+#{?X a rdfs:Datatype} => {?X rdfs:subClassOf rdfs:Literal}.
+
+### p Axiomatic Triples
+owl:FunctionalProperty rdfs:subClassOf rdf:Property.
+owl:InverseFunctionalProperty rdfs:subClassOf rdf:Property.
+owl:SymmetricProperty rdfs:subClassOf rdf:Property.
+owl:TransitiveProperty rdfs:subClassOf rdf:Property.
+owl:sameAs a rdf:Property.
+owl:inverseOf rdfs:domain rdf:Property; rdfs:range rdf:Property; a rdf:Property.
+owl:equivalentClass a rdf:Property; rdfs:domain owl:Class;rdfs:range owl:Class.
+owl:equivalentProperty a rdf:Property; rdfs:domain rdf:Property;rdfs:range rdf:Property.
+owl:onProperty rdfs:domain owl:Restriction; rdfs:range rdf:Property.
+owl:hasValue rdfs:domain owl:Restriction.
+owl:someValuesFrom rdfs:domain owl:Restriction; rdfs:range rdfs:Class.
+owl:allValuesFrom rdfs:domain owl:Restriction; rdfs:range rdfs:Class.
+owl:differentFrom a rdf:Property.
+owl:disjointWith rdfs:domain owl:Class; rdfs:range owl:Class.
+
+### Other (support) triples
+owl:differentFrom a owl:SymmetricProperty.
+owl:disjointWith a owl:SymmetricProperty.
+owl:complementOf a owl:SymmetricProperty.
+
+### Other rules ###
+{?C owl:disjointWith ?B. ?M a ?C. ?Y a ?B } => {?M owl:differentFrom ?Y}.
+
+#Rules for passing OWL tests
+#Mostly to pass OWL/InverseFunctionalProperty/premises003
+{?P owl:inverseOf ?Q. ?P a owl:InverseFunctionalProperty} => {?Q a owl:FunctionalProperty}.
+#Mostly to pass OWL/FunctionalProperty/premises003
+{?P owl:inverseOf ?Q. ?P a owl:FunctionalProperty} => {?Q a owl:InverseFunctionalProperty}.
+#For OWL/InverseFunctionalProperty/premises004
+{?C owl:oneOf ?L. ?L rdf:first ?X; rdf:rest rdf:nil. ?P rdfs:domain ?C} => {?P a owl:InverseFunctionalProperty}.
+#For OWL/InverseFunctionalProperty/premises004
+{?C owl:oneOf ?L. ?L rdf:first ?X; rdf:rest rdf:nil. ?P rdfs:range ?C} => {?P a owl:FunctionalProperty}.
+
+###################
+
+### p Entailment rules
+{?P a owl:FunctionalProperty. ?S ?P ?O. ?S ?P ?Y} => {?O = ?Y}.
+{?P a owl:InverseFunctionalProperty. ?S ?P ?O. ?Y ?P ?O} => {?S = ?Y}.
+
+{?P a owl:SymmetricProperty. ?S ?P ?O} => {?O ?P ?S}.
+{?P a owl:TransitiveProperty. ?S ?P ?O. ?S2 ?P ?S} => {?S2 ?P ?O}.
+#{?S ?P ?O} => {?S = ?S}.
+#rdfp5b: {?S ?P ?O. ?O fuxi:termType rdflib:URIRef } => {?O = ?O}. OR {?S ?P ?O. ?O fuxi:termType rdflib:BNode } => {?O = ?O}.
+{?T1 = ?T2. ?S = ?T1} => {?S = ?T2}.
+{?P owl:inverseOf ?Q. ?S ?P ?O} => {?O ?Q ?S}.
+{?T1 a owl:Class. ?T1 = ?T2} => {?T1 rdfs:subClassOf ?T2}.
+{?T1 a rdf:Property. ?T1 = ?T2} => {?T1 rdfs:subPropertyOf ?T2}.
+{?T1 ?P ?O. ?T1 = ?T2.} => {?T2 ?P ?O}.
+{?C owl:equivalentClass ?A} => {?C rdfs:subClassOf ?A. ?A rdfs:subClassOf ?C}.
+{?C rdfs:subClassOf ?SC. ?SC rdfs:subClassOf ?C} => {?C owl:equivalentClass ?SC}.
+{?P1 owl:equivalentProperty ?P2} => {?P1 rdfs:subPropertyOf ?P2. ?P2 rdfs:subPropertyOf ?P1}.
+{?P rdfs:subPropertyOf ?SP. ?SP rdfs:subPropertyOf ?P} => {?P owl:equivalentProperty ?SP}.
+{?C owl:onProperty ?P; owl:hasValue ?Y. ?M a ?C} => {?X ?P ?Y}.
+{?R owl:onProperty ?P; owl:someValuesFrom ?C. ?S ?P ?M. ?M a ?C} => {?S a ?R}.
+{?C owl:onProperty ?P; owl:allValuesFrom ?W. ?M a ?C. ?M ?P ?O} => {?O a ?W}.
+
+### rdf-svx rule
+#{?C owl:onProperty ?P; owl:someValuesFrom ?C2. ?M a ?C} => {?M ?P [ a C2 ]}.
+
+### Logical Class Constructors (and support)
+{?C owl:oneOf ?L. ?X list:in ?L} => {?X a ?C}.
+{?C owl:intersectionOf ?L. ?X :inAllOf ?L} => {?X a ?C}.
+{?C owl:unionOf ?L. ?X :inSomeOf ?L} => {?X a ?C}.
+
+{?L rdf:first ?I} => {?L a rdf:List}.
+{?L rdf:rest ?I} => {?L a rdf:List}.
+{?L rdf:first ?I} => {?I list:in ?L}.
+{?L rdf:rest ?R. ?I list:in ?R} => {?I list:in ?L}.
+{?L a rdf:List} => {?L :subListOf ?L}.
+{?L rdf:rest ?R. ?X :subListOf ?R} => {?X :subListOf ?L}.
+{?L rdf:first ?A. ?X a ?A. ?L rdf:rest rdf:nil} => {?X :inAllOf ?L}.
+{?L rdf:first ?A. ?X a ?A. ?L rdf:rest ?R. ?X :inAllOf ?R} => {?X :inAllOf ?L}.
+{?L rdf:first ?A. ?X a ?A} => {?X :inSomeOf ?L}.
+{?L rdf:rest ?R. ?X :inSomeOf ?R} => {?X :inSomeOf ?L}.

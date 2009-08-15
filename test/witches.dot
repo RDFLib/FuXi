@@ -1,0 +1,27 @@
+digraph G {
+1 [label="?x rdf:type witch:BURNS", peripheries="1", root="", shape="plaintext"];
+2 [label="Terminal node\n(?x)", peripheries="2", root="", shape="circle"];
+HpWZlhFZ65 [label="?x rdf:type witch:WITCH", peripheries="", root="", shape="plaintext"];
+3 [label="Pass-thru Beta node\n", peripheries="1", root="", shape="circle"];
+4 [label="Terminal node\n(?x)", peripheries="2", root="", shape="circle"];
+HpWZlhFZ66 [label="?x rdf:type witch:ISMADEOFWOOD", peripheries="", root="", shape="plaintext"];
+5 [label="?x rdf:type witch:ISMADEOFWOOD", peripheries="1", root="", shape="plaintext"];
+6 [label="?x witch:SAMEWEIGHT ?y", peripheries="1", root="", shape="plaintext"];
+7 [label="Terminal node\n(?x)", peripheries="2", root="", shape="circle"];
+HpWZlhFZ67 [label="?x rdf:type witch:BURNS", peripheries="", root="", shape="plaintext"];
+8 [label="?x rdf:type witch:WOMAN", peripheries="1", root="", shape="plaintext"];
+9 [label="Terminal node\n(?x)", peripheries="2", root="", shape="circle"];
+HpWZlhFZ68 [label="?y rdf:type witch:FLOATS", peripheries="", root="", shape="plaintext"];
+10 [label="?x rdf:type witch:FLOATS", peripheries="1", root="", shape="plaintext"];
+2->HpWZlhFZ65 ;
+4->HpWZlhFZ66 ;
+7->HpWZlhFZ67 ;
+9->HpWZlhFZ68 ;
+1->3 ;
+3->2 ;
+4->9 ;
+5->7 ;
+6->9 ;
+8->2 ;
+10->4 ;
+}

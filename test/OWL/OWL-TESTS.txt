@@ -1,0 +1,31 @@
+## General Help ##
+
+Included is a harness for the OWL test cases (http://www.w3.org/TR/owl-test/).  To run it, you will need to
+download the archive of the approved tests (http://www.w3.org/2002/03owlt/approved.zip) into this directory and unzip it.
+
+You will then be able to run the tests from the parent directory (/Fuxi/test):
+
+python testOWL.py
+
+This will scan each subdirectory under 'OWL' for a manifest files to use to setup and run each test.  Certain tests 
+are skipped (listed below) for various reasons:
+
+    'OWL/oneOf/Manifest003.rdf', #logical set equivalence?  Probably needs a built-in to support
+    'OWL/differentFrom/Manifest002.rdf'  ,#needs log:notEqualTo
+    'OWL/distinctMembers/Manifest001.rdf',#needs log:notEqualTo
+    'OWL/intersectionOf/Manifest001.rdf' ,#can't calculate identical class extensions
+    'OWL/unionOf/Manifest002.rdf',#can't implement set theoretic union for owl:unionOf.
+    'OWL/InverseFunctionalProperty/Manifest001.rdf',#owl:sameIndividualAs deprecated
+    'OWL/FunctionalProperty/Manifest001.rdf', #owl:sameIndividualAs deprecated
+    'OWL/FunctionalProperty/Manifest002.rdf',#problems with owl:FunctionalProperty rule and right activating join nodes
+    'OWL/Nothing/Manifest002.rdf',# owl:sameClassAs deprecated
+    'OWL/AllDifferent/Manifest001.rdf',#requires support for built-ins (log:notEqualTo)
+
+The OWL test harness uses the pD-rules.n3 ruleset, which is mostly  derived from "Completeness, decidability and 
+complexity of entailment for RDF Schema and a semantic extension involving the OWL vocabulary" [1] and extended via 
+owl-rules.n3 [2] and rdfs-rules.n3 [3] (mostly to cover the OWL test cases that weren't addressed by pD entailment).
+
+[1] http://www.websemanticsjournal.org/ps/pub/2005-15
+[2] http://www.agfa.com/w3c/euler/owl-rules.n3
+[3] http://www.agfa.com/w3c/euler/rdfs-rules.n3
+
