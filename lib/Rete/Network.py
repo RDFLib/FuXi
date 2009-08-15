@@ -506,7 +506,7 @@ class ReteNetwork:
                     if debug:
                         print "Inferred triple: ", inferredTriple, " from ",termNode 
                     self.inferredFacts.add(inferredTriple)
-                    if not terminalNode.filter:
+                    if not termNode.filter:
                       self.addWME(inferredToken)
                     currIdx = self.instanciations.get(termNode,0)
                     currIdx+=1
