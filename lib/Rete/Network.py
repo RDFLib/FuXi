@@ -185,7 +185,7 @@ class ReteNetwork:
         self.dischargedBindings = {}
         if not dontFinalize:
             self.ruleStore._finalize()
-        #self.ruleStore.optimizeRules()
+        self.filteredFacts = Graph()
         
         #'Universal truths' for a rule set are rules where the LHS is empty.  
         # Rather than automatically adding them to the working set, alpha nodes are 'notified'
@@ -502,12 +502,13 @@ class ReteNetwork:
                 inferredToken=ReteToken(inferredTriple)
                 self.proofTracers.setdefault(inferredTriple,[]).append(binding)
                 self.justifications.setdefault(inferredTriple,set()).add(termNode)
+                if termNode.filter and inferredTriple not in self.filteredFacts:
+                    self.filteredFacts.add(inferredTriple)
                 if inferredTriple not in self.inferredFacts and inferredToken not in self.workingMemory:                    
                     if debug:
                         print "Inferred triple: ", inferredTriple, " from ",termNode 
                     self.inferredFacts.add(inferredTriple)
-                    if not termNode.filter:
-                      self.addWME(inferredToken)
+                    self.addWME(inferredToken)
                     currIdx = self.instanciations.get(termNode,0)
                     currIdx+=1
                     self.instanciations[termNode] = currIdx
@@ -649,6 +650,7 @@ class ReteNetwork:
                     terminalNode.network    = self
                     terminalNode.clause = rule.formula
                     terminalNode.horn_rule = rule
+                    terminalNode.filter = filter
                     self.terminalNodes.add(terminalNode)
                     self._resetinstanciationStats()                        
                 #self.checkDuplicateRules()

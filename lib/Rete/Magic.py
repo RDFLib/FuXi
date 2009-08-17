@@ -31,6 +31,28 @@ EX_ULMAN = Namespace('http://doi.acm.org/10.1145/6012.15399#')
 LOG_NS   = Namespace("http://www.w3.org/2000/10/swap/log#")
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
 
+RULE_ARC_QUERY=\
+"""
+SELECT ?arc ?head 
+{  
+  ?arc a magic:SipArc . 
+  ?head a magic:BoundHeadPredicate; ?arc []
+}"""
+
+def PrepareSipCollection(adornedRuleset):
+    for rule in adornedRuleset:
+        ruleHead = GetOp(rule.formula.head)
+        print ruleHead, rule
+        sipGraph = rule.sip
+        SIPRepresentation(sipGraph)
+        print sipGraph.serialize(format='n3')
+        for arc,ph in sipGraph.query(RULE_ARC_QUERY,
+                                     initNs={u'magic':MAGIC}):
+            print ph
+
+def SipStrategy(query,sipCollection):
+    pass
+
 def MagicSetTransformation(factGraph,rules,GOALS,derivedPreds=None,strictCheck=False,noMagic=[]):
     """
     Takes a goal and a ruleset and returns an iterator

@@ -287,12 +287,9 @@ def main():
     for rule in ruleSet:
         network.buildNetworkFromClause(rule)
 
-    #@TODO finish (see http://groups.google.com/group/fuxi-discussion/browse_thread/thread/f4e8e84c9f3e7a4#)
     for fileN in options.filter:
         for rule in HornFromN3(fileN):
             network.buildFilterNetworkFromClause(rule)
-
-        nsBinds.update(rs.nsMapping)
 
     start = time.time()  
     network.feedFactsToAdd(workingMemory)
@@ -304,6 +301,10 @@ def main():
         sTimeStr = "%s milli seconds"%sTime
     print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
     print >>sys.stderr, network
+    if options.filter:
+        print >>sys.stderr,"Applying filter to entailed facts"
+        network.inferredFacts = network.filteredFacts
+
     if options.output == 'conflict':
         network.reportConflictSet()
     elif options.output not in ['rif','rif-xml','man-owl']:

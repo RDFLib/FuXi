@@ -9,7 +9,8 @@ from FuXi.Rete.Util import renderNetwork,generateTokenSet
 from FuXi.Horn.PositiveConditions import Uniterm, BuildUnitermFromTuple
 from FuXi.Horn.HornRules import HornFromN3
 from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics
-from FuXi.Rete.Magic import MagicSetTransformation, iterCondition, AdornLiteral
+from FuXi.Rete.Magic import MagicSetTransformation, iterCondition, AdornLiteral, MAGIC, PrepareSipCollection
+from FuXi.Rete.SidewaysInformationPassing import *
 from rdflib.Namespace import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,URIRef
 from rdflib.OWL import FunctionalProperty
@@ -162,7 +163,36 @@ class OwlTestSuite(unittest.TestCase):
             magicRuleNo+=1
             self.network.buildNetworkFromClause(rule)    
             self.network.rules.add(rule)
+        
         print "rate of reduction in the size of the program: ", (100-(float(magicRuleNo)/float(progLen))*100)
+
+        for idx,rule in enumerate(factGraph.adornedProgram):
+            if rule.sip:
+                CommonNSBindings(rule.sip,
+                 {u'magic':MAGIC,
+                  u'skolem':URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')})
+                print rule
+                print SIPRepresentation(rule.sip)
+
+        def renderTerm(graph,term):
+            if term == RDF.type:
+                return ' a '
+            else:
+                try:
+                    return isinstance(term,BNode) and term.n3() or graph.qname(term)
+                except:
+                    return term.n3()
+        def tripleToTriplePattern(graph,triple):
+            return "%s %s %s"%tuple([renderTerm(graph,term) 
+                                        for term in triple])
+        print "Test 'query'"
+        print "ASK { %s }"%('\n'.join([tripleToTriplePattern(factGraph,
+                                                             goal) 
+                               for goal in goals ]))
+
+        PrepareSipCollection(factGraph.adornedProgram)
+        raise
+
         for goal in goals:
             goal=AdornLiteral(goal).makeMagicPred().toRDFTuple()
             factGraph.add(goal)
@@ -229,9 +259,9 @@ class OwlTestSuite(unittest.TestCase):
                     allFacts = ReadOnlyGraphAggregate([factGraph,self.ruleFactsGraph])
                     Individual.factoryGraph=factGraph
                     
-#                    for c in AllClasses(factGraph):
-#                        if not isinstance(c.identifier,BNode):
-#                            print c.__repr__(True)       
+                    for c in AllClasses(factGraph):
+                        if not isinstance(c.identifier,BNode):
+                            print c.__repr__(True)       
                             
                     if MAGIC_PROOFS:
                         if feature in Features2SkipMagic:
@@ -242,8 +272,8 @@ class OwlTestSuite(unittest.TestCase):
                                                                      factGraph,
                                                                      addPDSemantics=False,
                                                                      constructNetwork=False))
-#                        print "Original program"
-#                        pprint(program)
+                        print "Original program"
+                        pprint(program)
                         timings=[]  
                         #Magic set algorithm is initiated by a query, a single horn ground, 'fact'                    
                         try:   
