@@ -17,7 +17,6 @@ except:
 from rdflib.Graph import Graph
 from rdflib.syntax.NamespaceManager import NamespaceManager
 from rdflib import BNode, Namespace, Collection, Variable
-from sets import Set
 
 LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 
@@ -64,7 +63,7 @@ def generateTokenSet(graph,debugTriples=[],skipImplies=True):
     Note implication statements are excluded from the realm of facts by default
     """
     from FuXi.Rete import ReteToken
-    rt = Set()    
+    rt = set()    
     def normalizeGraphTerms(term):
         if isinstance(term,Collection.Collection):
             return term.uri

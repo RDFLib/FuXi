@@ -1,97 +1,12 @@
 #!/usr/bin/env python
-"""USAGE: Fuxi [options] factFile1 factFile2 ...
-Options:
-  --closure                  If present, the inferred triples are serialized 
-                             along with the original triples if asked for. Otherwise
-                             (the default behavior), only the inferred triples
-                             are serialized
-                             
-  --output=OUT               Determines whether to serialize the inferred triples
-                             to STDOUT using the specified RDF syntax ('xml','pretty-xml',
-                             'nt','turtle',or 'n3') or to print a summary of the conflict set 
-                             (from the RETE network) if the value of this option is
-                             'conflict'.  If the DLP mechanism is invoked (via --dlp) then
-                             a value of 'rif' will cause the generated ruleset to be rendered
-                             in the RIF format.  If the proof generation mechanism is
-                             activated then a value of 'pml' will trigger a serialization
-                             of the proof in PML.  
-                             
-  --man-owl                  If present, either the closure (or just the inferred triples) are serialized 
-                             using an extension of the manchester OWL syntax
-                             with indications for ontology normalization
-                             (http://www.cs.man.ac.uk/~rector/papers/rector-modularisation-kcap-2003-distrib.pdf)
-  --class                    Used in combination with --man-owl and --extract to determine which specific class is serialized / extracted
-  --property                 Used in combination with --man-owl and --extract to determine which specific property is serialized / extracted
-  --extract                  The identified properties and classes will be extracted from the factfiles 
-  --normalize                Will attempt to determine if the ontology is 'normalized' [Rector, A. 2003]                             
-  --help
-  --input-format=<FORMAT>    Determines the format of the RDF document(s) which
-                             serve as the initial facts for the RETE network.
-                             One of 'xml','n3','trix', 'nt', or 'rdfa'.  The default
-                             is 'xml'.
-  --pDSemantics              Add pD semantics ruleset?                           
-  --optimize                 Suggest inefficiencies in the ruleset and exit
-                     
-  --stdin                    Parse STDIN as an RDF graph to contribute to the
-                             initial facts for the RETE network using the 
-                             specified format
-                             
-  --ns=PREFIX=NSURI          Register a namespace binding (QName prefix to a 
-                             base URI).  This can be used more than once
-                             
-  --graphviz-out=<FILE>      A filename to write a graphviz diagram of the RETE
-                             network to
-  
-  --rules=FILE1,FILE2,..     The Notation 3 documents to use as rulesets for the
-                             RETE network
-                             
-  --ruleFacts               Determines whether or not to attempt to parse 
-                             initial facts from the rule graph.  Default by default
-                             
-  --complementExpand         Perform a closed-world expansion of all use of owl:complementOf                             
-                              
-  --dlp                      This switch turns on Description Logic Programming 
-                             (DLP) inference.  In this mode, the input document 
-                             is considered an OWL ontology mostly comprised of
-                             Description Horn Logic (DHL) axioms. ontology.  An 
-                             additional ruleset is included to capture those 
-                             semantics outside DHL but which can be expressed in
-                             definite Datalog Logic Programming.  The DHL-compiled 
-                             ruleset and the extensions are mapped into a RETE-UL 
-                             Network for evaluateion.
-   --proove                  A N3 string consisting of a single RDF assertion to proove
-                             against the rules and facts provided.  Depending on the 
-                             --output switch, the proof can be rendered as a Graphviz dot
-                             graph, as a PML proof document, or in a human-readable printout                           
-                             
-proof service:
-
-                goalGraph=Graph()
-                goalGraph.parse(StringIO(proove),format='n3')
-                print proove,len(goalGraph)
-                assert len(goalGraph),"Empty goal!"
-                goal=list(goalGraph)[0]
-                builder,proof=GenerateProof(network,goal)
-                if outMode == 'dot':
-                    builder.renderProof(proof).write_graphviz('proof.dot')
-                elif outMode == 'pml':
-                    proofGraph=Graph()
-                    proofGraph.namespace_manager = namespace_manager
-                    builder.serialize(proof,proofGraph)
-                    print proofGraph.serialize(format='pretty-xml')                
-                else:
-                    for step in builder.trace:
-                        print step
-                             
-"""
 from pprint import pprint
-from sets import Set
 from FuXi.Rete.Proof import GenerateProof
 from FuXi.Rete import ReteNetwork
 from FuXi.Rete.AlphaNode import SUBJECT,PREDICATE,OBJECT,VARIABLE
 from FuXi.Rete.BetaNode import PartialInstanciation, LEFT_MEMORY, RIGHT_MEMORY
 from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore
 from FuXi.Rete.Util import renderNetwork,generateTokenSet, xcombine
+from FuXi.DLP.DLNormalization import NormalFormReduction
 from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics
 from FuXi.Horn import ComplementExpansion
 from FuXi.Horn.HornRules import HornFromN3, Ruleset
@@ -179,12 +94,10 @@ def main():
     op.add_option('--rules', 
                   default=[],
                   action='append',
-                  default=[],
                   metavar='PATH_OR_URI',
       help = 'The Notation 3 documents to use as rulesets for the RETE network'+
       '.  Can be specified more than once')
     op.add_option('--filter', 
-                  default=[],
                   action='append',
                   default=[],
                   metavar='PATH_OR_URI',
@@ -198,6 +111,14 @@ def main():
                   action='store_true',
                   default=False,
       help = 'Use Description Logic Programming (DLP) to extract rules from OWL/RDF.  The default is %default')
+    op.add_option('--negation', 
+                  action='store_true',
+                  default=False,                
+      help = 'Extract negative rules?')    
+    op.add_option('--normalForm', 
+                  action='store_true',
+                  default=False,                
+      help = 'Whether or not to reduce DL axioms & LP rules to a normal form')        
     (options, facts) = op.parse_args()
     
     nsBinds = {'iw':'http://inferenceweb.stanford.edu/2004/07/iw.owl#'}
@@ -231,6 +152,9 @@ def main():
         
     if options.stdin:
         factGraph.parse(sys.stdin,format=options.inputFormat)
+        
+    if options.normalForm:
+        NormalFormReduction(factGraph)
                 
     workingMemory = generateTokenSet(factGraph)
 
@@ -239,13 +163,19 @@ def main():
     network.nsMap = nsBinds
     
     if options.dlp:
-        dlp=setupDescriptionLogicProgramming(factGraph,
-                                             addPDSemantics=options.pDSemantics,
-                                             constructNetwork=False)        
+        dlp=network.setupDescriptionLogicProgramming(
+                                 factGraph,
+                                 addPDSemantics=options.pDSemantics,
+                                 constructNetwork=False,
+                                 ignoreNegativeStratus=options.negation)        
         ruleSet.formulae.extend(dlp)
     if options.output == 'rif':
-         for rule in ruleSet:
-             print rule
+        for rule in ruleSet:
+            print rule
+        if options.negation:
+            for nRule in network.negRules:
+                print nRule
+        
     elif options.output == 'man-owl':
         cGraph = network.closureGraph(factGraph,readOnly=False)
         cGraph.namespace_manager = namespace_manager

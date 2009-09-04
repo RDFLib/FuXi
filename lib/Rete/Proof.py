@@ -29,7 +29,6 @@ from FuXi.Rete.Network import _mulPatternWithSubstitutions
 from rdflib.Graph import Graph
 from rdflib.syntax.NamespaceManager import NamespaceManager
 from rdflib import BNode, Namespace, Variable
-from sets import Set
 from pprint import pprint,pformat
 
 #From itertools recipes
@@ -92,7 +91,14 @@ class ImmutableDict(dict):
         raise NotImplementedError, "dict is immutable"
     def __hash__(self):
         return hash(self._items)
-                
+    
+def MakeImmutableDict(regularDict):
+    """
+    Takes a regular dicitonary and makes an immutable dictionary out of it
+    """
+    return ImmutableDict([(k,v) 
+                           for k,v in regularDict.items()])
+                    
 def fetchRETEJustifications(goal,nodeset,builder,antecedent=None):
     """
     Takes a goal, a nodeset and an inference step the nodeset is the
@@ -136,8 +142,9 @@ def fetchRETEJustifications(goal,nodeset,builder,antecedent=None):
             yield tNode
 
 PML = Namespace('http://inferenceweb.stanford.edu/2004/07/iw.owl#')
+PML_P = Namespace('http://inferenceweb.stanford.edu/2006/06/pml-provenance.owl#')
 FUXI=URIRef('http://purl.org/net/chimezie/FuXi')
-GMP=URIRef('http://inferenceweb.stanford.edu/registry/DPR/GMP.owl#GMP')
+GMP_NS = Namespace('http://inferenceweb.stanford.edu/registry/DPR/GMP.owl#')
 
 def GenerateProof(network,goal):
     builder=ProofBuilder(network)
@@ -150,12 +157,12 @@ class ProofBuilder(object):
     Handles the recursive building of a proof tree (from a 'fired' RETE-UL network), 
     keeping the state of the goals already processed
 
-    We begin by defining a proof as a sequence of ‚Äúproof steps‚Äù, where each
+    We begin by defining a proof as a sequence of ‚proof steps, where each
     proof step consists of a conclusion, a justification for that conclusion, and a set
-    of assumptions discharged by the step. ‚ÄúA proof of C‚Äù is defined to be a proof
+    of assumptions discharged by the step. ‚A proof of C‚ is defined to be a proof
     whose last step has conclusion C. A proof of C is conditional on an assumption
     A if and only if there is a step in the proof that has A as its conclusion and
-    ‚Äúassumption‚Äù as its justification, and A is not discharged by a later step in the
+    ‚assumption‚ as its justification, and A is not discharged by a later step in the
     proof.    
     
     """
@@ -164,6 +171,21 @@ class ProofBuilder(object):
         self.network = network
         self.trace=[]
         self.serializedNodeSets = set()
+        
+    def extractGoalsFromNode(self, node):
+        """
+        Start with given node and inductively extract the relevant
+        nodesets into the builder
+        """
+        if isinstance(node,NodeSet):
+            if node.conclusion not in self.goals:
+                self.goals[node.conclusion] = node
+                for step in node.steps:
+                    self.extractGoalsFromNode(step)
+        else:
+            self.extractGoalsFromNode(node.parent)
+            for ant in node.antecedents:
+                self.extractGoalsFromNode(ant)
 
     def serialize(self,proof,proofGraph):
         proof.serialize(self,proofGraph)
@@ -181,7 +203,7 @@ class ProofBuilder(object):
                 from pydot import Node,Edge,Dot
                 dot=Dot(graph_type='digraph')
             except:
-                raise NotImplementedError("Boost Graph Library & Python bindings (or pydot) not installed.  See: see: http://www.osl.iu.edu/~dgregor/bgl-python/")
+                raise NotImplementedError("No graph libraries")
         namespace_manager = NamespaceManager(Graph())
         vertexMaps   = {}
         edgeMaps     = {}
@@ -208,15 +230,11 @@ class ProofBuilder(object):
             dot.add_node(node)
         for nodeset in self.goals.values():
             for justification in nodeset.steps:
-                #pydot implementation
-                if True:#(visitedNodes[nodeset],visitedNodes[justification]) not in edges:
-                    edge = Edge(visitedNodes[nodeset],
-                                visitedNodes[justification],
-                                label="is the consequence of",
-                                color = 'red')
-                    #edge.label = "is the consequence of"
-                    dot.add_edge(edge)
-                    #edges.append((visitedNodes[nodeset],visitedNodes[justification]))
+                edge = Edge(visitedNodes[nodeset],
+                            visitedNodes[justification],
+                            label="is the consequence of",
+                            color = 'red')
+                dot.add_edge(edge)
                                 
                 for ant in justification.antecedents:
                     if justification.source:
@@ -321,14 +339,13 @@ class NodeSet(object):
     set is of type Expression.
     
     Each inference step of a node set represents an application of an inference
-    rule that justifies the node set‚Äôs conclusion. A node set can have any
+    rule that justifies the node set's conclusion. A node set can have any
     number of inference steps, including none, and each inference step of a
     node set is of type InferenceStep. A node set without inference steps is of a special kind identifying an
     unproven goal in a reasoning process as described in Section 4.1.2 below.
     
     """
     def __init__(self,conclusion=None,steps=None,identifier=BNode(),network=None):
-        assert not network is None
         self.network=network
         self.identifier = identifier
         self.conclusion = conclusion
@@ -357,7 +374,7 @@ class NodeSet(object):
     
     def __repr__(self):
         #rt="Proof step for %s with %s justifications"%(buildUniTerm(self.conclusion),len(self.steps))
-        rt="Proof step for %s"%(buildUniTerm(self.conclusion,self.network.nsMap))
+        rt="Proof step for %s"%(buildUniTerm(self.conclusion,self.network and self.network.nsMap or {}))
         return rt
     
 class InferenceStep(object):
@@ -372,27 +389,27 @@ class InferenceStep(object):
     Assumption, DirectAssertion, and UnregisteredRule.    
 
     The antecedents of an inference step is a sequence of node sets each of
-    whose conclusions is a premise of the application of the inference step‚Äôs
+    whose conclusions is a premise of the application of the inference step's
     rule. The sequence can contain any number of node sets including none.
     The sequence is the value of the property hasAntecedent of the inference
     step.
     
     Each binding of an inference step is a mapping from a variable to a term
     specifying the substitutions performed on the premises before the application
-    of the step‚Äôs rule. For instance, substitutions may be required to
+    of the step's rule. For instance, substitutions may be required to
     unify terms in premises in order to perform resolution. An inference step
     can have any number of bindings including none, and each binding is of
     type VariableBinding. The bindings are members of a collection that is the
     value of the property hasVariableMapping of the inference step.    
 
     Each discharged assumption of an inference step is an expression that is
-    discharged as an assumption by application of the step‚Äôs rule. An inference
+    discharged as an assumption by application of the step's rule. An inference
     step can have any number of discharged assumptions including none,
     and each discharged assumption is of type Expression. The discharged assumptions
     are members of a collection that is the value of the property
     hasDischargeAssumption of the inference step. This property supports
     the application of rules requiring the discharging of assumptions such as
-    natural deduction‚Äôs implication introduction. An assumption that is discharged
+    natural deduction's implication introduction. An assumption that is discharged
     at an inference step can be used as an assumption in the proof
     of an antecedent of the inference step without making the proof be conditional
     on that assumption.
@@ -405,6 +422,7 @@ class InferenceStep(object):
         self.bindings = bindings and bindings or {}
         self.rule = rule
         self.antecedents = []
+        self.groundQuery = None
 
     def propagateBindings(self,bindings):
         self.bindings.update(bindings)
@@ -412,10 +430,24 @@ class InferenceStep(object):
     def serialize(self,builder,proofGraph):
         if self.rule and not self.source:
             proofGraph.add((self.identifier,PML.englishDescription,Literal(repr(self))))
+        if self.groundQuery:
+            query= BNode()
+            info = BNode()
+            proofGraph.add((self.identifier,PML.fromQuery,query))
+            proofGraph.add((query,RDF.type,PML.Query))
+            proofGraph.add((query,PML_P.hasContent,info))
+            proofGraph.add((info,RDF.type,PML_P.Information))
+            proofGraph.add((info,PML_P.hasRawString,Literal(self.groundQuery)))
+        elif self.source:
+            someDoc = BNode()
+            proofGraph.add((self.identifier,PML_P.hasSource,someDoc))
+            proofGraph.add((someDoc,RDF.type,PML_P.Document))
+            
+            
         #proofGraph.add((self.identifier,PML.hasLanguage,URIRef('http://inferenceweb.stanford.edu/registry/LG/RIF.owl')))
         proofGraph.add((self.identifier,RDF.type,PML.InferenceStep))
         proofGraph.add((self.identifier,PML.hasInferenceEngine,FUXI))
-        proofGraph.add((self.identifier,PML.hasRule,GMP))
+        proofGraph.add((self.identifier,PML.hasRule,GMP_NS.GMP))
         proofGraph.add((self.identifier,PML.consequent,self.parent.identifier))
         for ant in self.antecedents:
             proofGraph.add((self.identifier,PML.hasAntecedent,ant.identifier))
@@ -444,30 +476,12 @@ class InferenceStep(object):
 
     def __repr__(self):
         from FuXi.Rete.Magic import AdornedUniTerm
-        if self.source:
+        if self.groundQuery:
+            return self.groundQuery
+        elif self.source:
             return "[Parsing RDF source]"
-        elif self.rule and isinstance(self.rule.head,AdornedUniTerm) and self.rule.head.isMagic:
-            return "magic predicate justification\\n%s"%(self.rule)
-        else:
-            return self.prettyPrintRule() 
-
-class Expression(object):
-    def __init__(self):
-        pass
-
-#__test__ = { 'NodeSet': _modinv02, '_modpre01b': _modpre01b,
-#             '_modpst01b': _modpst01b }
-
-#def _test():
-#    import contract, doctest, Proof
-#    contract.checkmod(Proof, contract.CHECK_ALL)
-#    return doctest.testmod(Proof)
-#
-#if __name__ == '__main__':
-#    t = _test()
-#    if t[0] == 0:
-#        print "test: %d tests succeeded" % t[1]
-#    else:
-#        print "test: %d/%d tests failed" % t
-
-
+        elif self.rule:
+            if isinstance(self.rule.head,AdornedUniTerm) and self.rule.head.isMagic:
+                return "magic predicate justification\\n%s"%(self.rule)
+            else:
+                return repr(self.rule)#self.prettyPrintRule()

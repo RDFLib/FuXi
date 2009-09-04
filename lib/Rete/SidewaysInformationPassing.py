@@ -256,10 +256,9 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead):
     if isinstance(clause.body,And):
         bodyOrder=first(findFullSip(([clause.head],None), clause.body))
         assert bodyOrder,"Couldn't find a valid SIP for %s"%clause
-        collectionOrder = boundHead and bodyOrder or bodyOrder[1:]
-        sipGraph.sipOrder = And(collectionOrder)
         reduce(collectSip,
-               iterCondition(And(collectionOrder)))
+               iterCondition(And(bodyOrder)))
+        sipGraph.sipOrder = And(bodyOrder[1:])
         #assert validSip(sipGraph),sipGraph.serialize(format='n3')
     else:
         if boundHead:

@@ -13,7 +13,6 @@ The network :
 """
 from itertools import izip,ifilter,chain
 import time,sys
-from sets import Set
 from pprint import pprint
 from cStringIO import StringIO
 from Util import xcombine
@@ -175,7 +174,7 @@ class ReteNetwork:
             self.inferredFacts.namespace_manager = namespace_manager    
         else:            
             self.inferredFacts = inferredTarget
-        self.workingMemory = initialWorkingMemory and initialWorkingMemory or Set()
+        self.workingMemory = initialWorkingMemory and initialWorkingMemory or set()
         self.proofTracers = {}
         self.terminalNodes  = set()
         self.instanciations = {}        

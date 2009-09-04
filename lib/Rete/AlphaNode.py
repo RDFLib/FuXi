@@ -86,7 +86,7 @@ class ReteToken:
         >>> token2 = ReteToken((RDFS.domain,RDFS.domain,RDFS.Class))
         >>> token1 == token2
         True
-        >>> token1 in Set([token2])
+        >>> token1 in set([token2])
         True
         """
         return self.hash 
@@ -194,7 +194,7 @@ class AlphaNode(Node):
         self.name = BNode()
         self.triplePattern = triplePatternOrFunc
         self.descendentMemory = []
-        self.descendentBetaNodes = Set()
+        self.descendentBetaNodes = set()
         self.builtin = bool(filters.get(self.triplePattern[PREDICATE]))
         self.universalTruths = []
 
@@ -291,7 +291,7 @@ class AlphaNode(Node):
 #                    print fName
                 
                 #self.relinked = True
-                memory.successor.leftUnlinkedNodes = Set()
+                memory.successor.leftUnlinkedNodes = set()
             if aReteToken.debug:
                     print "Added %s to %s"%(aReteToken,memory.successor)
             if memory.successor.aPassThru or not memory.successor.checkNullActivation(memory.position):
@@ -314,7 +314,7 @@ class BuiltInAlphaNode(AlphaNode):
         self.name = BNode()
         self.n3builtin = n3builtin
         self.descendentMemory = []
-        self.descendentBetaNodes = Set()
+        self.descendentBetaNodes = set()
         self.universalTruths = [] 
     def __iter__(self):
         yield self.n3builtin.argument

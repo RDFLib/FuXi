@@ -1,6 +1,5 @@
 from __future__ import generators
 import sys
-from sets import Set
 from rdflib import BNode, RDF, Namespace
 from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
 from rdflib.Literal import Literal
@@ -223,7 +222,7 @@ BuiltIn used out of order
         self.currentList = None
         self._listBuffer = []
         self.rules = []
-        self.referencedVariables = Set()
+        self.referencedVariables = set()
         self.nsMgr = {u'skolem':URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')}
         self.filters={}
         self.filters.update(FILTERS)
@@ -333,7 +332,7 @@ BuiltIn used out of order
             else:
                 #print "(%s,%s,%s) pattern in %s"%(subject,predicate,obj,context.identifier)
                 variables = [arg for arg in [subject,predicate,obj] if isinstance(arg,Variable)]
-                self.referencedVariables.union_update(variables)
+                self.referencedVariables.update(variables)
                 formula.append((subject,predicate,obj))
             self.formulae[context.identifier] = formula
                 
@@ -349,7 +348,7 @@ BuiltIn used out of order
             for pattern in lhs:
                 if not isinstance(pattern,N3Builtin):
                     _hashList = [isinstance(term,(Variable,BNode)) and '\t' or term for term in pattern]
-                    patternDict.setdefault(reduce(lambda x,y:x+y,_hashList),Set()).add(pattern)
+                    patternDict.setdefault(reduce(lambda x,y:x+y,_hashList),set()).add(pattern)
         for key,vals in patternDict.items():
             if len(vals) > 1:
                 print "###### Similar Patterns ######"

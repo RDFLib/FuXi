@@ -14,58 +14,37 @@ Principles of Database Systems, 1986.
 import unittest, os, time, itertools, copy
 from FuXi.Rete.RuleStore import SetupRuleStore, N3RuleStore, N3Builtin, LOG
 from FuXi.Rete.AlphaNode import ReteToken
+from FuXi.Rete.BetaNode import project
 from FuXi.Horn.HornRules import Clause, Ruleset, Rule, HornFromN3
 from FuXi.DLP import FUNCTIONAL_SEMANTCS, NOMINAL_SEMANTICS
 from FuXi.Horn.PositiveConditions import *
+from FuXi.Rete.Proof import *
 from FuXi.Syntax.InfixOWL import OWL_NS
 from cStringIO import StringIO
-from rdflib.Graph import Graph
+from rdflib.Graph import Graph, ReadOnlyGraphAggregate
 from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
 from rdflib.sparql.Algebra import RenderSPARQLAlgebra
 from rdflib.sparql.bison import Parse
 from rdflib.util import first
-#from testMagic import *
 from SidewaysInformationPassing import *
 
 EX_ULMAN = Namespace('http://doi.acm.org/10.1145/6012.15399#')
 LOG_NS   = Namespace("http://www.w3.org/2000/10/swap/log#")
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
 
-RULE_ARC_QUERY=\
-"""
-SELECT ?arc ?head 
-{  
-  ?arc a magic:SipArc . 
-  ?head a magic:BoundHeadPredicate; ?arc []
-}"""
-
-def PrepareSipCollection(adornedRuleset):
-    for rule in adornedRuleset:
-        ruleHead = GetOp(rule.formula.head)
-        print ruleHead, rule
-        sipGraph = rule.sip
-        SIPRepresentation(sipGraph)
-        print sipGraph.serialize(format='n3')
-        for arc,ph in sipGraph.query(RULE_ARC_QUERY,
-                                     initNs={u'magic':MAGIC}):
-            print ph
-
-def SipStrategy(query,sipCollection):
-    pass
-
 def MagicSetTransformation(factGraph,rules,GOALS,derivedPreds=None,strictCheck=False,noMagic=[]):
     """
     Takes a goal and a ruleset and returns an iterator
     over the rulest that corresponds to the magic set
     transformation:
-    
-    [[[
-    
-    ]]]
     """
     magicPredicates=set()
     if not derivedPreds:
-        derivedPreds=list(DerivedPredicateIterator(factGraph,rules))
+        _derivedPreds=DerivedPredicateIterator(factGraph,rules)
+        if not isinstance(derivedPreds,list):
+            derivedPreds=list(_derivedPreds)
+        else:
+            derivedPreds.extend(_derivedPreds)
     replacement={}
     rs=AdornProgram(factGraph,rules,GOALS,derivedPreds)
     if factGraph:
@@ -139,7 +118,10 @@ def MagicSetTransformation(factGraph,rules,GOALS,derivedPreds=None,strictCheck=F
             idxIncrement+=1
         if 'b' in rule.formula.head.adornment:
             headMagicPred=rule.formula.head.makeMagicPred()
-            newRule.formula.body.formulae.insert(0,headMagicPred)
+            if isinstance(newRule.formula.body,Uniterm):
+                newRule.formula.body = And([headMagicPred,newRule.formula.body])
+            else:
+                newRule.formula.body.formulae.insert(0,headMagicPred)
         newRules.append(newRule)
 
     if not newRules:
@@ -209,14 +191,20 @@ def AdornRule(derivedPreds,clause,newHead):
                     # for q is useful, however, only if it is a binding for an argument of q.
                     bodyPredReplace[literal]=AdornedUniTerm(NormalizeUniterm(literal),
                             [ i in x and 'b' or 'f' for i in args])
-                    
 #                For a predicate occurrence with no incoming
-#                arc, the adornment contains only f‚Äö√Ñ√¥s. For our purposes here, 
+#                arc, the adornment contains only f. For our purposes here, 
 #                we do not distinguish between a predicate with such an 
-#                adornment and an unadorned predicate                                    
-    rule=AdornedRule(Clause(And([bodyPredReplace.get(p,p) 
-                                 for p in iterCondition(sip.sipOrder)]),
-                            AdornedUniTerm(clause.head,newHead.adornment)))
+#                adornment and an unadorned predicate
+    if (None,RDF.type,MAGIC.SipArc) not in sip:
+        #no sip arcs
+        rule=AdornedRule(Clause(clause.body,
+                                AdornedUniTerm(clause.head,
+                                              newHead.adornment)))
+    else:                                    
+        rule=AdornedRule(Clause(And([bodyPredReplace.get(p,p) 
+                                    for p in iterCondition(sip.sipOrder)]),
+                                AdornedUniTerm(clause.head,
+                                               newHead.adornment)))
     rule.sip = sip
     return rule
 
@@ -332,10 +320,15 @@ class AdornedUniTerm(Uniterm):
     #            self.arg==other.arg
                 
     def getDistinguishedVariables(self):
-        for idx,term in enumerate(self.arg):
-            if self.adornment[idx]=='b' and isinstance(term,Variable):
-                yield term
-                
+        if self.op == RDF.type:
+            for idx,term in enumerate(GetArgs(self)):
+                if self.adornment[idx]=='b' and isinstance(term,Variable):
+                    yield term
+        else:
+            for idx,term in enumerate(self.arg):
+                if self.adornment[idx]=='b' and isinstance(term,Variable):
+                    yield term
+                  
     def getBindings(self,uniterm):
         rt={}
         for idx,term in enumerate(self.arg):
@@ -591,7 +584,7 @@ def PrettyPrintRule(rule):
             print "       %s%s"%(literal,
                                  literal == rule.formula.body.formulae[-1] and '' or ', ')
     else:
-        print "%s :- %s"%(rule.formula.head,rule.formula.body.formulae[0])
+        print rule.formula
     
             
 def test():
