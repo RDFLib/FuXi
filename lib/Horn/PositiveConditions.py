@@ -174,13 +174,48 @@ class Uniterm(QNameManager,Atomic):
         else:
             self.arg[0]=varMapping.get(self.arg[0],self.arg[0])
             self.arg[1]=varMapping.get(self.arg[1],self.arg[1])
+            
+    def _get_terms(self):
+        """
+        Class attribute that returns all the terms of the literal as a lists
+        >>> x = Variable('X')
+        >>> lit = Uniterm(RDF.type,[RDFS.comment,x])
+        >>> lit.terms
+        [rdflib.URIRef('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), rdflib.URIRef('http://www.w3.org/2000/01/rdf-schema#comment'), ?X]
+        """
+        return [self.op]+self.arg
+            
+    terms = property(_get_terms)
+            
+    def getVarMapping(self,otherLit):
+        """
+        Takes another Uniterm and in every case where the corresponding term 
+        for both literals are different variables, we map from the variable
+        for *this* uniterm to the corresponding variable of the other
+          
+        >>> x = Variable('X')
+        >>> y = Variable('Y')
+        >>> lit1 = Uniterm(RDF.type,[RDFS.comment,x])
+        >>> lit2 = Uniterm(RDF.type,[RDFS.comment,y])
+        >>> lit1.getVarMapping(lit2)[x] == y
+        True
+        """
+        map = {}
+        if isinstance(self.op,Variable) and isinstance(otherLit.op,Variable) and \
+            self.op != otherLit.op:
+            map[self.op] = otherLit.op
+        if isinstance(self.arg[0],Variable) and isinstance(otherLit.arg[0],Variable) \
+            and self.arg[0] != otherLit.arg[0]:
+            map[self.arg[0]] = otherLit.arg[0]
+        if isinstance(self.arg[1],Variable) and isinstance(otherLit.arg[1],Variable) and \
+            self.arg[1] != otherLit.arg[1]:
+            map[self.arg[1]] = otherLit.arg[1]
+        return map
 
     def ground(self,varMapping):
-        if self.op == RDF.type:
-            self.arg[0]=varMapping.get(self.arg[0],self.arg[0])
-        else:
-            self.arg[0]=varMapping.get(self.arg[0],self.arg[0])
-            self.arg[1]=varMapping.get(self.arg[1],self.arg[1])
+        self.op    =varMapping.get(self.op,self.op)
+        self.arg[0]=varMapping.get(self.arg[0],self.arg[0])
+        self.arg[1]=varMapping.get(self.arg[1],self.arg[1])
                 
     def __hash__(self):
         return self._hash
