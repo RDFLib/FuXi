@@ -232,11 +232,11 @@ def main():
 
     if options.why:
         try:
-            from rdflib.sparql.parser import parse as PyParseSPARQL
+            from rdflib.sparql.parser import parse as ParseSPARQL
             from rdflib.sparql.Algebra import ReduceGraphPattern
-            query = PyParseSPARQL(options.why.pop())
         except:
-            raise
+            from rdflib.sparql.bison.Processor import Parse as ParseSPARQL
+        query = ParseSPARQL(options.why.pop()) 
         network.nsMap['pml'] = PML
         network.nsMap['gmp'] = GMP_NS
         network.nsMap['owl'] = OWL_NS        
