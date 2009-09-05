@@ -259,7 +259,6 @@ def main():
                                       derivedPreds=dPreds,
                                       strictCheck=False))
         sipCollection = PrepareSipCollection(factGraph.adornedProgram)
-        SIPRepresentation(sipCollection)          
         for goal in goals:
             start = time.time()
             derivedAnswer = first(
