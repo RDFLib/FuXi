@@ -9,8 +9,10 @@ from FuXi.Rete.Util import renderNetwork,generateTokenSet
 from FuXi.Horn.PositiveConditions import Uniterm, BuildUnitermFromTuple
 from FuXi.Horn.HornRules import HornFromN3
 from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics
-from FuXi.Rete.Magic import MagicSetTransformation, iterCondition, AdornLiteral, MAGIC, PrepareSipCollection
+from FuXi.Rete.Magic import *
 from FuXi.Rete.SidewaysInformationPassing import *
+from FuXi.Rete.TopDown import PrepareSipCollection, SipStrategy
+from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
 from rdflib.Namespace import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,URIRef
 from rdflib.OWL import FunctionalProperty
@@ -35,10 +37,6 @@ TEST_NS   = Namespace("http://metacognition.info/FuXi/DL-SHIOF-test.n3#")
 LOG       = Namespace("http://www.w3.org/2000/10/swap/log#")
 RDF_TEST  = Namespace('http://www.w3.org/2000/10/rdf-tests/rdfcore/testSchema#')
 OWL_TEST  = Namespace('http://www.w3.org/2002/03owlt/testOntology#')
-
-MAGIC_PROOFS = True
-
-SINGLE_TEST=''#OWL/FunctionalProperty/premises003'
 
 queryNsMapping={'test':'http://metacognition.info/FuXi/test#',
                 'rdf':'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
@@ -82,8 +80,12 @@ Features2Skip = [
     URIRef('http://www.w3.org/2002/07/owl#sameClassAs'),
 ]
 
-Features2SkipMagic = [
-    #FunctionalProperty
+TopDownTests2Skip = [
+    'OWL/FunctionalProperty/Manifest002.rdf',
+    'OWL/FunctionalProperty/Manifest004.rdf',
+    'OWL/oneOf/Manifest002.rdf',
+    'OWL/InverseFunctionalProperty/Manifest002.rdf', 
+    'OWL/InverseFunctionalProperty/Manifest004.rdf',
 ]
 
 Tests2Skip = [
@@ -95,15 +97,25 @@ Tests2Skip = [
     'OWL/FunctionalProperty/Manifest001.rdf', #owl:sameIndividualAs deprecated
     'OWL/Nothing/Manifest002.rdf',# owl:sameClassAs deprecated
     'OWL/AllDifferent/Manifest001.rdf',#requires support for built-ins (log:notEqualTo)
-    #Fix for magic set implementation
-    #'OWL/TransitiveProperty/Manifest001.rdf', #recursive logic program
-    #'OWL/InverseFunctionalProperty/Manifest002.rdf', #need to investigate
 ]
 
 patterns2Skip = [
     'OWL/cardinality',
     'OWL/samePropertyAs'
 ]
+
+def tripleToTriplePattern(graph,triple):
+    return "%s %s %s"%tuple([renderTerm(graph,term) 
+                                for term in triple])
+
+def renderTerm(graph,term):
+    if term == RDF.type:
+        return ' a '
+    else:
+        try:
+            return isinstance(term,BNode) and term.n3() or graph.qname(term)
+        except:
+            return term.n3()
 
 class OwlTestSuite(unittest.TestCase):
     def setUp(self):
@@ -157,69 +169,80 @@ class OwlTestSuite(unittest.TestCase):
         assert not self.network.rules
         progLen = len(rules)
         magicRuleNo = 0
+        dPreds = []
         for rule in MagicSetTransformation(factGraph,
                                            rules,
-                                           goals):
+                                           goals,
+                                           dPreds):
             magicRuleNo+=1
             self.network.buildNetworkFromClause(rule)    
             self.network.rules.add(rule)
-        
         print "rate of reduction in the size of the program: ", (100-(float(magicRuleNo)/float(progLen))*100)
 
-        for idx,rule in enumerate(factGraph.adornedProgram):
-            if rule.sip:
-                CommonNSBindings(rule.sip,
-                 {u'magic':MAGIC,
-                  u'skolem':URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')})
-                print rule
-                print SIPRepresentation(rule.sip)
+        if TOP_DOWN:
+#            print "SIP collection:"
+#            for idx,rule in enumerate(factGraph.adornedProgram):
+#                if rule.sip:
+#                    CommonNSBindings(rule.sip,
+#                    {u'magic':MAGIC,
+#                      u'skolem':URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')})
+#                    print rule
+#                    SIPRepresentation(rule.sip)
+#    
+            print "ASK { %s }"%('\n'.join([tripleToTriplePattern(factGraph,
+                                                                goal) 
+                                  for goal in goals ]))
+            timings = 0
+            sipCollection = PrepareSipCollection(factGraph.adornedProgram)
 
-        def renderTerm(graph,term):
-            if term == RDF.type:
-                return ' a '
-            else:
-                try:
-                    return isinstance(term,BNode) and term.n3() or graph.qname(term)
-                except:
-                    return term.n3()
-        def tripleToTriplePattern(graph,triple):
-            return "%s %s %s"%tuple([renderTerm(graph,term) 
-                                        for term in triple])
-        print "Test 'query'"
-        print "ASK { %s }"%('\n'.join([tripleToTriplePattern(factGraph,
-                                                             goal) 
-                               for goal in goals ]))
-
-        PrepareSipCollection(factGraph.adornedProgram)
-        raise
-
-        for goal in goals:
-            goal=AdornLiteral(goal).makeMagicPred().toRDFTuple()
-            factGraph.add(goal)
-        timing=self.calculateEntailments(factGraph)
-#        print self.network.closureGraph(factGraph,readOnly=True).serialize(format='n3')
-        for goal in goals:
-            if goal not in self.network.inferredFacts and goal not in factGraph:
-                print "missing triple %s"%(pformat(goal))
-                from FuXi.Rete.Util import renderNetwork 
-                pprint([BuildUnitermFromTuple(t) for t in self.network.inferredFacts])
-                dot=renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
-                self.network.reportConflictSet(True)
-                raise #Exception ("Failed test: "+feature)
-            else:
-                print "=== Passed! ==="
-                if goal in self.network.inferredFacts:
-                    from FuXi.Rete.Proof import GenerateProof
-                    builder,proof=GenerateProof(self.network,goal)
-#                    pGraph=Graph()
-#                    dot=builder.renderProof(goal,
-#                                            self.network.nsMap).write_jpeg('proofs/%s.jpeg'%conclusionFile.replace('/','-'))                
-        return timing
+            self.network.nsMap['pml'] = PML
+            self.network.nsMap['gmp'] = GMP_NS
+            for goal in goals:
+                derivedAnswer = first(SipStrategy(
+                                   goal,
+                                   sipCollection,
+                                   factGraph,
+                                   dPreds,
+                                   bindings={},
+                                   network = self.network))
+                if not derivedAnswer:
+                    print "failed top-down derivation"
+                    raise
+                else:
+                    ans,ns = derivedAnswer
+#                    pGraph = Graph() 
+#                    CommonNSBindings(pGraph,self.network.nsMap)
+#                    builder=ProofBuilder(self.network)
+#                    ns.serialize(builder,pGraph)
+#                    print pGraph.serialize(format='n3')
+#                    proofPath = conclusionFile.replace('.rdf','.jpg')
+#                    builder.extractGoalsFromNode(ns)
+#                    builder.renderProof(ns,nsMap = self.network.nsMap).write_jpg('owl-proof.jpg')
+                    print "=== Passed! ==="
+        else:
+            for goal in goals:
+                goal=AdornLiteral(goal).makeMagicPred().toRDFTuple()
+                factGraph.add(goal)
+            timing=self.calculateEntailments(factGraph)
+    #        print self.network.closureGraph(factGraph,readOnly=True).serialize(format='n3')
+            for goal in goals:
+                if goal not in self.network.inferredFacts and goal not in factGraph:
+                    print "missing triple %s"%(pformat(goal))
+                    from FuXi.Rete.Util import renderNetwork 
+                    pprint([BuildUnitermFromTuple(t) for t in self.network.inferredFacts])
+                    dot=renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
+                    self.network.reportConflictSet(True)
+                    raise #Exception ("Failed test: "+feature)
+                else:
+                    print "=== Passed! ==="
+            return timing
        
     def testOwl(self): 
         testData = {}       
         for manifest in glob('OWL/*/Manifest*.rdf'):
             if manifest in Tests2Skip:
+                continue
+            if TOP_DOWN and manifest in TopDownTests2Skip:
                 continue
             skip = False
             for pattern2Skip in patterns2Skip:
@@ -264,7 +287,7 @@ class OwlTestSuite(unittest.TestCase):
                             print c.__repr__(True)       
                             
                     if MAGIC_PROOFS:
-                        if feature in Features2SkipMagic:
+                        if feature in TopDownTests2Skip:
                             continue
                         print premiseFile,feature,description
                         program=list(HornFromN3(StringIO(non_DHL_OWL_Semantics)))
@@ -322,14 +345,21 @@ class OwlTestSuite(unittest.TestCase):
                     
 #        pprint(testData)
 
-def runTests(profile=False):
+def runTests(options):
+    global MAGIC_PROOFS,TOP_DOWN, SINGLE_TEST 
+    SINGLE_TEST  = options.singleTest   
+    MAGIC_PROOFS = options.bottomUp
+    if options.bottomUp:
+        TOP_DOWN = False
+    TOP_DOWN = options.topDown
     suite = unittest.makeSuite(OwlTestSuite)
-    if profile:
+    if options.profile:
         #from profile import Profile
         from hotshot import Profile, stats
         p = Profile('fuxi.profile')
         #p = Profile()
-        p.runcall(unittest.TextTestRunner(verbosity=5).run,suite)
+        for i in range(options.runs):
+            p.runcall(unittest.TextTestRunner(verbosity=5).run,suite)
         p.close()    
         s = stats.load('fuxi.profile')
 #        s=p.create_stats()
@@ -342,4 +372,30 @@ def runTests(profile=False):
         unittest.TextTestRunner(verbosity=5).run(suite)
                 
 if __name__ == '__main__':
-    runTests(profile=False)
+    from optparse import OptionParser
+    op = OptionParser('usage: %prog [options]')
+    op.add_option('--bottomUp', 
+                  action='store_true',
+                  default=True,
+      help = 'Whether or not to solve the OWL test cases via magic set and bottom-up')    
+    op.add_option('--profile', 
+                  action='store_true',
+                  default=False,
+      help = 'Whether or not to run a profile')    
+    op.add_option('--singleTest', 
+                  default='',
+      help = 'The identifier for the test to run')        
+    op.add_option('--runs', 
+                  type='int',
+                  default=1,
+      help = 'The number of times to run the test to accumulate data for profiling')            
+    op.add_option('--topDown', 
+                  default='ground',
+                  choices = ['ground', 
+                             'open'],                  
+      help = 'Whether or not to solve the OWL test cases via magic set, top-down '+
+      'and either ground queries (resulting in yes/no answers) or open queries '+
+      ' (resulting in bindings which when subsstituted should result in the original query)')
+    (options, facts) = op.parse_args()
+    
+    runTests(options)
