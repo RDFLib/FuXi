@@ -6,6 +6,7 @@ as a series of top-down derived SPARQL evaluations against a fact graph,
 generating a PML proof tree in the process.
 
 Native Prolog-like Python implementation for RIF-Core, OWL, and SPARQL  
+
 """
 
 import itertools, copy
@@ -50,6 +51,7 @@ def getBindingsFromLiteral(groundTuple,ungroundLiteral):
                          not isinstance(groundTuple[idx],Variable)])
 
 def tripleToTriplePattern(graph,triple):
+    assert isinstance(triple,tuple),repr(tuple)
     return "%s %s %s"%tuple([renderTerm(graph,term) 
                                 for term in triple])
 
@@ -62,6 +64,19 @@ def renderTerm(graph,term):
         except:
             return term.n3()
 
+def RDFTuplesToSPARQL(goals, 
+                      factGraph, 
+                      isGround=None, 
+                      vars=[]):
+    isGround = isGround and isGround or reduce(lambda x,y: 
+                                               literalIsGround(x) and \
+                                               literalIsGround(y),
+                                               goals)
+    queryType = isGround and "ASK" or "SELECT %s" % (' '.join([v.n3() for v in vars]))
+    subquery = "%s { %s }" % (queryType, ' .\n'.join([tripleToTriplePattern(factGraph, goal) 
+                                                      for goal in goals]))
+    return subquery
+
 def RunQuery(subQueryJoin,bindings,factGraph,isGround=False,vars=None):
     assert isGround or vars
     if not subQueryJoin:
@@ -69,7 +84,7 @@ def RunQuery(subQueryJoin,bindings,factGraph,isGround=False,vars=None):
     queryType = isGround and "ASK" or "SELECT %s"%(' '.join([v.n3() for v in vars]))
     subquery = "%s { %s }"%(queryType,' .\n'.join([tripleToTriplePattern(factGraph,
                                                           goal) 
-                              for goal in subQueryJoin ]))
+                              for goal in subQueryJoin ]))    
     rt = factGraph.query(subquery,
                              initNs = dict([(prefix, nsUri) 
                                   for prefix, nsUri in factGraph.namespaces()]),

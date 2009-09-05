@@ -11,6 +11,13 @@ from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics
 from FuXi.Horn import ComplementExpansion
 from FuXi.Horn.HornRules import HornFromN3, Ruleset
 from FuXi.Syntax.InfixOWL import *
+from FuXi.Rete.TopDown import *
+from FuXi.Rete.Magic import iterCondition
+from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
+from FuXi.Rete.Magic import *
+from FuXi.Rete.SidewaysInformationPassing import *
+
+from rdflib.sparql.bison.Query import Prolog
 from rdflib.Namespace import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,URIRef,Literal,Variable
 from rdflib.store import Store
@@ -22,6 +29,12 @@ import unittest, time, warnings,sys
 def main():
     from optparse import OptionParser
     op = OptionParser('usage: %prog [options] factFile1 factFile2 ... factFileN')
+    op.add_option('--why', 
+                  action='append',
+                  default=[],
+      help = 'Used with --filter to solve queries (the heads of filter-rules) '+
+             'in a top-down fashion using the adorned program and sip for each rule '+
+             'In this way OWL-DLP, OWL2-RL, N3, (and RIF) theories can be solved / queried')    
     op.add_option('--closure', 
                   action='store_true',
                   default=False,
@@ -217,6 +230,60 @@ def main():
     for rule in ruleSet:
         network.buildNetworkFromClause(rule)
 
+    if options.why:
+        try:
+            from rdflib.sparql.parser import parse as PyParseSPARQL
+            from rdflib.sparql.Algebra import ReduceGraphPattern
+            query = PyParseSPARQL(options.why.pop())
+        except:
+            raise
+        network.nsMap['pml'] = PML
+        network.nsMap['gmp'] = GMP_NS
+        network.nsMap['owl'] = OWL_NS        
+        nsBinds.update(network.nsMap)
+        network.nsMap = nsBinds
+        if not query.prolog:
+                query.prolog = Prolog(None, [])
+                query.prolog.prefixBindings.update(nsBinds)
+        else:
+            for prefix, nsInst in nsBinds.items():
+                if prefix not in query.prolog.prefixBindings:
+                    query.prolog.prefixBindings[prefix] = nsInst
+        goals = ReduceGraphPattern(query.query.whereClause.parsedGraphPattern,
+                                   query.prolog)
+        goals = [(s,p,o) for s,p,o,c in goals.patterns]
+        dPreds=[ p for s,p,o in goals ]
+        list(MagicSetTransformation(factGraph,
+                                      ruleSet,
+                                      goals,
+                                      derivedPreds=dPreds,
+                                      strictCheck=False))
+        sipCollection = PrepareSipCollection(factGraph.adornedProgram)
+        SIPRepresentation(sipCollection)          
+        for goal in goals:
+            start = time.time()
+            derivedAnswer = first(
+                              SipStrategy(
+                               goal,
+                               sipCollection,
+                               factGraph,
+                               dPreds,
+                               network = network))
+            sTime = time.time() - start
+            if sTime > 1:
+                sTimeStr = "%s seconds"%sTime
+            else:
+                sTime = sTime * 1000
+                sTimeStr = "%s milli seconds"%sTime
+            goalRepr = RDFTuplesToSPARQL([goal], factGraph)
+            print >>sys.stderr,"Time to solve goal %s top-down: %s"%(goalRepr,sTimeStr)
+
+            ans,ns = derivedAnswer
+            pGraph = Graph() 
+            CommonNSBindings(pGraph,network.nsMap)
+            builder=ProofBuilder(network)
+            ns.serialize(builder,pGraph)
+            print pGraph.serialize(format='n3')        
     for fileN in options.filter:
         for rule in HornFromN3(fileN):
             network.buildFilterNetworkFromClause(rule)
@@ -248,3 +315,17 @@ def main():
             print network.inferredFacts.serialize(destination=None, 
                                                   format=options.output, 
                                                   base=None)
+            
+if __name__ == '__main__':
+    from hotshot import Profile, stats
+    p = Profile('fuxi.profile')
+    for i in range(25): 
+        p.runcall(main)
+    p.close()    
+    s = stats.load('fuxi.profile')
+#        s=p.create_stats()
+    s.strip_dirs()
+    s.sort_stats('time','cumulative','pcalls')
+    s.print_stats(.1)
+    s.print_callers(.05)
+    s.print_callees(.05)            
