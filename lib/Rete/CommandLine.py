@@ -47,6 +47,8 @@ def main():
                   choices = ['xml', 
                              'TriX', 
                              'n3', 
+                             'pml',
+                             'proof-graph',
                              'nt',
                              'rif',
                              'rif-xml',
@@ -57,9 +59,11 @@ def main():
              "or 'n3') or to print a summary of the conflict set (from the RETE "+
              "network) if the value of this option is 'conflict'.  If the the "+
              " value is 'rif' or 'rif-xml', Then the rules used for inference "+
-             "will be serialized as RIF.  Finally if the value is 'man-owl', then "+
-             "the RDF facts are assumed to be OWL/RDF and serialized via Manchester OWL "+
-             "syntax.  The default is %default")
+             "will be serialized as RIF.  If the value is 'pml' and --why is used, "+
+             " then the PML RDF statements are serialized.  If output is "+
+             "'proof-graph then a graphviz .dot file of the proof graph is printed. "+
+             "Finally if the value is 'man-owl', then the RDF facts are assumed "+
+             "to be OWL/RDF and serialized via Manchester OWL syntax. The default is %default")
     op.add_option('--class',
                   dest='classes',
                   action='append',
@@ -163,6 +167,10 @@ def main():
     for fileN in facts:
         factGraph.parse(fileN,format=options.inputFormat)
         
+    if facts:
+        for pref,uri in factGraph.namespaces():
+            nsBinds[pref]=uri
+        
     if options.stdin:
         factGraph.parse(sys.stdin,format=options.inputFormat)
         
@@ -176,6 +184,8 @@ def main():
     network.nsMap = nsBinds
     
     if options.dlp:
+        from FuXi.DLP.DLNormalization import NormalFormReduction
+        NormalFormReduction(factGraph)
         dlp=network.setupDescriptionLogicProgramming(
                                  factGraph,
                                  addPDSemantics=options.pDSemantics,
@@ -227,39 +237,56 @@ def main():
                                       Class(otherChild).qname),UserWarning,1)
                 if not isinstance(c.identifier,BNode):
                     print c.__repr__(True)
-    for rule in ruleSet:
-        network.buildNetworkFromClause(rule)
+                    
+    if not options.why:
+        #Niave construction of graph
+        for rule in ruleSet:
+            network.buildNetworkFromClause(rule)
 
+    magicSeeds=[]
     if options.why:
         try:
             from rdflib.sparql.parser import parse as ParseSPARQL
             from rdflib.sparql.Algebra import ReduceGraphPattern
         except:
             from rdflib.sparql.bison.Processor import Parse as ParseSPARQL
-        query = ParseSPARQL(options.why.pop()) 
-        network.nsMap['pml'] = PML
-        network.nsMap['gmp'] = GMP_NS
-        network.nsMap['owl'] = OWL_NS        
-        nsBinds.update(network.nsMap)
-        network.nsMap = nsBinds
-        if not query.prolog:
-                query.prolog = Prolog(None, [])
-                query.prolog.prefixBindings.update(nsBinds)
-        else:
-            for prefix, nsInst in nsBinds.items():
-                if prefix not in query.prolog.prefixBindings:
-                    query.prolog.prefixBindings[prefix] = nsInst
-        goals = ReduceGraphPattern(query.query.whereClause.parsedGraphPattern,
-                                   query.prolog)
-        goals = [(s,p,o) for s,p,o,c in goals.patterns]
+        goals=[]
+        for query in options.why:
+            query = ParseSPARQL(query) 
+            network.nsMap['pml'] = PML
+            network.nsMap['gmp'] = GMP_NS
+            network.nsMap['owl'] = OWL_NS        
+            nsBinds.update(network.nsMap)
+            network.nsMap = nsBinds
+            if not query.prolog:
+                    query.prolog = Prolog(None, [])
+                    query.prolog.prefixBindings.update(nsBinds)
+            else:
+                for prefix, nsInst in nsBinds.items():
+                    if prefix not in query.prolog.prefixBindings:
+                        query.prolog.prefixBindings[prefix] = nsInst
+            goals.extend([(s,p,o) for s,p,o,c in ReduceGraphPattern(
+                                        query.query.whereClause.parsedGraphPattern,
+                                        query.prolog).patterns])
         dPreds=[ p for s,p,o in goals ]
-        list(MagicSetTransformation(factGraph,
-                                      ruleSet,
-                                      goals,
-                                      derivedPreds=dPreds,
-                                      strictCheck=False))
+        magicRuleNo = 0
+        for rule in MagicSetTransformation(
+                                   factGraph,
+                                   ruleSet,
+                                   goals,
+                                   derivedPreds=dPreds,
+                                   strictCheck=False):
+            magicRuleNo+=1
+            network.buildNetworkFromClause(rule)
+        print >>sys.stderr,"reduction in size of program: %s (magic program has %s clauses)"%(
+                                   100-(float(magicRuleNo)/float(len(ruleSet.formulae)))*100,
+                                   magicRuleNo)
         sipCollection = PrepareSipCollection(factGraph.adornedProgram)
+        #SIPRepresentation(sipCollection)
         for goal in goals:
+            goalSeed=AdornLiteral(goal).makeMagicPred()
+            print >>sys.stderr,"Magic seed fact (used in bottom-up evaluation)",goalSeed
+            magicSeeds.append(goalSeed.toRDFTuple())
             start = time.time()
             derivedAnswer = first(
                               SipStrategy(
@@ -277,17 +304,26 @@ def main():
             goalRepr = RDFTuplesToSPARQL([goal], factGraph)
             print >>sys.stderr,"Time to solve goal %s top-down: %s"%(goalRepr,sTimeStr)
 
-            ans,ns = derivedAnswer
-            pGraph = Graph() 
-            CommonNSBindings(pGraph,network.nsMap)
-            builder=ProofBuilder(network)
-            ns.serialize(builder,pGraph)
-            print pGraph.serialize(format='n3')        
+            if derivedAnswer:
+                ans,ns = derivedAnswer
+                builder=ProofBuilder(network)
+                if 'pml' in options.output:
+                    pGraph = Graph() 
+                    CommonNSBindings(pGraph,network.nsMap)                
+                    ns.serialize(builder,pGraph)
+                    print pGraph.serialize(format='n3')
+                elif 'proof-graph' in options.output:     
+                    builder.extractGoalsFromNode(ns)
+                    builder.renderProof(ns,nsMap = network.nsMap).write_jpg('owl-proof.jpg')
+                    print open('owl-proof.jpg').read()
+                
     for fileN in options.filter:
         for rule in HornFromN3(fileN):
             network.buildFilterNetworkFromClause(rule)
 
-    start = time.time()  
+    start = time.time()
+    if magicSeeds:
+       network.feedFactsToAdd(generateTokenSet(magicSeeds))  
     network.feedFactsToAdd(workingMemory)
     sTime = time.time() - start
     if sTime > 1:
@@ -303,14 +339,18 @@ def main():
 
     if options.output == 'conflict':
         network.reportConflictSet()
-    elif options.output not in ['rif','rif-xml','man-owl']:
+    elif options.output not in ['rif',
+                                'rif-xml',
+                                'man-owl',
+                                'pml',
+                                'proof-graph']:
         if options.closure:
             cGraph = network.closureGraph(factGraph)
             cGraph.namespace_manager = namespace_manager
             print cGraph.serialize(destination=None, 
                                    format=options.output, 
                                    base=None)
-        else:
+        elif options.output:
             print network.inferredFacts.serialize(destination=None, 
                                                   format=options.output, 
                                                   base=None)
