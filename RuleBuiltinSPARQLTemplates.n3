@@ -9,6 +9,6 @@
 
 str:greaterThan          templ:filterTemplate "STR(%s) > STR(%s)" .
 log:notEqualTo           templ:filterTemplate "%s != %s" .
-str:startsWith           templ:filterTemplate "REGEX(%s,'$%s')" .
+str:startsWith           templ:filterTemplate "REGEX(%s,%s)" .
 str:greaterThanOrEqualTo templ:filterTemplate "STR(%s) >= STR(%s)" .
 str:lessThanOrEqualTo    templ:filterTemplate "STR(%s) <= STR(%s)" .

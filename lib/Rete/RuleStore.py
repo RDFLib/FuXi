@@ -26,6 +26,10 @@ class N3Builtin(object):
         self.result = result
         self.func = func
         self.variables = [arg for arg in [self.argument,self.result] if isinstance(arg,Variable)]
+        
+    def binds(self,var):
+        return True
+    
     def toRDFTuple(self):
         return (self.argument,self.uri,self.result)
     def render(self,argument,result):
