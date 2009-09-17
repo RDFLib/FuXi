@@ -161,6 +161,7 @@ def GetArgs(term,secondOrder=False):
     elif isinstance(term,Exists):
         return GetArgs(term.formula, secondOrder)
     else:
+        import pdb;pdb.set_trace()
         raise term        
         
 def IncomingSIPArcs(sip,predOcc):

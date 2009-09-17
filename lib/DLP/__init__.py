@@ -285,23 +285,9 @@ def MapDLPtoNetwork(network,
     for horn_clause in T(factGraph,complementExpansions=complementExpansions,derivedPreds=derivedPreds):
 #        print "## RIF BLD Horn Rules: Before LloydTopor: ##\n",horn_clause
 #        print "## RIF BLD Horn Rules: After LloydTopor: ##"
-        fullReduce=False
-        for tx_horn_clause in LloydToporTransformation(horn_clause):#,
-                                                       #fullReduction=fullReduct):
+        fullReduce=True
+        for tx_horn_clause in LloydToporTransformation(horn_clause,fullReduce):
             tx_horn_clause = NormalizeClause(tx_horn_clause)
-
-            if safety in [DATALOG_SAFETY_LOOSE, DATALOG_SAFETY_STRICT]:
-                rule = Rule(tx_horn_clause,nsMapping=network.nsMap)
-                if not rule.isSafe():
-                    if safety == DATALOG_SAFETY_LOOSE:
-                        import warnings
-                        warnings.warn("Ignoring unsafe rule (%s)"%rule,
-                                      SyntaxWarning,
-                                      3)
-                        continue
-                    elif safety == DATALOG_SAFETY_STRICT:
-                        raise SyntaxError("Unsafe RIF Core rule: %s"%rule) 
-
             disj = [i for i in breadth_first(tx_horn_clause.body) if isinstance(i,Or)]
             import warnings
             if len(disj)>0:
@@ -315,6 +301,17 @@ def MapDLPtoNetwork(network,
             elif isinstance(tx_horn_clause.head,(And,Uniterm)):
     #                print "No Disjunction in the body"
                     for hc in ExtendN3Rules(network,NormalizeClause(tx_horn_clause),constructNetwork):
+                        if safety in [DATALOG_SAFETY_LOOSE, DATALOG_SAFETY_STRICT]:
+                            rule = Rule(hc,nsMapping=network.nsMap)
+                            if not rule.isSafe():
+                                if safety == DATALOG_SAFETY_LOOSE:
+                                    import warnings
+                                    warnings.warn("Ignoring unsafe rule (%s)"%rule,
+                                                  SyntaxWarning,
+                                                  3)
+                                    continue
+                                elif safety == DATALOG_SAFETY_STRICT:
+                                    raise SyntaxError("Unsafe RIF Core rule: %s"%rule) 
                         _rule=makeRule(hc,network.nsMap)
                         if _rule.negativeStratus:
                             negativeStratus.append(_rule)                    

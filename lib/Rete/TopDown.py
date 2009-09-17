@@ -89,6 +89,10 @@ def RunQuery(subQueryJoin,bindings,factGraph,isGround=False,vars=None,debug = Fa
     assert isGround or vars
     if not subQueryJoin:
         return False
+    if vars:
+        vars = [v for v in vars if isinstance(v,Variable)]
+    else:
+        vars=[]
     queryType = isGround and "ASK" or "SELECT %s"%(' '.join([v.n3() 
                                                              for v in vars]))
     queryShell = len(subQueryJoin)>1 and "%s {\n%s\n}" or "%s { %s }" 
