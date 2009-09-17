@@ -19,7 +19,8 @@ from Util import xcombine
 from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstanciation
 from AlphaNode import AlphaNode, ReteToken, SUBJECT, PREDICATE, OBJECT, BuiltInAlphaNode
 from BuiltinPredicates import FILTERS
-from FuXi.Horn import ComplementExpansion
+from FuXi.Horn import ComplementExpansion, DATALOG_SAFETY_NONE, \
+                      DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Horn.PositiveConditions import Uniterm, SetOperator, Exists, Or
 from FuXi.DLP import MapDLPtoNetwork,non_DHL_OWL_Semantics,NOMINAL_SEMANTICS, IsaFactFormingConclusion
@@ -330,14 +331,16 @@ class ReteNetwork:
                                          classifyTBox=False,
                                          constructNetwork=True,
                                          derivedPreds=[],
-                                         ignoreNegativeStratus=False):
+                                         ignoreNegativeStratus=False,
+                                         safety = DATALOG_SAFETY_NONE):
         rt=[rule 
                     for rule in MapDLPtoNetwork(self,
                                                 owlN3Graph,
                                                 complementExpansions=expanded,
                                                 constructNetwork=constructNetwork,
                                                 derivedPreds=derivedPreds,
-                                                ignoreNegativeStratus=ignoreNegativeStratus)]
+                                                ignoreNegativeStratus=ignoreNegativeStratus,
+                                                safety = safety)]
         if ignoreNegativeStratus:
             rules,negRules=rt
             rules = [r for r in rules]

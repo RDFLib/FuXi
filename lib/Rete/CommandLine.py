@@ -7,16 +7,14 @@ from FuXi.Rete.BetaNode import PartialInstanciation, LEFT_MEMORY, RIGHT_MEMORY
 from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore
 from FuXi.Rete.Util import renderNetwork,generateTokenSet, xcombine
 from FuXi.DLP.DLNormalization import NormalFormReduction
-from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics
-from FuXi.Horn import ComplementExpansion
+from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics, DisjunctiveNormalForm
+from FuXi.Horn import *
 from FuXi.Horn.HornRules import HornFromN3, Ruleset
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Rete.TopDown import *
-from FuXi.Rete.Magic import iterCondition
 from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
 from FuXi.Rete.Magic import *
 from FuXi.Rete.SidewaysInformationPassing import *
-
 from rdflib.sparql.bison.Query import Prolog
 from rdflib.Namespace import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,URIRef,Literal,Variable
@@ -25,6 +23,8 @@ from cStringIO import StringIO
 from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
 from rdflib.syntax.NamespaceManager import NamespaceManager
 import unittest, time, warnings,sys
+
+TEMPLATES = Namespace('http://code.google.com/p/fuxi/wiki/BuiltinSPARQLTemplates#')
 
 def main():
     from optparse import OptionParser
@@ -92,6 +92,14 @@ def main():
       help = "The format of the RDF document(s) which serve as the initial facts "+
              " for the RETE network. One of 'xml','n3','trix', 'nt', "+
              "or 'rdfa'.  The default is %default")
+    op.add_option('--safety', 
+                  default='none',
+                  metavar='RULE_SAFETY',
+                  choices = ['loose', 'strict','none'],
+      help = "Determines how to handle RIF Core safety.  A value of 'loose' "+
+             " means that unsafe rules will be ignored.  A value of 'strict' "+
+             " will cause a syntax exception upon any unsafe rule.  A value of "+
+             "'none' (the default) does nothing")    
     op.add_option('--pDSemantics', 
                   action='store_true',
                   default=False,
@@ -114,6 +122,41 @@ def main():
                   metavar='PATH_OR_URI',
       help = 'The Notation 3 documents to use as rulesets for the RETE network'+
       '.  Can be specified more than once')
+    op.add_option('-d', '--debug', action='store_true',default=False,
+      help = 'Include debugging output')
+    op.add_option('--strictness',
+                  default='defaultBase',
+                  metavar='DDL_STRICTNESS',
+                  choices = ['loose', 
+                             'defaultBase', 
+                             'defaultDerived', 
+                             'harsh'],
+      help = 'Used with --why to specify whether to: *not* check if predicates are '+
+      ' both derived and base (loose), if they are, mark as derived (defaultDerived) '+
+      'or as base (defaultBase) predicates, else raise an exception (harsh)')    
+    op.add_option('--method',
+                  default='bottomUp',
+                  metavar='evaluation method',
+                  choices = ['bottomUp', 'topDown','both'],
+      help = 'Used with --why to specify how to evaluate answers for query.  '+
+      'Either both (default), top-down alone, or bottom-up alone')        
+    op.add_option('--firstAnswer',
+                  default=False,
+                  action='store_true',
+      help = 'Used with --why to determine whether to fetch all answers or just '+
+      'the first')            
+    op.add_option('--edb',
+                  default=[],
+                  action='append',
+                  metavar='EXTENSIONAL_DB_PREDICATE_QNAME',                  
+      help = 'Used with --why/--strictness=defaultDerived to specify which clashing '+
+      'predicate will be designated as a base predicate')
+    op.add_option('--idb',
+                  default=[],
+                  action='append',
+                  metavar='INTENSIONAL_DB_PREDICATE_QNAME',                  
+      help = 'Used with --why/--strictness=defaultBase to specify which clashing '+
+      'predicate will be designated as a derived predicate')                    
     op.add_option('--filter', 
                   action='append',
                   default=[],
@@ -124,10 +167,26 @@ def main():
                   default=False,
       help = "Determines whether or not to attempt to parse initial facts from "+
       "the rule graph.  The default is %default")
+    op.add_option('--builtins', 
+                  default=False,
+                  metavar='PATH_TO_PYTHON_MODULE',
+      help = "The path to a python module with function definitions (and a "+
+      "dicitonary called ADDITIONAL_FILTERS) to use for builtins implementations")    
     op.add_option('--dlp', 
                   action='store_true',
                   default=False,
       help = 'Use Description Logic Programming (DLP) to extract rules from OWL/RDF.  The default is %default')
+    op.add_option('--ontology', 
+                  action='append',
+                  default=[],
+                  metavar='PATH_OR_URI',
+      help = 'The path to an OWL RDF/XML graph to use DLP to extract rules from '+
+      '(other wise, fact graph(s) are used)  ')    
+    op.add_option('--builtinTemplates', 
+                  default=None,
+                  metavar='N3_DOC_PATH_OR_URI',
+      help = 'The path to an N3 document associating SPARQL FILTER templates to '+
+      'rule builtins')        
     op.add_option('--negation', 
                   action='store_true',
                   default=False,                
@@ -151,7 +210,13 @@ def main():
         if options.ruleFacts:
             factGraph.parse(fileN,format='n3')
             print >>sys.stderr,"Parsing RDF facts from ", fileN
-        rs = HornFromN3(fileN)
+        if options.builtins:
+            import imp
+            userFuncs = imp.load_source('builtins', options.builtins)
+            rs = HornFromN3(fileN,
+                            additionalBuiltins=userFuncs.ADDITIONAL_FILTERS)
+        else:
+            rs = HornFromN3(fileN)
         nsBinds.update(rs.nsMapping)
         ruleSet.formulae.extend(rs)
         #ruleGraph.parse(fileN,format='n3')
@@ -174,25 +239,48 @@ def main():
     if options.stdin:
         factGraph.parse(sys.stdin,format=options.inputFormat)
         
+    #Normalize namespace mappings
+    #prune redundant, rdflib-allocated namespace prefix mappings
+    newNsMgr = NamespaceManager(factGraph)
+    from FuXi.Rete.Util import CollapseDictionary    
+    for k,v in CollapseDictionary(dict([(k,v) 
+                                    for k,v in factGraph.namespaces()])).items():
+        newNsMgr.bind(k,v)
+    factGraph.namespace_manager = newNsMgr
+        
     if options.normalForm:
         NormalFormReduction(factGraph)
                 
     workingMemory = generateTokenSet(factGraph)
-
-    rule_store, rule_graph, network = SetupRuleStore(makeNetwork=True)
+    if options.builtins:
+        import imp
+        userFuncs = imp.load_source('builtins', options.builtins)
+        rule_store, rule_graph, network = SetupRuleStore(
+                             makeNetwork=True,
+                             additionalBuiltins=userFuncs.ADDITIONAL_FILTERS)
+    else:
+        rule_store, rule_graph, network = SetupRuleStore(makeNetwork=True)
     network.inferredFacts = closureDeltaGraph
     network.nsMap = nsBinds
     
     if options.dlp:
         from FuXi.DLP.DLNormalization import NormalFormReduction
-        NormalFormReduction(factGraph)
+        if options.ontology:
+            ontGraph = Graph()
+            for fileN in options.ontology:
+                ontGraph.parse(fileN)
+             
+        else:
+            ontGraph=factGraph
+        NormalFormReduction(ontGraph)
         dlp=network.setupDescriptionLogicProgramming(
-                                 factGraph,
+                                 ontGraph,
                                  addPDSemantics=options.pDSemantics,
                                  constructNetwork=False,
-                                 ignoreNegativeStratus=options.negation)        
+                                 ignoreNegativeStratus=options.negation,
+                                 safety = safetyNameMap[options.safety])        
         ruleSet.formulae.extend(dlp)
-    if options.output == 'rif':
+    if options.output == 'rif' and not options.why:
         for rule in ruleSet:
             print rule
         if options.negation:
@@ -235,8 +323,8 @@ def main():
                                       c.qname,
                                       Class(child).qname,
                                       Class(otherChild).qname),UserWarning,1)
-                if not isinstance(c.identifier,BNode):
-                    print c.__repr__(True)
+#                if not isinstance(c.identifier,BNode):
+                print c.__repr__(True)
                     
     if not options.why:
         #Niave construction of graph
@@ -250,6 +338,19 @@ def main():
             from rdflib.sparql.Algebra import ReduceGraphPattern
         except:
             from rdflib.sparql.bison.Processor import Parse as ParseSPARQL
+            from rdflib.sparql.Algebra import ReduceGraphPattern
+        
+        builtinTemplateGraph = Graph()
+        if options.builtinTemplates:
+            builtinTemplateGraph = Graph().parse(options.builtinTemplates,
+                                                format='n3')
+        factGraph.templateMap = \
+            dict([(pred,template)
+                      for pred,_ignore,template in 
+                            builtinTemplateGraph.triples(
+                                (None,
+                                 TEMPLATES.filterTemplate,
+                                 None))])
         goals=[]
         for query in options.why:
             query = ParseSPARQL(query) 
@@ -268,71 +369,119 @@ def main():
             goals.extend([(s,p,o) for s,p,o,c in ReduceGraphPattern(
                                         query.query.whereClause.parsedGraphPattern,
                                         query.prolog).patterns])
-        dPreds=[ p for s,p,o in goals ]
+        dPreds=[]# p for s,p,o in goals ]
         magicRuleNo = 0
+        if options.output == 'rif' and options.method == 'bottomUp':
+            print >>sys.stderr,"Resulting Magic program: "
+        defaultBasePreds    = []
+        defaultDerivedPreds = []
+        mapping = dict(newNsMgr.namespaces())
+        for edb in options.edb: 
+            pref,uri=edb.split(':')
+            defaultBasePreds.append(URIRef(mapping[pref]+uri))
+        for idb in options.idb: 
+            pref,uri=idb.split(':')
+            defaultDerivedPreds.append(URIRef(mapping[pref]+uri))
         for rule in MagicSetTransformation(
                                    factGraph,
                                    ruleSet,
                                    goals,
                                    derivedPreds=dPreds,
-                                   strictCheck=False):
+                                   strictCheck=nameMap[options.strictness],
+                                   defaultPredicates=(defaultBasePreds,
+                                                      defaultDerivedPreds)):
             magicRuleNo+=1
+            if options.output == 'rif' and options.method == 'bottomUp':
+                print >>sys.stderr, rule
             network.buildNetworkFromClause(rule)
-        print >>sys.stderr,"reduction in size of program: %s (magic program has %s clauses)"%(
-                                   100-(float(magicRuleNo)/float(len(ruleSet.formulae)))*100,
-                                   magicRuleNo)
+        if len(ruleSet.formulae):
+            print >>sys.stderr,"reduction in size of program: %s (%s -> %s clauses)"%(
+                                       100-(float(magicRuleNo)/float(len(ruleSet.formulae)))*100,
+                                       len(ruleSet.formulae),
+                                       magicRuleNo)
+        print >>sys.stderr,"Derived predicates ", [factGraph.qname(term) for term in dPreds]
         sipCollection = PrepareSipCollection(factGraph.adornedProgram)
-        #SIPRepresentation(sipCollection)
+        if not sipCollection:
+            ruleSet = set(DisjunctiveNormalForm(network.rules,
+                                                safetyNameMap[options.safety],
+                                                network))
+            for rule in ruleSet:
+                rule.sip = Graph()
+            factGraph.adornedProgram=AdornProgram(factGraph,ruleSet,goals,dPreds)
+            sipCollection=PrepareSipCollection(factGraph.adornedProgram)
+        if options.output == 'rif' and options.method == 'topDown':
+            print >>sys.stderr,"Rules used for top-down evaluation"
+            for clause in factGraph.adornedProgram:
+                print >>sys.stderr,clause.formula                    
+        if options.debug and sipCollection:
+            print >>sys.stderr,"Sideways Information Passing (sip) graph: "
+            for sip in SIPRepresentation(sipCollection):
+                print >>sys.stderr,sip
+        solutions = []
         for goal in goals:
             goalSeed=AdornLiteral(goal).makeMagicPred()
             print >>sys.stderr,"Magic seed fact (used in bottom-up evaluation)",goalSeed
             magicSeeds.append(goalSeed.toRDFTuple())
             start = time.time()
-            derivedAnswer = first(
-                              SipStrategy(
-                               goal,
-                               sipCollection,
-                               factGraph,
-                               dPreds,
-                               network = network))
-            sTime = time.time() - start
-            if sTime > 1:
-                sTimeStr = "%s seconds"%sTime
-            else:
-                sTime = sTime * 1000
-                sTimeStr = "%s milli seconds"%sTime
-            goalRepr = RDFTuplesToSPARQL([goal], factGraph)
-            print >>sys.stderr,"Time to solve goal %s top-down: %s"%(goalRepr,sTimeStr)
-
-            if derivedAnswer:
-                ans,ns = derivedAnswer
-                builder=ProofBuilder(network)
-                if 'pml' in options.output:
-                    pGraph = Graph() 
-                    CommonNSBindings(pGraph,network.nsMap)                
-                    ns.serialize(builder,pGraph)
-                    print pGraph.serialize(format='n3')
-                elif 'proof-graph' in options.output:     
-                    builder.extractGoalsFromNode(ns)
-                    builder.renderProof(ns,nsMap = network.nsMap).write_jpg('owl-proof.jpg')
-                    print open('owl-proof.jpg').read()
+            if options.method in ['topDown','both']:
+                for derivedAnswer in \
+                        SipStrategy(
+                                   goal,
+                                   sipCollection,
+                                   factGraph,
+                                   dPreds,
+                                   network = network,
+                                   debug=options.debug):
+                    if derivedAnswer:
+                        ans,ns = derivedAnswer
+                        solutions.append((ans,ns))
+                        sTime = time.time() - start
+                        goalRepr = RDFTuplesToSPARQL([AdornLiteral(goal)], factGraph)
+                        if sTime > 1:
+                            sTimeStr = "%s seconds"%sTime
+                        else:
+                            sTime = sTime * 1000
+                            sTimeStr = "%s milli seconds"%sTime                    
+                        print >>sys.stderr,\
+            "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(ans,sTimeStr)
+                        #print >>sys.stderr,ans
+                        if options.firstAnswer:
+                            break
+                        else:
+                            start = time.time()
+                if solutions:
+                    builder=ProofBuilder(network)
+                    if 'pml' in options.output:
+                        pGraph = Graph()
+                        CommonNSBindings(pGraph,network.nsMap)
+                    for ans,ns in solutions:
+                        if 'pml' in options.output:
+                            ns.serialize(builder,pGraph) 
+                        elif 'proof-graph' in options.output:    
+                            builder.extractGoalsFromNode(ns)
+                    if 'pml' in options.output:                
+                        print pGraph.serialize(format='n3')
+                    elif 'proof-graph' in options.output:
+                        builder.renderProof(ns,nsMap = network.nsMap).write_jpg('owl-proof.jpg')
+                        print open('owl-proof.jpg').read()
                 
     for fileN in options.filter:
         for rule in HornFromN3(fileN):
             network.buildFilterNetworkFromClause(rule)
 
     start = time.time()
-    if magicSeeds:
-       network.feedFactsToAdd(generateTokenSet(magicSeeds))  
-    network.feedFactsToAdd(workingMemory)
-    sTime = time.time() - start
-    if sTime > 1:
-        sTimeStr = "%s seconds"%sTime
-    else:
-        sTime = sTime * 1000
-        sTimeStr = "%s milli seconds"%sTime
-    print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
-    print >>sys.stderr, network
+    if options.why and options.method in ['both','bottomUp']:
+       network.feedFactsToAdd(generateTokenSet(magicSeeds))
+    if not options.why or options.method in ['both','bottomUp']: 
+        network.feedFactsToAdd(workingMemory)
+        sTime = time.time() - start
+        if sTime > 1:
+            sTimeStr = "%s seconds"%sTime
+        else:
+            sTime = sTime * 1000
+            sTimeStr = "%s milli seconds"%sTime
+        print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
+        print >>sys.stderr, network
     if options.filter:
         print >>sys.stderr,"Applying filter to entailed facts"
         network.inferredFacts = network.filteredFacts

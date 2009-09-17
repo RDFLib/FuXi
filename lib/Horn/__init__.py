@@ -7,6 +7,16 @@ from cStringIO import StringIO
 from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
 from rdflib.syntax.NamespaceManager import NamespaceManager
 
+DATALOG_SAFETY_NONE   = 0
+DATALOG_SAFETY_STRICT = 1  
+DATALOG_SAFETY_LOOSE  = 2
+
+safetyNameMap = {
+  'none'   : DATALOG_SAFETY_NONE,
+  'strict' : DATALOG_SAFETY_STRICT,
+  'loose'  : DATALOG_SAFETY_LOOSE
+}
+
 def SubSumptionExpansion(owlClass):
     owlClass = CastClass(owlClass) 
     if isinstance(owlClass,BooleanClass) and owlClass._operator == OWL_NS.unionOf:

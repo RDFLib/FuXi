@@ -113,9 +113,13 @@ def CollectSIPArcVars(left,right):
     """docstring for CollectSIPArcVars"""
     if isinstance(left,list):
         return set(reduce(lambda x,y:x+y,
-                          [GetArgs(t,secondOrder=True) for t in left])).intersection(GetArgs(right,secondOrder=True))
+                          [GetArgs(t,secondOrder=True) 
+                           for t in left])).intersection(GetArgs(right,
+                                                                 secondOrder=True))
     else:
-        return set(GetArgs(left,secondOrder=True)).intersection(GetArgs(right,secondOrder=True))
+        return set(GetArgs(left,secondOrder=True)).intersection(
+                                                    GetArgs(right,
+                                                            secondOrder=True))
         
 def SetOp(term,value):
     if isinstance(term,N3Builtin):
@@ -133,6 +137,8 @@ def GetOp(term):
         return term.uri
     elif isinstance(term,Uniterm):
         return term.op == RDF.type and term.arg[-1] or term.op
+    elif isinstance(term,Exists):
+        return GetOp(term.formula)
     else:
         raise term        
         
@@ -152,6 +158,8 @@ def GetArgs(term,secondOrder=False):
         else:
             args.extend(term.arg)
         return args
+    elif isinstance(term,Exists):
+        return GetArgs(term.formula, secondOrder)
     else:
         raise term        
         
@@ -159,7 +167,10 @@ def IncomingSIPArcs(sip,predOcc):
     """docstring for IncomingSIPArcs"""
     for s,p,o in sip.triples((None,None,predOcc)): 
         if (p,RDF.type,MAGIC.SipArc) in sip:
-            yield Collection(sip,s),Collection(sip,first(sip.objects(p,MAGIC.bindings)))
+            if (s,RDF.type,MAGIC.BoundHeadPredicate) in sip:
+                yield [s],Collection(sip,first(sip.objects(p,MAGIC.bindings)))
+            else:
+                yield Collection(sip,s),Collection(sip,first(sip.objects(p,MAGIC.bindings)))
         
 def validSip(sipGraph):
     if not len(sipGraph): return False
@@ -287,6 +298,7 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead):
     return sipGraph
 
 def SIPRepresentation(sipGraph):
+    rt=[]
     for N,prop,q in sipGraph.query(
         'SELECT ?N ?prop ?q {  ?prop a magic:SipArc . ?N ?prop ?q . }',
         initNs={u'magic':MAGIC}):
@@ -294,15 +306,15 @@ def SIPRepresentation(sipGraph):
             NCol = [N]
         else:
             NCol=Collection(sipGraph,N)
-        print "{ %s } -> %s %s"%(
+        rt.append( "{ %s } -> %s %s"%(
           ', '.join([normalizeTerm(term,sipGraph) 
                       for term in NCol ]),
           ', '.join([var.n3() 
                       for var in Collection(sipGraph,first(sipGraph.objects(prop,
                                                                             MAGIC.bindings)))]),
           normalizeTerm(q,sipGraph)
-                              )
-    
+                              ))
+    return rt
 def test():
     import doctest
     doctest.testmod()

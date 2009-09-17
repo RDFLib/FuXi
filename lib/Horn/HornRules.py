@@ -4,7 +4,9 @@
 This section defines Horn rules for RIF Phase 1. The syntax and semantics 
 incorporates RIF Positive Conditions defined in Section Positive Conditions
 """
-from PositiveConditions import *
+import itertools
+from FuXi.Horn.PositiveConditions import *
+from FuXi.Horn import DATALOG_SAFETY_NONE,DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from rdflib import Variable, BNode, URIRef, Literal, Namespace,RDF,RDFS
 from rdflib.Graph import Graph, ConjunctiveGraph
 
@@ -23,6 +25,15 @@ def NetworkFromN3(n3Source,additionalBuiltins=None):
     for rule in Ruleset(n3Rules=rule_store.rules,nsMapping=rule_store.nsMgr):
         network.buildNetworkFromClause(rule)
     return network
+
+def HornFromDL(owlGraph, safety = DATALOG_SAFETY_NONE):
+    from FuXi.Rete.RuleStore import SetupRuleStore
+    ruleStore,ruleGraph,network = SetupRuleStore(makeNetwork=True)
+    return network.setupDescriptionLogicProgramming(
+                                 owlGraph,
+                                 addPDSemantics=False,
+                                 constructNetwork=False,
+                                 safety = safety)
 
 def HornFromN3(n3Source,additionalBuiltins=None):
     from FuXi.Rete.RuleStore import SetupRuleStore, N3RuleStore
@@ -126,6 +137,48 @@ class Rule(object):
         self.nsMapping = nsMapping and nsMapping or {}
         self.formula = clause
         self.declare = declare and declare or []
+        
+    def isSafe(self):
+        """
+        A RIF-Core rule, r is safe if and only if
+        - r is a rule implication, φ :- ψ, and all the variables that occur 
+          in φ are safe in ψ, and all the variables that occur in ψ are bound in ψ;
+        - or r is a universal rule, Forall v1,...,vn (r'), n ≥ 1, and r' is safe.        
+        
+        >>> clause1 = Clause(And([Uniterm(RDFS.subClassOf,[Variable('C'),Variable('SC')]),
+        ...                      Uniterm(RDF.type,[Variable('M'),Variable('C')])]),
+        ...                 Uniterm(RDF.type,[Variable('M'),Variable('SC')]))
+        >>> r1 = Rule(clause1,[Variable('M'),Variable('SC'),Variable('C')])
+        >>> clause2 = Clause(And([Uniterm(RDFS.subClassOf,[Variable('C'),Variable('SC')])]),
+        ...                 Uniterm(RDF.type,[Variable('M'),Variable('SC')]))
+        >>> r2 = Rule(clause2,[Variable('M'),Variable('SC'),Variable('C')])        
+        >>> r1.isSafe()
+        True
+        >>> r2.isSafe()
+        False
+        
+        >>> skolemTerm = BNode()
+        >>> e = Exists(Uniterm(RDFS.subClassOf,[skolemTerm,Variable('C')]),declare=[skolemTerm])
+        >>> r1.formula.head = e
+        >>> r1.isSafe()
+        False
+        """
+        from FuXi.Rete.SidewaysInformationPassing import GetArgs, iterCondition
+        assert isinstance(self.formula.head,(Exists,Atomic)),\
+                          "Safety can only be checked on rules in normal form"
+        for var in itertools.ifilter(lambda term:isinstance(term,
+                                                            (Variable,BNode)),
+                                     GetArgs(self.formula.head)):
+            if not self.formula.body.isSafeForVariable(var):
+                return False
+        for var in itertools.ifilter(
+                         lambda term:isinstance(term,(Variable,BNode)),
+                         reduce(lambda l,r:l+r,
+                                [GetArgs(lit) 
+                                 for lit in iterCondition(self.formula.body)])):
+            if not self.formula.body.binds(var):
+                return False
+        return True
 
     def n3(self):
         """

@@ -346,7 +346,11 @@ class NodeSet(object):
     
     """
     def __init__(self,conclusion=None,steps=None,identifier=BNode(),network=None):
-        self.network=network
+        if network:
+            self.network=network
+        else:
+            self.network = self
+            self.network.nsMap = {}
         self.identifier = identifier
         self.conclusion = conclusion
         self.language = None
@@ -355,7 +359,10 @@ class NodeSet(object):
     def serialize(self,builder,proofGraph):
 #        if self.identifier in builder.serializedNodeSets:
 #            return
-        proofGraph.add((self.identifier,PML.hasConclusion,Literal(repr(buildUniTerm(self.conclusion,self.network.nsMap)))))
+        proofGraph.add((self.identifier,
+                        PML.hasConclusion,
+                        Literal(repr(buildUniTerm(self.conclusion,
+                                                  self.network.nsMap)))))
         #proofGraph.add((self.identifier,PML.hasLanguage,URIRef('http://inferenceweb.stanford.edu/registry/LG/RIF.owl')))
         proofGraph.add((self.identifier,RDF.type,PML.NodeSet))
         for step in self.steps:

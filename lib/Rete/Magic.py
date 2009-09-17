@@ -32,15 +32,46 @@ EX_ULMAN = Namespace('http://doi.acm.org/10.1145/6012.15399#')
 LOG_NS   = Namespace("http://www.w3.org/2000/10/swap/log#")
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
 
-def MagicSetTransformation(factGraph,rules,GOALS,derivedPreds=None,strictCheck=False,noMagic=[]):
+DDL_STRICTNESS_LOOSE    = 0
+DDL_STRICTNESS_HARSH    = 1
+DDL_STRICTNESS_FALLBACK_DERIVED = 2
+DDL_STRICTNESS_FALLBACK_BASE = 3 
+DDL_MUST_CHECK = [DDL_STRICTNESS_HARSH,
+                  DDL_STRICTNESS_FALLBACK_DERIVED,
+                  DDL_STRICTNESS_FALLBACK_BASE]
+DDL_FALLBACK = [
+    DDL_STRICTNESS_FALLBACK_DERIVED,
+    DDL_STRICTNESS_FALLBACK_BASE
+]
+
+nameMap = {
+  'loose'          : DDL_STRICTNESS_LOOSE,
+  'defaultDerived' : DDL_STRICTNESS_FALLBACK_DERIVED,
+  'defaultBase'    : DDL_STRICTNESS_FALLBACK_BASE,
+  'harsh'          : DDL_STRICTNESS_HARSH,
+}
+
+def MagicSetTransformation(factGraph,
+                           rules,
+                           GOALS,
+                           derivedPreds=None,
+                           strictCheck=DDL_STRICTNESS_FALLBACK_DERIVED,
+                           noMagic=None,
+                           defaultPredicates=None):
     """
     Takes a goal and a ruleset and returns an iterator
     over the rulest that corresponds to the magic set
     transformation:
     """
+    noMagic = noMagic and noMagic or []
+    if not defaultPredicates:
+        defaultPredicates = [],[]
     magicPredicates=set()
     if not derivedPreds:
-        _derivedPreds=DerivedPredicateIterator(factGraph,rules)
+        _derivedPreds=DerivedPredicateIterator(factGraph,
+                                               rules,
+                                               strict=strictCheck,
+                                               defaultPredicates=defaultPredicates)
         if not isinstance(derivedPreds,list):
             derivedPreds=list(_derivedPreds)
         else:
@@ -60,7 +91,11 @@ def MagicSetTransformation(factGraph,rules,GOALS,derivedPreds=None,strictCheck=F
                 # predicate p a in its body, we generate a magic rule defining magic_p a
                 prevPreds=[item for _idx,item in enumerate(rule.formula.body)
                                             if _idx < idx]             
-                assert 'b' in pred.adornment,"adorned predicate w/out any bound arguments!"
+                if 'b' not in pred.adornment:
+                    import warnings
+                    warnings.warn(
+"adorned predicate w/out any bound arguments(%s in %s) !"%(pred,rule.formula),
+                            RuntimeWarning)
                 if GetOp(pred) not in noMagic:
                     magicPred=pred.makeMagicPred()
                     magicPositions[idx]=(magicPred,pred)
@@ -134,10 +169,9 @@ def MagicSetTransformation(factGraph,rules,GOALS,derivedPreds=None,strictCheck=F
             #if oneOf axiom is detected in graph 
             #reduce computational complexity
             newRules.extend(HornFromN3(StringIO(NOMINAL_SEMANTICS)))
-    elif strictCheck:
-        first(DerivedPredicateIterator(factGraph,newRules,strict=True))
     for rule in newRules:
-        yield rule
+        if rule.formula.body:
+            yield rule
 
 def NormalizeGoals(goals):
     if isinstance(goals,(list,set)):
@@ -179,18 +213,30 @@ def AdornRule(derivedPreds,clause,newHead):
     derived predicates
     """
     assert len(list(iterCondition(clause.head)))==1
+    adornedHead=AdornedUniTerm(clause.head,
+                               newHead.adornment)
     sip=BuildNaturalSIP(clause,derivedPreds,newHead)
     bodyPredReplace={}
+    def adornment(arg,headArc,x):
+        if headArc:
+            #Sip arc from head
+            #don't mark bound if query has no bound/distinguished terms
+            return (arg in x and 
+                    arg in adornedHead.getDistinguishedVariables(True)) \
+                        and 'b' or 'f'
+        else:
+            return arg in x and 'b' or 'f'
     for literal in iterCondition(sip.sipOrder):
         args = GetArgs(literal)
         op   = GetOp(literal)
         if op in derivedPreds:
             for N,x in IncomingSIPArcs(sip,getOccurrenceId(literal)): 
+                headArc = len(N)==1 and N[0] == GetOp(newHead)                
                 if not set(x).difference(args):
                     # A binding
                     # for q is useful, however, only if it is a binding for an argument of q.
                     bodyPredReplace[literal]=AdornedUniTerm(NormalizeUniterm(literal),
-                            [ i in x and 'b' or 'f' for i in args])
+                            [ adornment(arg,headArc,x) for arg in args])
 #                For a predicate occurrence with no incoming
 #                arc, the adornment contains only f. For our purposes here, 
 #                we do not distinguish between a predicate with such an 
@@ -198,13 +244,11 @@ def AdornRule(derivedPreds,clause,newHead):
     if (None,RDF.type,MAGIC.SipArc) not in sip:
         #no sip arcs
         rule=AdornedRule(Clause(clause.body,
-                                AdornedUniTerm(clause.head,
-                                              newHead.adornment)))
+                                adornedHead))
     else:                                    
         rule=AdornedRule(Clause(And([bodyPredReplace.get(p,p) 
                                     for p in iterCondition(sip.sipOrder)]),
-                                AdornedUniTerm(clause.head,
-                                               newHead.adornment)))
+                                adornedHead))
     rule.sip = sip
     return rule
 
@@ -319,15 +363,17 @@ class AdornedUniTerm(Uniterm):
     #            self.op==other.op and\
     #            self.arg==other.arg
                 
-    def getDistinguishedVariables(self):
+    def getDistinguishedVariables(self,varsOnly=False):
         if self.op == RDF.type:
             for idx,term in enumerate(GetArgs(self)):
-                if self.adornment[idx]=='b' and isinstance(term,Variable):
-                    yield term
+                if self.adornment[idx]=='b':
+                    if not varsOnly or isinstance(term,Variable):
+                        yield term
         else:
             for idx,term in enumerate(self.arg):
-                if self.adornment[idx]=='b' and isinstance(term,Variable):
-                    yield term
+                if self.adornment[idx]=='b':
+                    if not varsOnly or isinstance(term,Variable):
+                        yield term
                   
     def getBindings(self,uniterm):
         rt={}
@@ -402,10 +448,10 @@ def AdornLiteral(rdfTuple,newNss=None):
                 for idx,term in enumerate(opArgs) ]
     return AdornedUniTerm(uTerm,adornment)  
 
-def iterCondition(condition):
-    return isinstance(condition,SetOperator) and condition or iter([condition])
-
-def DerivedPredicateIterator(factsOrBasePreds,ruleset,strict=False):
+def DerivedPredicateIterator(factsOrBasePreds,
+                             ruleset,
+                             strict=DDL_STRICTNESS_FALLBACK_DERIVED,
+                             defaultPredicates=None):
     """
     >>> ruleStore,ruleGraph=SetupRuleStore()
     >>> g=ruleGraph.parse(StringIO(MAGIC_PROGRAM1),format='n3')
@@ -420,6 +466,9 @@ def DerivedPredicateIterator(factsOrBasePreds,ruleset,strict=False):
     >>> for lit in DerivedPredicateIterator(ruleFacts,ruleGraph): print lit
     ex:sg(?X ?Y)
     """
+    if not defaultPredicates:
+        defaultPredicates = [],[]
+    defaultBasePreds,defaultDerivedPreds = defaultPredicates
     basePreds=[GetOp(buildUniTerm(fact)) for fact in factsOrBasePreds 
                         if fact[1] != LOG.implies]     
     processed={True:set(),False:set()}
@@ -428,33 +477,65 @@ def DerivedPredicateIterator(factsOrBasePreds,ruleset,strict=False):
     ruleBodyPreds=set()
     ruleHeads=set()
     for rule in ruleset:
-        for idx,term in enumerate(itertools.chain(iterCondition(rule.formula.head),
-                                  iterCondition(rule.formula.body))):
-            op = GetOp(term)
-            if op not in processed[idx>0]: 
-                if idx > 0:
-                    ruleBodyPreds.add(op)
-                else:
-                    ruleHeads.add(op)
-                if strict and not (op not in basePreds or idx > 0):
-#                    print term," is a member of a derived predicate and a base predicate!"
-                    raise SyntaxError("%s is a member of a derived predicate and a base predicate!"%term)
-#                assert op not in basePreds or idx > 0,"Malformed program!"
-                if op in basePreds:
-                    uncertainPreds.add(op)
-                else:
-                    if idx == 0 and not isinstance(op,Variable):
-                        derivedPreds.add(op)
-                    elif not isinstance(op,Variable):
+        if rule.formula.body:
+            for idx,term in enumerate(itertools.chain(iterCondition(rule.formula.head),
+                                      iterCondition(rule.formula.body))):
+                #iterate over terms from head to end of body
+                op = GetOp(term)
+                if op not in processed[idx>0]: 
+                    #not processed before
+                    if idx > 0:
+                        #body literal
+                        ruleBodyPreds.add(op)
+                    else:
+                        #head literal
+                        ruleHeads.add(op)
+                    if strict in DDL_MUST_CHECK and \
+                        not (op not in basePreds or idx > 0):
+                        #checking DDL well formedness and
+                        #op is a base predicate *and* a head literal (derived)
+                        if strict in DDL_FALLBACK:
+                            mark = strict == DDL_STRICTNESS_FALLBACK_DERIVED and \
+                            'derived' or 'base'
+                            if strict == DDL_STRICTNESS_FALLBACK_DERIVED and \
+                                op not in defaultBasePreds:     
+                                #a clashing predicate is marked as derived due
+                                #to level of strictness                        
+                                derivedPreds.add(op)
+                            elif strict == DDL_STRICTNESS_FALLBACK_BASE and \
+                                op not in defaultDerivedPreds:
+                                #a clashing predicate is marked as base dur
+                                #to level of strictness
+                                defaultBasePreds.append(op)
+                            import warnings
+                            warnings.warn(
+      "predicate symbol of %s is in both IDB and EDB. Marking as %s"%(term,mark))
+                        else:
+                            raise SyntaxError("%s is a member of a derived predicate and a base predicate!"%term)
+                    if op in basePreds:
+                        #base predicates are marked for later validation
                         uncertainPreds.add(op)
-                processed[idx>0].add(op)
+                    else:
+                        if idx == 0 and not isinstance(op,Variable):
+                            #head literal with proper predicate symbol
+                            #identify as a derived predicate
+                            derivedPreds.add(op)
+                        elif not isinstance(op,Variable):
+                            #body literal with proper predicate symbol
+                            #mark for later validation
+                            uncertainPreds.add(op)
+                    processed[idx>0].add(op)
     for pred in uncertainPreds:
+        #for each predicate marked as 'uncertain'
+        #do further checking
         if (pred not in ruleBodyPreds and not isinstance(pred,Variable)) or\
            pred in ruleHeads:
+            #pred is not in a body literal and is a proper predicate symbol
+            #or it is a rule head -> mark as a derived predicate
             derivedPreds.add(pred)
-#    assert not derivedPred.intersection(basePreds),"There are predicates that are both derived and base!"
     for pred in derivedPreds:
-        yield pred
+        if not pred in defaultBasePreds:
+            yield pred
     
 def IsBasePredicate(ruleGraph,pred):
     pass

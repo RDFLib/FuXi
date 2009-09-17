@@ -6,7 +6,9 @@ The language of positive RIF conditions determines what can appear as a body (th
  Overview, RIF's Basic Logic Dialect corresponds to definite Horn rules, and the
   bodies of such rules are conjunctions of atomic formulas without negation.
 """
+import itertools
 from rdflib import Variable, BNode, URIRef, Literal, Namespace,RDF,RDFS
+from rdflib.util import first
 from rdflib.Collection import Collection
 from rdflib.Graph import ConjunctiveGraph,QuotedGraph,ReadOnlyGraphAggregate, Graph
 from rdflib.syntax.NamespaceManager import NamespaceManager
@@ -43,6 +45,12 @@ class Condition(object):
     """
     CONDITION   ::= CONJUNCTION | DISJUNCTION | EXISTENTIAL | ATOMIC
     """
+    def isSafeForVariable(self,var):
+        """
+        A variable, v is safe in a condition formula if and only if ..
+        """
+        return False
+    
     def __iter__(self):
         for f in self.formulae:
             yield f
@@ -59,6 +67,51 @@ class And(QNameManager,SetOperator,Condition):
         self.naf = naf
         self.formulae = formulae and formulae or []
         QNameManager.__init__(self)
+
+    def binds(self, var):
+        """
+        A variable, v, is bound in a conjunction formula, f = And(c1...cn), n ≥ 1, 
+        if and only if, either
+
+        - v is bound in at least one of the conjuncts;
+
+        For now we don't support equality predicates, so we only check the 
+        first condition
+        
+        >>> x=Variable('X')
+        >>> y=Variable('Y')
+        >>> lit1 = Uniterm(RDF.type,[x,RDFS.Class])
+        >>> lit2 = Uniterm(RDF.Property,[y,RDFS.Class])
+        >>> conj = And([lit1,lit2])
+        >>> conj.binds(Variable('Y'))
+        True
+        >>> conj.binds(Variable('Z'))
+        False
+        """
+        return first(itertools.ifilter(lambda conj: conj.binds(var),
+                                       self.formulae)) is not None
+        
+    def isSafeForVariable(self,var):
+        """
+        A variable, v is safe in a condition formula if and only if ..
+        
+        f is a conjunction, f = And(c1...cn), n ≥ 1, and v is safe in at least 
+        one conjunct in f
+        
+        Since we currently don't support equality predicates, we only check
+        the first condition
+        
+        >>> x=Variable('X')
+        >>> y=Variable('Y')
+        >>> lit1 = Uniterm(RDF.type,[x,RDFS.Class])
+        >>> lit2 = Uniterm(RDF.Property,[y,RDFS.Class])
+        >>> conj = And([lit1,lit2])
+        >>> conj.isSafeForVariable(y)
+        True
+                
+        """
+        return first(itertools.ifilter(lambda conj: conj.isSafeForVariable(var),
+                                       self.formulae)) is not None
         
     def n3(self):
         """
@@ -90,6 +143,42 @@ class Or(QNameManager,SetOperator,Condition):
         self.naf = naf
         self.formulae = formulae and formulae or []
         QNameManager.__init__(self)
+
+    def binds(self, var):
+        """
+        A variable, v, is bound in a disjunction formula, if and only if v is 
+        bound in every disjunct where it occurs
+        
+        >>> x=Variable('X')
+        >>> y=Variable('Y')
+        >>> lit1 = Uniterm(RDF.type,[x,RDFS.Class])
+        >>> lit2 = Uniterm(RDF.Property,[y,RDFS.Class])
+        >>> conj = And([lit1,lit2])
+        >>> disj = Or([conj,lit2])
+        >>> disj.binds(y)
+        True
+        >>> disj.binds(Variable('Z'))
+        False
+        >>> lit = Uniterm(RDF.type,[OWL.Class,RDFS.Class])
+        >>> disj= Or([lit,lit])
+        >>> disj.binds(x)
+        False
+        """
+        unboundConjs = list(itertools.takewhile(lambda conj: conj.binds(var),
+                                                self.formulae))
+        return len(unboundConjs) == len(self.formulae)
+
+    def isSafeForVariable(self,var):
+        """
+        A variable, v is safe in a condition formula if and only if ..
+        
+        f is a disjunction, and v is safe in every disjunct;
+        """
+        unboundConjs = list(itertools.takewhile(
+                                    lambda conj: conj.isSafeForVariable(var),
+                                    self.formulae))
+        return len(unboundConjs) == len(self.formulae)
+
         
     def __repr__(self):
         return self.repr('Or')
@@ -104,7 +193,30 @@ class Exists(Condition):
     """
     def __init__(self,formula=None,declare=None):
         self.formula = formula
-        self.declare = declare and declare or []    
+        self.declare = declare and declare or []
+
+    def binds(self, var):
+        """
+        A variable, v, is bound in an existential formula, 
+        Exists v1,...,vn (f'), n ≥ 1, if and only if v is bound in f'
+        
+        >>> ex=Exists(formula=And([Uniterm(RDF.type,[RDFS.comment,RDF.Property]),
+        ...                    Uniterm(RDF.type,[Variable('X'),RDFS.Class])]),
+        ...        declare=[Variable('X')])
+        >>> ex.binds(Variable('X'))
+        True
+        """
+        return self.formula.binds(var)
+    
+    def isSafeForVariable(self,var):
+        """
+        A variable, v is safe in a condition formula if and only if ..
+        
+        f is an existential formula, f = Exists v1,...,vn (f'), n ≥ 1, and 
+        v is safe in f' .
+        """
+        return self.formula.isSafeForVariable(var) 
+            
     def __iter__(self):
         for term in self.formula: 
             yield term
@@ -122,6 +234,19 @@ class Atomic(Condition):
     """
     ATOMIC ::= Uniterm | Equal | Member | Subclass (| Frame)
     """
+    def binds(self, var):
+        """
+        A variable, v, is bound in an atomic formula, a, if and only if
+        
+        - a is neither an equality nor an external predicate, and v occurs as an 
+          argument in a;
+        - or v is bound in the conjunction formula f = And(a).
+        
+        Default is False
+                
+        """
+        return False
+    
     def __iter__(self):
         yield self
 
@@ -167,6 +292,41 @@ class Uniterm(QNameManager,Atomic):
                 self.nsMgr.bind(k,v)
         self._hash=hash(reduce(lambda x,y:str(x)+str(y),
             len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))
+
+    def binds(self, var):
+        """
+        A variable, v, is bound in an atomic formula, a, if and only if
+        
+        - a is neither an equality nor an external predicate, and v occurs as an 
+          argument in a;
+        - or v is bound in the conjunction formula f = And(a).
+        
+        Default is False
+        
+        >>> x = Variable('X')
+        >>> lit = Uniterm(RDF.type,[RDFS.comment,x])
+        >>> lit.binds(Variable('Z'))
+        False
+        >>> lit.binds(x)
+        False
+        >>> Uniterm(RDF.type,[x,RDFS.Class]).binds(x)
+        True
+        
+        """
+        if self.op == RDF.type:
+            arg0,arg1 = self.arg
+            return var == arg0            
+        else:
+            return var in self.arg
+        
+    def isSafeForVariable(self,var):
+        """
+        A variable, v is safe in a condition formula if and only if ..
+        
+        f is an atomic formula and f is not an equality formula in which both 
+        terms are variables, and v occurs in f;
+        """
+        return self.binds(var)
         
     def renameVariables(self,varMapping):
         if self.op == RDF.type:

@@ -1,8 +1,11 @@
 """
 Utility functions for a Boost Graph Library (BGL) DiGraph via the BGL Python Bindings
 """
-from FuXi.Rete.AlphaNode import AlphaNode
-
+import itertools
+from FuXi.Rete.AlphaNode import AlphaNode        
+from rdflib.Graph import Graph
+from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib import BNode, Namespace, Collection, Variable
 try:    
     import boost.graph as bgl
     bglGraph = bgl.Digraph()
@@ -12,11 +15,6 @@ except:
     except:
         import warnings
         warnings.warn("Missing pydot library",ImportWarning)        
-        #raise NotImplementedError("Boost Graph Library & Python bindings (or pydot) not installed.  See: see: http://www.osl.iu.edu/~dgregor/bgl-python/")
-        
-from rdflib.Graph import Graph
-from rdflib.syntax.NamespaceManager import NamespaceManager
-from rdflib import BNode, Namespace, Collection, Variable
 
 LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 
@@ -56,6 +54,45 @@ def permu(xs):
         for i in range(len(xs)):
             for p in permu(xs[:i] + xs[i + 1:]):
                 yield [xs[i]] + p
+
+def CollapseDictionary(mapping):
+    """
+    Takes a dictionary mapping prefixes to URIs
+    and removes prefix mappings that begin with _ and
+    there is already a map to their value
+    
+    >>> a = {'ex': URIRef('http://example.com/')}
+    >>> a['_1'] =  a['ex']
+    >>> len(a)
+    2
+    >>> a.values()
+    [rdflib.URIRef('http://example.com/'), rdflib.URIRef('http://example.com/')]
+    >>> CollapseDictionary(a)
+    >>> a
+    {'ex': rdflib.URIRef('http://example.com/')}
+    """
+    def originalPrefixes(item):
+        return item.find('_')+1==1
+    revDict = {}
+    for k,v in mapping.items():
+        revDict.setdefault(v,set()).add(k)
+    prefixes2Collapse = []
+    for k,v in revDict.items():
+        origPrefixes=[]
+        dupePrefixes=[]
+        #group prefixes for a single URI by whether or not
+        #they have a _ prefix
+        for rt,items in itertools.groupby(v,originalPrefixes):
+            if rt:
+                dupePrefixes.extend(items)
+            else:
+                origPrefixes.extend(items)
+        if origPrefixes and len(v) > 1 and len(dupePrefixes):
+            #There are allocated prefixes for URIs that were originally
+            #given a prefix 
+            assert len(origPrefixes)==1
+            prefixes2Collapse.extend(dupePrefixes)
+    return dict([(k,v) for k,v in mapping.items() if k not in prefixes2Collapse])
 
 def generateTokenSet(graph,debugTriples=[],skipImplies=True):
     """
