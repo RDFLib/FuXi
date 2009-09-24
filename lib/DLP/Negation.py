@@ -9,19 +9,20 @@ from rdflib.util import first
 from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
 from rdflib.syntax.NamespaceManager import NamespaceManager
 from FuXi.Rete.RuleStore import N3RuleStore,SetupRuleStore
+from FuXi.Horn.PositiveConditions import And
 from FuXi.Rete import ReteNetwork
 from FuXi.Rete.RuleStore import N3RuleStore
 from FuXi.Rete.Util import generateTokenSet
 from FuXi.Syntax.InfixOWL import *
 from FuXi.DLP import SKOLEMIZED_CLASS_NS, MapDLPtoNetwork
-from FuXi.Rete.SidewaysInformationPassing import *
 from DLNormalization import NormalFormReduction
-import sys, unittest, copy
+import sys, unittest, copy, itertools
 
 EX_NS = Namespace('http://example.com/')
 EX    = ClassNamespaceFactory(EX_NS)
 
 def GetVars(atom):
+    from FuXi.Rete.SidewaysInformationPassing import GetArgs
     return [term for term in GetArgs(atom) if isinstance(term,Variable)]
 
 def CalculateStratifiedModel(network,ontGraph,derivedPreds,edb=None):
@@ -106,6 +107,7 @@ def StratifiedSPARQL(rule,nsMapping={EX_NS: 'ex'}):
     Uses telescope to construct the SPARQL MINUS BGP expressions for body 
     conditions with default negation formulae              
     """
+    from FuXi.Rete.SidewaysInformationPassing import GetArgs, findFullSip, iterCondition
     #Find a sip order of the horn rule
     if isinstance(rule.formula.body,And):
         sipOrder=first(findFullSip(([rule.formula.head],None), rule.formula.body))
@@ -113,7 +115,9 @@ def StratifiedSPARQL(rule,nsMapping={EX_NS: 'ex'}):
         sipOrder=[rule.formula.head]+[rule.formula.body]
     from telescope import optional, op
     from telescope.sparql.queryforms import Select
+    from telescope.sparql.expressions import Expression
     from telescope.sparql.compiler import SelectCompiler
+    from telescope.sparql.patterns import GroupGraphPattern 
     toDo=[]
     negativeVars=set()
     positiveLiterals = False
@@ -151,30 +155,70 @@ def StratifiedSPARQL(rule,nsMapping={EX_NS: 'ex'}):
     vars={}
     varExprs={}
     copyPatterns=[]
-        
-    #A copy pattern is needed if the negative literals don't introduce new vars
-    copyPatternNeeded = not negativeVars.difference(positiveVars)
-    if copyPatternNeeded:
-        copyPatterns,vars,varExprs=createCopyPattern(toDo)
-        #We use an arbitrary new variable as for the outer FILTER(!BOUND(..))
-        outerFilterVariable=vars.values()[0]
-        optionalPatterns=toDo+copyPatterns
+    print >> sys.stderr, "%s =: { %s MINUS %s} "%(rule.formula.head,
+                                                  posLiterals,
+                                                  toDo)
+    def collapseMINUS(left,right):
+        negVars=set()
+        for pred in iterCondition(right):
+            negVars.update([term for term in GetArgs(pred) 
+                                    if isinstance(term,Variable)])
+        innerCopyPatternNeeded = not negVars.difference(positiveVars)
+        #A copy pattern is needed if the negative literals don't introduce new vars
+        if innerCopyPatternNeeded:
+            innerCopyPatterns,innerVars,innerVarExprs=createCopyPattern([right])
+            #We use an arbitrary new variable as for the outer FILTER(!BOUND(..))
+            outerFilterVariable=innerVars.values()[0]
+            optionalPatterns=[right] +innerCopyPatterns
+            negatedBGP=optional(*[formula.toRDFTuple() 
+                                for formula in optionalPatterns])
+            negatedBGP.filter(*[k==v for k,v in innerVarExprs.items()])         
+            positiveVars.update([Variable(k.value[0:]) for k in innerVarExprs.keys()])
+            positiveVars.update(innerVarExprs.values())   
+        else:
+            #We use an arbitrary, 'independent' variable for the outer FILTER(!BOUND(..))
+            outerFilterVariable=negVars.difference(positiveVars).pop()
+            optionalPatterns=[right]
+            negatedBGP=optional(*[formula.toRDFTuple() 
+                                for formula in optionalPatterns])
+            positiveVars.update(negVars)
+        left=left.where(*[negatedBGP])
+        left=left.filter(~op.bound(outerFilterVariable))
+        return left        
+    topLevelQuery = Select(GetArgs(rule.formula.head)).where(
+                             GroupGraphPattern.from_obj([
+                                 formula.toRDFTuple() 
+                                    for formula in posLiterals]))
+    rt=reduce(collapseMINUS,[topLevelQuery]+toDo)
+    return rt,SelectCompiler(nsMapping)
+
+def ProperSipOrderWithNegation(body):
+    """
+    Ensures the list of literals has the negated literals
+    at the end of the list
+    """
+    from FuXi.Rete.SidewaysInformationPassing import iterCondition
+    #import pdb;pdb.set_trace()
+    firstNegLiteral = None
+    bodyIterator = list(body)
+    for idx,literal in enumerate(bodyIterator):
+        if literal.naf:
+            firstNegLiteral = literal
+            break
+    if firstNegLiteral:
+        #There is a first negative literal, are there subsequent positive literals?
+        subsequentPosLits =  first(itertools.dropwhile(lambda i:i.naf,
+                                                       bodyIterator[idx:]))
+        if len(body) - idx > 1:
+            #if this is not the last term in the body
+            #then we succeed only if there are no subsequent positive literals
+            return not subsequentPosLits 
+        else:
+            #this is the last term, so we are successful
+            return True
     else:
-        #We use an arbitrary, 'independent' variable for the outer FILTER(!BOUND(..))
-        outerFilterVariable=negativeVars.difference(positiveVars).pop()
-        optionalPatterns=toDo
-    #Create the right operand of an OPTIONAL expression (a BGP from a conjunction of negative atomic formulae )
-    negatedBGP=optional(*[formula.toRDFTuple() for formula in optionalPatterns])
-    if copyPatternNeeded:
-        #Add filters to maintain variable compatibility
-        negatedBGP.filter(*[k==v for k,v in varExprs.items()])
-    #Create thee SPARQL query: LBGP OPTION RBGP . FILTER(!bound(...))
-    sel=Select(GetArgs(rule.formula.head)).where(*[formula.toRDFTuple() for formula in posLiterals]+[negatedBGP])
-    if copyPatternNeeded:
-        sel=sel.filter(~op.bound(outerFilterVariable))
-    else:
-        sel=sel.filter(~op.bound(outerFilterVariable))        
-    return sel,SelectCompiler(nsMapping)#.compile(sel)
+        #There are no negative literals
+        return True
 
 class UniversalRestrictionTest(unittest.TestCase):
     def setUp(self):

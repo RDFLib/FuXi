@@ -126,7 +126,8 @@ class DemorganTransformer(object):
         """
         Individual.factoryGraph = graph
         for disjunctId in graph.subjects(predicate=OWL_NS.unionOf):
-            if (None,OWL_NS.complementOf,disjunctId) in graph:
+            if (None,OWL_NS.complementOf,disjunctId) in graph and \
+               isinstance(disjunctId,BNode):
                 #not (     A1 or      A2  or .. or      An ) 
                 #                 = 
                 #    ( not A1 and not A2 and .. and not An )

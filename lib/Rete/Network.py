@@ -292,8 +292,8 @@ class ReteNetwork:
         for i in self.negRules:
             #Evaluate the Graph pattern, and instanciate the head of the rule with 
             #the solutions returned
-            sel,compiler=StratifiedSPARQL(i,dict([(v,k) 
-                                              for k,v in self.nsMap.items()]))
+            nsMapping = dict([(v,k) for k,v in self.nsMap.items()])
+            sel,compiler=StratifiedSPARQL(i,nsMapping)
             query=compiler.compile(sel)
             i.stratifiedQuery=query
             vars = sel.projection

@@ -9,12 +9,13 @@ Native Prolog-like Python implementation for RIF-Core, OWL, and SPARQL
 
 """
 
-import itertools, copy
+import itertools, copy, md5
 from FuXi.Rete.AlphaNode import ReteToken
 from FuXi.Horn.HornRules import Clause, Ruleset, Rule, HornFromN3
 from FuXi.Rete.RuleStore import *
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Rete.Proof import *
+from FuXi.Rete.Util import selective_memoize
 from rdflib.Graph import ReadOnlyGraphAggregate
 from rdflib import URIRef, RDF, Namespace, Variable
 from rdflib.util import first
@@ -84,7 +85,14 @@ def RDFTuplesToSPARQL(goals,
                                                       for goal in goals]))
     return subquery
 
-def RunQuery(subQueryJoin,bindings,factGraph,isGround=False,vars=None,debug = False):
+@selective_memoize([0,1],['isGround','symmAtomicInclusion'])
+def RunQuery(subQueryJoin,
+             bindings,
+             factGraph,
+             isGround=False,
+             vars=None,
+             debug = False,
+             symmAtomicInclusion = False):
     initialBindings = dict([(k,v) for k,v in factGraph.namespaces()])
     assert isGround or vars
     if not subQueryJoin:
@@ -95,11 +103,18 @@ def RunQuery(subQueryJoin,bindings,factGraph,isGround=False,vars=None,debug = Fa
         vars=[]
     queryType = isGround and "ASK" or "SELECT %s"%(' '.join([v.n3() 
                                                              for v in vars]))
-    queryShell = len(subQueryJoin)>1 and "%s {\n%s\n}" or "%s { %s }" 
-    subquery = queryShell%(queryType,' .\n'.join(['\t'+tripleToTriplePattern(
-                                                          factGraph,
-                                                          goal) 
-                              for goal in subQueryJoin ]))
+    queryShell = len(subQueryJoin)>1 and "%s {\n%s\n}" or "%s { %s }"
+    if symmAtomicInclusion:
+        subquery = queryShell%(queryType,
+                               "?X a ?KIND\nFILTER(%s)"%(
+                             ' ||\n'.join([
+                               '?KIND = %s'%factGraph.qname(GetOp(body)) 
+                                    for body in subQueryJoin])))        
+    else: 
+        subquery = queryShell%(queryType,' .\n'.join(['\t'+tripleToTriplePattern(
+                                                              factGraph,
+                                                              goal) 
+                                  for goal in subQueryJoin ]))
     rt = factGraph.query(subquery,
                              initNs = initialBindings,
                              initBindings=bindings)    
@@ -168,6 +183,14 @@ def mergeMappings1To2(mapping1,mapping2,makeImmutable=False):
          
 class RuleFailure(Exception): pass 
 
+class parameterizedPredicate:
+    def __init__(self, externalVar):
+        self.externalVar = externalVar
+    def __call__(self, f):
+        def _func(item):
+            return f(item,self.externalVar)
+        return _func
+
 def invokeRule(priorAnswers,
                bodyLiteralIterator,
                sip,
@@ -223,12 +246,29 @@ def invokeRule(priorAnswers,
         projectedBindings = priorAnswers and first(priorAnswers) or {}
         #First we check if we can combine a large group of subsequent body literals
         #into a single query
+        
+        #if we have a template map then we use it to further
+        #distinguish which builtins can be solved via 
+        #cumulative SPARQl query - else we solve
+        #builtins one at a time
         def sparqlResolvable(literal):
-            return GetOp(literal) not in derivedPreds or \
-                   isinstance(literal,N3Builtin)
-        conjGroundLiterals = list(itertools.takewhile(sparqlResolvable,remainingBodyList))
+            if isinstance(literal,Uniterm):
+                return not literal.naf and GetOp(literal) not in derivedPreds
+            else:
+                return isinstance(literal,N3Builtin) and \
+                       literal.uri in factGraph.templateMap
+        def sparqlResolvableNoTemplates(literal):
+            if isinstance(literal,Uniterm):
+                return not literal.naf and GetOp(literal) not in derivedPreds
+            else:
+                return False
+                   
+        conjGroundLiterals = list(itertools.takewhile(
+                          hasattr(factGraph,'templateMap') and sparqlResolvable or \
+                          sparqlResolvableNoTemplates,
+                          remainingBodyList))
         bodyLiteralIterator = iter(remainingBodyList)
-        if hasattr(factGraph,'templateMap') and len(conjGroundLiterals)>1:
+        if len(conjGroundLiterals)>1:
             #If there are literals to combine *and* a mapping from rule
             #builtins to SPARQL FILTER templates ..
             openVars = set(reduce(lambda x,y:x+y,
@@ -249,9 +289,21 @@ def invokeRule(priorAnswers,
             if not answers:
                 raise RuleFailure()
             else:
-                #step.antecedents.append(goals.pop())
-                #@todo need to add antecedent that corresponds with the 
-                #conjunctive query
+                #We have solved the previous N body literals with a single 
+                #conjunctive query, now we need to make each of the literals
+                #an antecedent to a 'query' step.
+                queryStep = InferenceStep(None,source='some RDF graph')
+                queryStep.groundQuery = subquery
+                queryStep.bindings = combinedAnswers[-1]
+                queryHash = URIRef("tag:info@fuxi.googlecode.com:Queries#"+md5.new(
+                                                   subquery).hexdigest())
+                queryStep.identifier = queryHash 
+                for subGoal in conjGroundLiterals:
+                    subNs=NodeSet(subGoal.toRDFTuple(),
+                                  identifier=BNode())    
+                    subNs.steps.append(queryStep)
+                    step.antecedents.append(subNs)
+                    queryStep.parent = subNs
                 for rt,_step in invokeRule(
                                combinedAnswers,
                                iter(remainingBodyList[len(conjGroundLiterals):]),
@@ -322,19 +374,39 @@ def invokeRule(priorAnswers,
                         #subquery is ground, so there will only be boolean answers
                         #we return the conjunction of the answers for the current
                         #subquery
-                        answer,ns = reduce(
-                                        lazyCollapseBooleanProofs,
-                                        SipStrategy(subquery.toRDFTuple(),
+                        
+                        answer = False
+                        ns = None
+                        
+                        answers = first(
+                                    itertools.dropwhile(
+                                            lambda item:not item[0],
+                                            SipStrategy(
+                                                    subquery.toRDFTuple(),
                                                     sipCollection,
                                                     factGraph,
                                                     derivedPreds,
                                                     MakeImmutableDict(projectedBindings),
                                                     processedRules,
                                                     network = step.parent.network,
-                                                    debug = debug))
-                        if answer:
-                            #positive answer means we can continue processing the rule body
+                                                    debug = debug)))
+                        if answers:
+                            answer,ns = answers
+                        if not answer and not bodyLiteral.naf or \
+                            (answer and bodyLiteral.naf):
+                            #negative answer means the invokation of the rule fails
+                            #either because we have a positive literal and there
+                            #is no answer for the subgoal or the literal is 
+                            #negative and there is an answer for the subgoal
+                            raise RuleFailure(bodyLiteral)
+                        else:
+                            if not answer and bodyLiteral.naf:
+                                ns.naf = True
                             step.antecedents.append(ns)
+                            #positive answer means we can continue processing the rule body
+                            #either because we have a positive literal and answers
+                            #for subgoal or a negative literal and no answers for the
+                            #the goal
                             for rt,_step in invokeRule(
                                                priorAnswers,
                                                bodyLiteralIterator,
@@ -344,9 +416,6 @@ def invokeRule(priorAnswers,
                                                step,
                                                debug = debug):
                                 yield rt,_step
-                        else:
-                            #negative answer means the invokation of the rule fails
-                            raise RuleFailure()
                     else:
                         answers = list(
                                 SipStrategy(subquery.toRDFTuple(),
@@ -365,12 +434,23 @@ def invokeRule(priorAnswers,
                                 combinedAnswers.append(mergeMappings1To2(ans,
                                                                          projectedBindings,
                                                                          makeImmutable=True))
-                        if not answers:
-                            raise RuleFailure()
+                        if not answers and not bodyLiteral.naf or\
+                          (bodyLiteral.naf and answers):
+                            raise RuleFailure(bodyLiteral)
                         else:
-                            goals = set([g for a,g in answers])
-                            assert len(goals)==1
-                            step.antecedents.append(goals.pop())
+                            #either we have a positive subgoal and answers
+                            #or a negative subgoal and no answers
+                            if answers:
+                                goals = set([g for a,g in answers])
+                                assert len(goals)==1
+                                step.antecedents.append(goals.pop())
+                            else:
+                                newNs = NodeSet(
+                                            bodyLiteral.toRDFTuple(),
+                                            network=step.parent.network,
+                                            identifier=BNode(),
+                                            naf = True)
+                                step.antecedents.append(newNs)
                             for rt,_step in invokeRule(
                                                combinedAnswers,
                                                bodyLiteralIterator,
@@ -430,14 +510,8 @@ def SipStrategy(query,
         queryPred = GetOp(queryLiteral)
         #For every rule head matching the query, we invoke the rule, 
         #thus determining an adornment, and selecting a sip to follow
-        if sipCollection:
-            rules = sipCollection.headToRule.get(queryPred,set())
-        else:
-            assert network.rules
-            rules = network.rules
-            for r in rules:
-                r.sip = Graph()
-    
+        rules = sipCollection.headToRule.get(queryPred,set())
+
         #maintained list of rules that haven't been processed before and
         #match the query
         validRules = []
@@ -446,8 +520,59 @@ def SipStrategy(query,
         #through the sip arcs entering the node corresponding to that literal. For
         #each subquery generated, there is a set of answers.
         answers = []
-            
-        #for rule in rules.difference(processedRules):
+        
+        #Some TBox queries can be 'joined' together into SPARQL queries against
+        #'base' predicates via an RDF dataset
+        #These atomic concept inclusion axioms can be evaluated together
+        #using a disjunctive operator at the body of a horn clause
+        #where each item is a query of the form uniPredicate(?X):
+        #Or( uniPredicate1(?X1), uniPredicate2(?X), uniPredicate3(?X),..)
+        #In this way massive, conjunctive joins can be 'mediated' 
+        #between the stated facts and the top-down solver
+        @parameterizedPredicate([i for i in derivedPreds])
+        def IsAtomicInclusionAxiomRHS(rule,dPreds):
+            """
+            This is an atomic inclusion axiom with
+            a variable (or bound) RHS:  uniPred(?ENTITY)
+            """
+            bodyList = list(iterCondition(rule.formula.body))
+            body = first(bodyList)
+            return GetOp(body) not in dPreds and len(bodyList) == 1 and \
+                   body.op == RDF.type# and isinstance(body.arg[0],Variable)
+        
+        atomicInclusionAxioms = list(ifilter(IsAtomicInclusionAxiomRHS,rules))
+        if atomicInclusionAxioms and len(atomicInclusionAxioms) > 1:
+            factStep = InferenceStep(ns,source='some RDF graph')
+            ns.steps.append(factStep)            
+            if not isGround:
+                subquery,rt=RunQuery([rule.formula.body 
+                                      for rule in atomicInclusionAxioms],
+                                 bindings,
+                                 factGraph,
+                                 False,
+                                 [v for v in GetArgs(queryLiteral,
+                                                     secondOrder=True) 
+                                                     if isinstance(v,Variable)],
+                                 debug = debug,
+                                 symmAtomicInclusion = True)
+                factStep.groundQuery = subquery
+                for ans in rt:
+                    factStep.bindings.update(ans)
+                    yield ans, ns
+            else:
+                #All the relevant derivations have been explored and the result
+                #is a ground query we can directly execute against the facts
+                factStep.bindings.update(bindings)
+                subquery,rt = RunQuery([rule.formula.body 
+                                        for rule in atomicInclusionAxioms],
+                                    bindings,
+                                    factGraph,
+                                    True,
+                                    debug = debug,
+                                    symmAtomicInclusion = True)
+                factStep.groundQuery = subquery
+                yield rt,ns
+            rules = ifilter(lambda i:not IsAtomicInclusionAxiomRHS(i),rules)                
         for rule in rules:
             #An exception is the special predicate ph; it is treated as a base 
             #predicate and the tuples in it are those supplied for qb by unification.
@@ -503,35 +628,37 @@ def SipStrategy(query,
                 #Clean up failed antecedents
                 if ns in step.antecedents:
                     step.antecedents.remove(ns)
-    
         if not validRules:
             #No rules matching, query factGraph for answers
-            factStep = InferenceStep(ns,source='some RDF graph')
-            ns.steps.append(factStep)
-            if not isGround:
-                subquery,rt=RunQuery([queryLiteral],
-                                 bindings,
-                                 factGraph,
-                                 False,
-                                 [v for v in GetArgs(queryLiteral,
-                                                     secondOrder=True) 
-                                                     if isinstance(v,Variable)],
-                                                     debug = debug)
-                factStep.groundQuery = subquery
-                for ans in rt:
-                    factStep.bindings.update(ans)
-                    yield ans, ns
+            if queryPred not in derivedPreds:
+                factStep = InferenceStep(ns,source='some RDF graph')
+                ns.steps.append(factStep)
+                if not isGround:
+                    subquery,rt=RunQuery([queryLiteral],
+                                     bindings,
+                                     factGraph,
+                                     False,
+                                     [v for v in GetArgs(queryLiteral,
+                                                         secondOrder=True) 
+                                                         if isinstance(v,Variable)],
+                                                         debug = debug)
+                    factStep.groundQuery = subquery
+                    for ans in rt:
+                        factStep.bindings.update(ans)
+                        yield ans, ns
+                else:
+                    #All the relevant derivations have been explored and the result
+                    #is a ground query we can directly execute against the facts
+                    factStep.bindings.update(bindings)
+                    subquery,rt = RunQuery([queryLiteral],
+                                        bindings,
+                                        factGraph,
+                                        True,
+                                        debug = debug)
+                    factStep.groundQuery = subquery
+                    yield rt,ns
             else:
-                #All the relevant derivations have been explored and the result
-                #is a ground query we can directly execute against the facts
-                factStep.bindings.update(bindings)
-                subquery,rt = RunQuery([queryLiteral],
-                                    bindings,
-                                    factGraph,
-                                    True,
-                                    debug = debug)
-                factStep.groundQuery = subquery
-                yield rt,ns
+                yield False,ns
 
 def test():
      import doctest

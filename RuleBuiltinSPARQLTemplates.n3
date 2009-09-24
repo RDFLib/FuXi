@@ -8,7 +8,9 @@
 @prefix math:   <http://www.w3.org/2000/10/swap/math#>.
 
 str:greaterThan          templ:filterTemplate "STR(%s) > STR(%s)" .
+str:lessThan             templ:filterTemplate "STR(%s) < STR(%s)" .
 log:notEqualTo           templ:filterTemplate "%s != %s" .
+log:equalTo              templ:filterTemplate "%s = %s" .
 str:startsWith           templ:filterTemplate "REGEX(%s,%s)" .
 str:greaterThanOrEqualTo templ:filterTemplate "STR(%s) >= STR(%s)" .
 str:lessThanOrEqualTo    templ:filterTemplate "STR(%s) <= STR(%s)" .

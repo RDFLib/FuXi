@@ -1,11 +1,12 @@
 """
 Utility functions for a Boost Graph Library (BGL) DiGraph via the BGL Python Bindings
 """
-import itertools
+import itertools, pickle
 from FuXi.Rete.AlphaNode import AlphaNode        
 from rdflib.Graph import Graph
 from rdflib.syntax.NamespaceManager import NamespaceManager
-from rdflib import BNode, Namespace, Collection, Variable
+from rdflib import BNode, Namespace, Collection, Variable, URIRef
+from rdflib.util import first
 try:    
     import boost.graph as bgl
     bglGraph = bgl.Digraph()
@@ -68,8 +69,9 @@ def CollapseDictionary(mapping):
     >>> a.values()
     [rdflib.URIRef('http://example.com/'), rdflib.URIRef('http://example.com/')]
     >>> CollapseDictionary(a)
-    >>> a
     {'ex': rdflib.URIRef('http://example.com/')}
+    >>> a
+    {'ex': rdflib.URIRef('http://example.com/'), '_1': rdflib.URIRef('http://example.com/')}
     """
     def originalPrefixes(item):
         return item.find('_')+1==1
@@ -93,6 +95,104 @@ def CollapseDictionary(mapping):
             assert len(origPrefixes)==1
             prefixes2Collapse.extend(dupePrefixes)
     return dict([(k,v) for k,v in mapping.items() if k not in prefixes2Collapse])
+
+class selective_memoize(object):
+    """Decorator that caches a function's return value each time it is called.
+    If called later with the same arguments, the cached value is returned, and
+    not re-evaluated. Slow for mutable types.
+    The arguments used for the cache are given to the decorator
+    
+    >>> @selective_memoize([0,1])
+    ... def addition(l,r,other): 
+    ...     print "calculating.."
+    ...     return l+r
+    >>> addition(1,2,3)
+    calculating..
+    3
+    >>> addition(1,2,4)
+    3
+    >>> @selective_memoize()
+    ... def addition(l,r,other): 
+    ...     print "calculating.."
+    ...     return l+r    
+    >>> addition(1,2,3)
+    calculating..
+    3
+    >>> addition(1,2,4)
+    calculating..
+    3
+    >>> @selective_memoize([0,1],'baz')
+    ... def addition(l,r,baz=False, bar=False): 
+    ...     print "calculating.."
+    ...     return l+r    
+    >>> addition(1,2,baz=True)
+    calculating..
+    3
+    >>> addition(1,2,baz=True,bar = True)
+    3
+    """
+    # Ideas from MemoizeMutable class of Recipe 52201 by Paul Moore and
+    # from memoized decorator of http://wiki.python.org/moin/PythonDecoratorLibrary
+    def __init__(self, cacheableArgPos = [], cacheableArgKey = []):
+        self.cacheableArgPos = cacheableArgPos
+        self.cacheableArgKey = cacheableArgKey
+        self._cache = {}
+        
+    def __call__(self, func):
+        def innerHandler(*args, **kwds):
+            if self.cacheableArgPos:
+                chosenKeys = []
+                for idx,arg in enumerate(args):
+                    if idx in self.cacheableArgPos:
+                        chosenKeys.append(arg)
+                key = tuple(chosenKeys)
+            else:
+                key = args
+            if kwds:
+                if self.cacheableArgKey:
+                    items = [(k,v) for k,v in kwds.items() 
+                                if k in self.cacheableArgKey]
+                items.sort()
+                key = key + tuple(items)
+            try:
+                if key in self._cache:
+                    return self._cache[key]
+                self._cache[key] = result = func(*args, **kwds)
+                return result
+            except TypeError:
+                try:
+                    dump = pickle.dumps(key)
+                except pickle.PicklingError:
+                    return func(*args, **kwds)
+                else:
+                    if dump in self._cache:
+                        return self._cache[dump]
+                    self._cache[dump] = result = func(*args, **kwds)
+                    return result
+        return innerHandler
+    
+def lazyGeneratorPeek(iterable):
+    """
+    Lazily peeks into a generator and returns None if it is empty
+    or returns another generator over *all* content if it isn't
+    
+    >>> a=(i for i in [1,2,3])
+    >>> first(a)
+    1
+    >>> list(a)
+    [2, 3]
+    >>> a=(i for i in [1,2,3])
+    >>> result = lazyGeneratorPeek(a)
+    >>> result  # doctest:+ELLIPSIS
+    <generator object at ...>
+    >>> list(result)
+    [1, 2, 3]
+    >>> lazyGeneratorPeek((i for i in []))
+    """
+    item = first(iterable)
+    if item:
+        return (i for i in itertools.chain([item],
+                                           iterable))
 
 def generateTokenSet(graph,debugTriples=[],skipImplies=True):
     """

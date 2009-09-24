@@ -51,6 +51,26 @@ nameMap = {
   'harsh'          : DDL_STRICTNESS_HARSH,
 }
 
+def SetupDDLAndAdornProgram(factGraph,
+                            rules,
+                            GOALS,
+                            derivedPreds=None,
+                            strictCheck=DDL_STRICTNESS_FALLBACK_DERIVED,
+                            defaultPredicates=None):
+    if not defaultPredicates:
+        defaultPredicates = [],[]
+    if not derivedPreds:
+        _derivedPreds=DerivedPredicateIterator(factGraph,
+                                               rules,
+                                               strict=strictCheck,
+                                               defaultPredicates=defaultPredicates)
+        if not isinstance(derivedPreds,list):
+            derivedPreds=list(_derivedPreds)
+        else:
+            derivedPreds.extend(_derivedPreds)
+    return AdornProgram(factGraph,rules,GOALS,derivedPreds)
+    
+
 def MagicSetTransformation(factGraph,
                            rules,
                            GOALS,
@@ -64,24 +84,17 @@ def MagicSetTransformation(factGraph,
     transformation:
     """
     noMagic = noMagic and noMagic or []
-    if not defaultPredicates:
-        defaultPredicates = [],[]
     magicPredicates=set()
-    if not derivedPreds:
-        _derivedPreds=DerivedPredicateIterator(factGraph,
-                                               rules,
-                                               strict=strictCheck,
-                                               defaultPredicates=defaultPredicates)
-        if not isinstance(derivedPreds,list):
-            derivedPreds=list(_derivedPreds)
-        else:
-            derivedPreds.extend(_derivedPreds)
     replacement={}
-    rs=AdornProgram(factGraph,rules,GOALS,derivedPreds)
-    if factGraph:
-        factGraph.adornedProgram = rs
+    factGraph.adornedProgram = SetupDDLAndAdornProgram(
+                                   factGraph,
+                                   rules,
+                                   GOALS,
+                                   derivedPreds=derivedPreds,
+                                   strictCheck=DDL_STRICTNESS_FALLBACK_DERIVED,
+                                   defaultPredicates=None)
     newRules=[]
-    for rule in rs: 
+    for rule in factGraph.adornedProgram: 
         magicPositions={}
         #Generate magic rules
         for idx,pred in enumerate(iterCondition(rule.formula.body)):
@@ -205,7 +218,7 @@ def NormalizeUniterm(term):
     if isinstance(term,Uniterm):
         return term
     elif isinstance(term,N3Builtin):
-        return Uniterm(term.uri,term.argument) 
+        return Uniterm(term.uri,term.argument,term.naf) 
     
 def AdornRule(derivedPreds,clause,newHead):
     """
@@ -227,8 +240,8 @@ def AdornRule(derivedPreds,clause,newHead):
         else:
             return arg in x and 'b' or 'f'
     for literal in iterCondition(sip.sipOrder):
-        args = GetArgs(literal)
         op   = GetOp(literal)
+        args = GetArgs(literal)
         if op in derivedPreds:
             for N,x in IncomingSIPArcs(sip,getOccurrenceId(literal)): 
                 headArc = len(N)==1 and N[0] == GetOp(newHead)                
@@ -236,7 +249,7 @@ def AdornRule(derivedPreds,clause,newHead):
                     # A binding
                     # for q is useful, however, only if it is a binding for an argument of q.
                     bodyPredReplace[literal]=AdornedUniTerm(NormalizeUniterm(literal),
-                            [ adornment(arg,headArc,x) for arg in args])
+                            [ adornment(arg,headArc,x) for arg in args],literal.naf)
 #                For a predicate occurrence with no incoming
 #                arc, the adornment contains only f. For our purposes here, 
 #                we do not distinguish between a predicate with such an 
@@ -312,7 +325,13 @@ def AdornProgram(factGraph,rs,goals,derivedPreds=None):
                         #The adorned version of a rule contains additional adorned
                         #predicates, and these are added
                         for pred in iterCondition(adornedRule.formula.body):
-                            aPred = not isinstance(pred,AdornedUniTerm) and AdornLiteral(pred.toRDFTuple(),nsBindings) or pred 
+                            if isinstance(pred,N3Builtin):
+                                aPred = pred
+                            else:
+                                aPred = not isinstance(pred,AdornedUniTerm) and \
+                                            AdornLiteral(pred.toRDFTuple(),
+                                                         nsBindings,
+                                                         pred.naf) or pred 
                             if GetOp(pred) in derivedPreds and not processedAdornedPred(aPred,adornedPredicateCollection):
                                 adornedPredicateCollection.add(aPred)
             term.marked=True
@@ -320,16 +339,16 @@ def AdornProgram(factGraph,rs,goals,derivedPreds=None):
     return adornedProgram
 
 class AdornedUniTerm(Uniterm):
-    def __init__(self,uterm,adornment=None):
+    def __init__(self,uterm,adornment=None,naf = False):
         self.marked = False
         self.adornment=adornment
         self.nsMgr=uterm.nsMgr
         newArgs=copy.deepcopy(uterm.arg)
-        super(AdornedUniTerm, self).__init__(uterm.op,newArgs)
+        super(AdornedUniTerm, self).__init__(uterm.op,newArgs,naf=naf)
         self.isMagic=False
 
     def clone(self):
-        return AdornedUniTerm(self,self.adornment)
+        return AdornedUniTerm(self,self.adornment,self.naf)
         
     def makeMagicPred(self):
         """
@@ -338,7 +357,7 @@ class AdornedUniTerm(Uniterm):
         The arity of the new predicate is the number of occurrences of b in the 
         adornment a, and its arguments correspond to the bound arguments of p a
         """
-        newAdornedPred=AdornedUniTerm(self,self.adornment)
+        newAdornedPred=AdornedUniTerm(self,self.adornment,self.naf)
         if self.op == RDF.type:
             newAdornedPred.arg[-1] = URIRef(self.arg[-1]+'_magic')
         elif len([i for i in self.adornment if i =='b'])==1:
@@ -394,29 +413,35 @@ class AdornedUniTerm(Uniterm):
                 
     def __repr__(self):
         pred = self.normalizeTerm(self.op)
+        negPrefix = self.naf and 'not ' or ''
         if self.op == RDF.type:
             adornSuffix = '_'+self.adornment[0]
         else:
             adornSuffix='_'+''.join(self.adornment)
         if self.isMagic:
             if self.op == RDF.type:
-                return "%s(%s)"%(self.normalizeTerm(self.arg[-1]),
-                                 self.normalizeTerm(self.arg[0]))
+                return "%s%s(%s)"%(negPrefix,
+                                   self.normalizeTerm(self.arg[-1]),
+                                   self.normalizeTerm(self.arg[0]))
             else:
-                return "%s(%s)"%(pred,
+                return "%s%s(%s)"%(negPrefix,
+                                   pred,
                                 ' '.join([self.normalizeTerm(i) 
                                             for idx,i in enumerate(self.arg) 
                                                     if self.adornment[idx]=='b']))
         elif self.op == RDF.type:
-            return "%s%s(%s)"%(self.normalizeTerm(self.arg[-1]),
-                               adornSuffix,
-                               self.normalizeTerm(self.arg[0]))
+            return "%s%s%s(%s)"%(negPrefix,
+                                 self.normalizeTerm(self.arg[-1]),
+                                 adornSuffix,
+                                 self.normalizeTerm(self.arg[0]))
         else:
-            return "%s%s(%s)"%(pred,
-                               adornSuffix,
-                               ' '.join([self.normalizeTerm(i) for i in self.arg]))
+            return "%s%s%s(%s)"%(negPrefix,
+                                 pred,
+                                 adornSuffix,
+                                 ' '.join([self.normalizeTerm(i) 
+                                            for i in self.arg]))
 
-def AdornLiteral(rdfTuple,newNss=None):
+def AdornLiteral(rdfTuple,newNss=None,naf = False):
     """
     An adornment for an n-ary predicate p is a string a of length n on the 
     alphabet {b, f}, where b stands for bound and f stands for free. We 
@@ -446,7 +471,7 @@ def AdornLiteral(rdfTuple,newNss=None):
     opArgs=rdfTuple[1] == RDF.type and [args[0]] or args
     adornment=[ isinstance(term,(Variable,BNode)) and 'f' or 'b' 
                 for idx,term in enumerate(opArgs) ]
-    return AdornedUniTerm(uTerm,adornment)  
+    return AdornedUniTerm(uTerm,adornment,naf)  
 
 def DerivedPredicateIterator(factsOrBasePreds,
                              ruleset,
@@ -537,9 +562,6 @@ def DerivedPredicateIterator(factsOrBasePreds,
         if not pred in defaultBasePreds:
             yield pred
     
-def IsBasePredicate(ruleGraph,pred):
-    pass
-
 def iter_non_base_non_derived_preds(ruleset,intensional_db):
     rt=set()
     intensional_preds=set([p for p in intensional_db.predicates() 

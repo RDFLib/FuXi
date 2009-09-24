@@ -345,7 +345,7 @@ class NodeSet(object):
     unproven goal in a reasoning process as described in Section 4.1.2 below.
     
     """
-    def __init__(self,conclusion=None,steps=None,identifier=BNode(),network=None):
+    def __init__(self,conclusion=None,steps=None,identifier=BNode(),network=None, naf =False):
         if network:
             self.network=network
         else:
@@ -354,15 +354,16 @@ class NodeSet(object):
         self.identifier = identifier
         self.conclusion = conclusion
         self.language = None
+        self.naf = naf
         self.steps = steps and steps or []
 
     def serialize(self,builder,proofGraph):
-#        if self.identifier in builder.serializedNodeSets:
-#            return
+        conclusionPrefix=self.naf and 'not ' or ''
         proofGraph.add((self.identifier,
                         PML.hasConclusion,
-                        Literal(repr(buildUniTerm(self.conclusion,
-                                                  self.network.nsMap)))))
+                        Literal("%s%s"%(conclusionPrefix,
+                                        repr(buildUniTerm(self.conclusion,
+                                                  self.network.nsMap))))))
         #proofGraph.add((self.identifier,PML.hasLanguage,URIRef('http://inferenceweb.stanford.edu/registry/LG/RIF.owl')))
         proofGraph.add((self.identifier,RDF.type,PML.NodeSet))
         for step in self.steps:
@@ -381,7 +382,9 @@ class NodeSet(object):
     
     def __repr__(self):
         #rt="Proof step for %s with %s justifications"%(buildUniTerm(self.conclusion),len(self.steps))
-        rt="Proof step for %s"%(buildUniTerm(self.conclusion,self.network and self.network.nsMap or {}))
+        conclusionPrefix=self.naf and 'not ' or ''
+        rt="Proof step for %s%s"%(conclusionPrefix,
+                                  buildUniTerm(self.conclusion,self.network and self.network.nsMap or {}))
         return rt
     
 class InferenceStep(object):
@@ -437,7 +440,7 @@ class InferenceStep(object):
     def serialize(self,builder,proofGraph):
         if self.rule and not self.source:
             proofGraph.add((self.identifier,PML.englishDescription,Literal(repr(self))))
-        if self.groundQuery:
+        if self.groundQuery and (self.identifier,None,None) not in proofGraph:
             query= BNode()
             info = BNode()
             proofGraph.add((self.identifier,PML.fromQuery,query))

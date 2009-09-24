@@ -488,7 +488,7 @@ def PrepareHornClauseForRETE(horn_clause):
                            [])
     if skolemsInBody:
         newBody = copy.deepcopy(horn_clause.body)
-        _e=Exists(formula=newBody,declare=set(skolemsInHead))        
+        _e=Exists(formula=newBody,declare=set(skolemsInBody))        
         horn_clause.body=_e
 
     skolemsInHead=[

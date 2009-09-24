@@ -278,7 +278,7 @@ def main():
                                  addPDSemantics=options.pDSemantics,
                                  constructNetwork=False,
                                  ignoreNegativeStratus=options.negation,
-                                 safety = safetyNameMap[options.safety])        
+                                 safety = safetyNameMap[options.safety]) 
         ruleSet.formulae.extend(dlp)
     if options.output == 'rif' and not options.why:
         for rule in ruleSet:
@@ -373,8 +373,10 @@ def main():
         magicRuleNo = 0
         if options.output == 'rif' and options.method == 'bottomUp':
             print >>sys.stderr,"Resulting Magic program: "
-        defaultBasePreds    = []
-        defaultDerivedPreds = []
+        bottomUpDerivedPreds = []
+        topDownDerivedPreds  = []
+        defaultBasePreds     = []
+        defaultDerivedPreds  = []
         mapping = dict(newNsMgr.namespaces())
         for edb in options.edb: 
             pref,uri=edb.split(':')
@@ -382,88 +384,109 @@ def main():
         for idb in options.idb: 
             pref,uri=idb.split(':')
             defaultDerivedPreds.append(URIRef(mapping[pref]+uri))
-        for rule in MagicSetTransformation(
-                                   factGraph,
-                                   ruleSet,
-                                   goals,
-                                   derivedPreds=dPreds,
-                                   strictCheck=nameMap[options.strictness],
-                                   defaultPredicates=(defaultBasePreds,
-                                                      defaultDerivedPreds)):
-            magicRuleNo+=1
-            if options.output == 'rif' and options.method == 'bottomUp':
-                print >>sys.stderr, rule
-            network.buildNetworkFromClause(rule)
-        if len(ruleSet.formulae):
-            print >>sys.stderr,"reduction in size of program: %s (%s -> %s clauses)"%(
-                                       100-(float(magicRuleNo)/float(len(ruleSet.formulae)))*100,
-                                       len(ruleSet.formulae),
-                                       magicRuleNo)
-        print >>sys.stderr,"Derived predicates ", [factGraph.qname(term) for term in dPreds]
-        sipCollection = PrepareSipCollection(factGraph.adornedProgram)
-        if not sipCollection:
-            ruleSet = set(DisjunctiveNormalForm(network.rules,
+        defaultDerivedPreds.extend(set([p == RDF.type and o or p for s,p,o in goals]))
+        if options.method in ['both','topDown']:
+            _rules = options.negation and set(ruleSet).union(network.negRules) or \
+                     ruleSet 
+            ruleSet = set(DisjunctiveNormalForm(_rules,
                                                 safetyNameMap[options.safety],
                                                 network))
-            for rule in ruleSet:
-                rule.sip = Graph()
-            factGraph.adornedProgram=AdornProgram(factGraph,ruleSet,goals,dPreds)
+            #Reset list of derived predicates
+            dPreds = []
+            factGraph.adornedProgram = \
+                SetupDDLAndAdornProgram(
+                    factGraph,
+                    ruleSet,
+                    goals,
+                    derivedPreds=topDownDerivedPreds,
+                    strictCheck=nameMap[options.strictness],
+                    defaultPredicates=(defaultBasePreds,
+                                       defaultDerivedPreds))
+            assert factGraph.adornedProgram,goals
             sipCollection=PrepareSipCollection(factGraph.adornedProgram)
-        if options.output == 'rif' and options.method == 'topDown':
-            print >>sys.stderr,"Rules used for top-down evaluation"
-            for clause in factGraph.adornedProgram:
-                print >>sys.stderr,clause.formula                    
-        if options.debug and sipCollection:
-            print >>sys.stderr,"Sideways Information Passing (sip) graph: "
-            for sip in SIPRepresentation(sipCollection):
-                print >>sys.stderr,sip
-        solutions = []
-        for goal in goals:
-            goalSeed=AdornLiteral(goal).makeMagicPred()
-            print >>sys.stderr,"Magic seed fact (used in bottom-up evaluation)",goalSeed
-            magicSeeds.append(goalSeed.toRDFTuple())
-            start = time.time()
-            if options.method in ['topDown','both']:
-                for derivedAnswer in \
-                        SipStrategy(
-                                   goal,
-                                   sipCollection,
-                                   factGraph,
-                                   dPreds,
-                                   network = network,
-                                   debug=options.debug):
-                    if derivedAnswer:
-                        ans,ns = derivedAnswer
-                        solutions.append((ans,ns))
-                        sTime = time.time() - start
-                        goalRepr = RDFTuplesToSPARQL([AdornLiteral(goal)], factGraph)
-                        if sTime > 1:
-                            sTimeStr = "%s seconds"%sTime
-                        else:
-                            sTime = sTime * 1000
-                            sTimeStr = "%s milli seconds"%sTime                    
-                        print >>sys.stderr,\
-            "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(ans,sTimeStr)
-                        #print >>sys.stderr,ans
-                        if options.firstAnswer:
-                            break
-                        else:
-                            start = time.time()
-                if solutions:
-                    builder=ProofBuilder(network)
-                    if 'pml' in options.output:
-                        pGraph = Graph()
-                        CommonNSBindings(pGraph,network.nsMap)
-                    for ans,ns in solutions:
+            print >>sys.stderr,"Derived predicates (top-down)", [factGraph.qname(term) 
+                                                 for term in topDownDerivedPreds]
+            if options.output == 'rif':
+                print >>sys.stderr,"Rules used for top-down evaluation"
+                for clause in factGraph.adornedProgram:
+                    print >>sys.stderr,clause.formula                    
+            if options.debug and sipCollection:
+                print >>sys.stderr,"Sideways Information Passing (sip) graph: "
+                for sip in SIPRepresentation(sipCollection):
+                    print >>sys.stderr,sip
+            solutions = []
+            for goal in goals:
+                goalSeed=AdornLiteral(goal).makeMagicPred()
+                print >>sys.stderr,"Magic seed fact (used in bottom-up evaluation)",goalSeed
+                magicSeeds.append(goalSeed.toRDFTuple())
+                start = time.time()
+                if options.method in ['topDown','both']:
+                    for derivedAnswer in \
+                            SipStrategy(
+                                       goal,
+                                       sipCollection,
+                                       factGraph,
+                                       topDownDerivedPreds,
+                                       network = network,
+                                       debug=options.debug):
+                        if derivedAnswer:
+                            ans,ns = derivedAnswer
+                            solutions.append((ans,ns))
+                            sTime = time.time() - start
+                            goalRepr = RDFTuplesToSPARQL([AdornLiteral(goal)], factGraph)
+                            if sTime > 1:
+                                sTimeStr = "%s seconds"%sTime
+                            else:
+                                sTime = sTime * 1000
+                                sTimeStr = "%s milli seconds"%sTime                    
+                            print >>sys.stderr,\
+                "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(ans,sTimeStr)
+                            #print >>sys.stderr,ans
+                            if options.firstAnswer:
+                                break
+                            else:
+                                start = time.time()
+                    if solutions:
+                        builder=ProofBuilder(network)
                         if 'pml' in options.output:
-                            ns.serialize(builder,pGraph) 
-                        elif 'proof-graph' in options.output:    
-                            builder.extractGoalsFromNode(ns)
-                    if 'pml' in options.output:                
-                        print pGraph.serialize(format='n3')
-                    elif 'proof-graph' in options.output:
-                        builder.renderProof(ns,nsMap = network.nsMap).write_jpg('owl-proof.jpg')
-                        print open('owl-proof.jpg').read()
+                            pGraph = Graph()
+                            CommonNSBindings(pGraph,network.nsMap)
+                        for ans,ns in solutions:
+                            if 'pml' in options.output:
+                                ns.serialize(builder,pGraph) 
+                            elif 'proof-graph' in options.output:    
+                                builder.extractGoalsFromNode(ns)
+                        if 'pml' in options.output:                
+                            print pGraph.serialize(format='n3')
+                        elif 'proof-graph' in options.output:
+                            builder.renderProof(ns,nsMap = network.nsMap).write_jpg('owl-proof.jpg')
+                            print open('owl-proof.jpg').read()
+            
+        if options.method in ['both','bottomUp']:
+            for rule in MagicSetTransformation(
+                                       factGraph,
+                                       ruleSet,
+                                       goals,
+                                       derivedPreds=bottomUpDerivedPreds,
+                                       strictCheck=nameMap[options.strictness],
+                                       defaultPredicates=(defaultBasePreds,
+                                                          defaultDerivedPreds)):
+                magicRuleNo+=1
+                if options.output == 'rif' and options.method == 'bottomUp':
+                    print >>sys.stderr, rule
+                network.buildNetworkFromClause(rule)
+            if len(ruleSet):
+                print >>sys.stderr,"reduction in size of program: %s (%s -> %s clauses)"%(
+                                           100-(float(magicRuleNo)/float(len(ruleSet)))*100,
+                                           len(ruleSet),
+                                           magicRuleNo)
+            assert factGraph.adornedProgram
+            print >>sys.stderr,"Derived predicates (bottom-up)", [factGraph.qname(term) 
+                                                 for term in bottomUpDerivedPreds]            
+            if options.output == 'rif':
+                print >>sys.stderr,"Rules used for bottom-up evaluation"
+                for clause in factGraph.adornedProgram:
+                    print >>sys.stderr,clause.formula                    
                 
     for fileN in options.filter:
         for rule in HornFromN3(fileN):
@@ -482,38 +505,51 @@ def main():
             sTimeStr = "%s milli seconds"%sTime
         print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
         print >>sys.stderr, network
+    if options.negation and network.negRules and options.method in ['both',
+                                                                    'bottomUp']:
+        now=time.time()      
+        rt=network.calculateStratifiedModel(factGraph)
+        print >>sys.stderr,\
+        "Time to calculate stratified, stable model (inferred %s facts): %s"%(
+                                    rt,
+                                    time.time()-now)                
     if options.filter:
         print >>sys.stderr,"Applying filter to entailed facts"
         network.inferredFacts = network.filteredFacts
 
-    if options.output == 'conflict':
-        network.reportConflictSet()
-    elif options.output not in ['rif',
-                                'rif-xml',
-                                'man-owl',
-                                'pml',
-                                'proof-graph']:
-        if options.closure:
-            cGraph = network.closureGraph(factGraph)
-            cGraph.namespace_manager = namespace_manager
-            print cGraph.serialize(destination=None, 
-                                   format=options.output, 
-                                   base=None)
-        elif options.output:
-            print network.inferredFacts.serialize(destination=None, 
-                                                  format=options.output, 
-                                                  base=None)
+
+    if not options.why or options.method in ['both','bottomUp']:
+        if options.output == 'conflict':
+            network.reportConflictSet()
+        elif options.output not in ['rif',
+                                    'rif-xml',
+                                    'man-owl',
+                                    'pml',
+                                    'proof-graph']:
+            if options.closure:
+                cGraph = network.closureGraph(factGraph)
+                cGraph.namespace_manager = namespace_manager
+                print cGraph.serialize(destination=None, 
+                                       format=options.output, 
+                                       base=None)
+            elif options.output:
+                print network.inferredFacts.serialize(destination=None, 
+                                                      format=options.output, 
+                                                      base=None)
             
 if __name__ == '__main__':
     from hotshot import Profile, stats
+#    import pycallgraph
+#    pycallgraph.start_trace()
+#    main()
+#    pycallgraph.make_dot_graph('FuXi-timing.png')
+#    sys.exit(1)
     p = Profile('fuxi.profile')
-    for i in range(25): 
-        p.runcall(main)
+    p.runcall(main)
     p.close()    
     s = stats.load('fuxi.profile')
-#        s=p.create_stats()
     s.strip_dirs()
     s.sort_stats('time','cumulative','pcalls')
-    s.print_stats(.1)
-    s.print_callers(.05)
-    s.print_callees(.05)            
+    s.print_stats(.05)
+    s.print_callers(.01)
+    s.print_callees(.01)            

@@ -86,17 +86,14 @@ TopDownTests2Skip = [
     'OWL/oneOf/Manifest002.rdf',
     'OWL/InverseFunctionalProperty/Manifest002.rdf', 
     'OWL/InverseFunctionalProperty/Manifest004.rdf',
+    'OWL/oneOf/Manifest003.rdf', #Requires quantification over predicate symbol (2nd order)    
 ]
 
 Tests2Skip = [
-    'OWL/oneOf/Manifest003.rdf', #logical set equivalence?  
-    'OWL/differentFrom/Manifest002.rdf'  ,#needs log:notEqualTo 
-    'OWL/distinctMembers/Manifest001.rdf',#needs log:notEqualTo and list semantics of AllDifferent 
-    'OWL/unionOf/Manifest002.rdf',#can't implement set theoretic union for owl:unionOf.
-    'OWL/InverseFunctionalProperty/Manifest001.rdf',#owl:sameIndividualAs deprecated
+      
+    'OWL/InverseFunctionalProperty/Manifest001.rdf',
     'OWL/FunctionalProperty/Manifest001.rdf', #owl:sameIndividualAs deprecated
     'OWL/Nothing/Manifest002.rdf',# owl:sameClassAs deprecated
-    'OWL/AllDifferent/Manifest001.rdf',#requires support for built-ins (log:notEqualTo)
 ]
 
 patterns2Skip = [
@@ -166,7 +163,6 @@ class OwlTestSuite(unittest.TestCase):
 
     def MagicOWLProof(self,goals,rules,factGraph,conclusionFile):
 #        print "Goals",[AdornLiteral(goal) for goal in goals]
-        assert not self.network.rules
         progLen = len(rules)
         magicRuleNo = 0
         dPreds = []
@@ -315,7 +311,7 @@ class OwlTestSuite(unittest.TestCase):
                             print description
                             from FuXi.Rete.Util import renderNetwork 
                             pprint([BuildUnitermFromTuple(t) for t in self.network.inferredFacts])
-                            dot=renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
+#                            dot=renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
                             raise #Exception ("Failed test: "+feature)
                             
                         testData[manifest] = timings    

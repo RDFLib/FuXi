@@ -9,10 +9,11 @@ from FuXi.Horn.PositiveConditions import *
 from FuXi.Horn.HornRules import Ruleset
 from FuXi.Rete.RuleStore import SetupRuleStore, N3Builtin
 from FuXi.DLP import SKOLEMIZED_CLASS_NS
+from FuXi.DLP.Negation import ProperSipOrderWithNegation
 from rdflib.util import first
 from rdflib.Graph import Graph
 from rdflib.Collection import Collection
-#from testMagic import *
+from FuXi.Rete.Util import selective_memoize
 from cStringIO import StringIO
 from pprint import pprint;
 from rdflib import Namespace, Variable, BNode
@@ -20,7 +21,10 @@ from rdflib import Namespace, Variable, BNode
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
 
 def iterCondition(condition):
-    return isinstance(condition,SetOperator) and condition or iter([condition])
+    if isinstance(condition,Exists):
+        return iterCondition(condition.formula)
+    else:
+        return isinstance(condition,SetOperator) and condition or iter([condition])
 
 def normalizeTerm(uri,sipGraph):
     try:
@@ -266,7 +270,16 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead):
         return rt
     sipGraph=Graph()  
     if isinstance(clause.body,And):
-        bodyOrder=first(findFullSip(([clause.head],None), clause.body))
+        if first(itertools.ifilter(lambda i:isinstance(i,Uniterm) and i.naf or False,
+                                   clause.body)):
+            #There are negative literals in body, ensure
+            #the given sip order puts negated literals at the end
+            bodyOrder=first(
+                    itertools.ifilter(ProperSipOrderWithNegation,
+                                      findFullSip(([clause.head],None), 
+                                                    clause.body)))
+        else:
+            bodyOrder=first(findFullSip(([clause.head],None), clause.body))
         assert bodyOrder,"Couldn't find a valid SIP for %s"%clause
         reduce(collectSip,
                iterCondition(And(bodyOrder)))
@@ -276,7 +289,8 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead):
         if boundHead:
             reduce(collectSip,itertools.chain(iterCondition(clause.head),
                                               iterCondition(clause.body)))
-        sipGraph.sipOrder = clause.body        
+        sipGraph.sipOrder = clause.body
+    
     if derivedPreds:
         # We therefore generalize our notation to allow
         # more succint representation of sips, in which only arcs entering 
