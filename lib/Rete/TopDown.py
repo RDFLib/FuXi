@@ -85,7 +85,7 @@ def RDFTuplesToSPARQL(goals,
                                                       for goal in goals]))
     return subquery
 
-@selective_memoize([0,1],['isGround','symmAtomicInclusion'])
+#@selective_memoize([0,1],['isGround','symmAtomicInclusion'])
 def RunQuery(subQueryJoin,
              bindings,
              factGraph,

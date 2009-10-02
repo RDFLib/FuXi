@@ -157,6 +157,12 @@ def main():
                   metavar='INTENSIONAL_DB_PREDICATE_QNAME',                  
       help = 'Used with --why/--strictness=defaultBase to specify which clashing '+
       'predicate will be designated as a derived predicate')                    
+    op.add_option('--noMagic',
+                  default=[],
+                  action='append',
+                  metavar='DB_PREDICATE_QNAME',                  
+      help = 'Used with --why to specify that the predicate shouldnt have its '+
+      'magic sets calculated')                    
     op.add_option('--filter', 
                   action='append',
                   default=[],
@@ -381,6 +387,10 @@ def main():
         for edb in options.edb: 
             pref,uri=edb.split(':')
             defaultBasePreds.append(URIRef(mapping[pref]+uri))
+        noMagic = []
+        for pred in options.noMagic:
+            pref,uri=pred.split(':')
+            noMagic.append(URIRef(mapping[pref]+uri))
         for idb in options.idb: 
             pref,uri=idb.split(':')
             defaultDerivedPreds.append(URIRef(mapping[pref]+uri))
@@ -461,8 +471,17 @@ def main():
                         elif 'proof-graph' in options.output:
                             builder.renderProof(ns,nsMap = network.nsMap).write_jpg('owl-proof.jpg')
                             print open('owl-proof.jpg').read()
-            
+        else:
+            for goal in goals:
+                goalSeed=AdornLiteral(goal).makeMagicPred()
+                print >>sys.stderr,"Magic seed fact (used in bottom-up evaluation)",goalSeed
+                magicSeeds.append(goalSeed.toRDFTuple())
+                
         if options.method in ['both','bottomUp']:
+            if noMagic:
+                print >>sys.stderr,"Predicates whose magic sets will not be calculated"
+                for p in noMagic:
+                    print >>sys.stderr,"\t", factGraph.qname(p)
             for rule in MagicSetTransformation(
                                        factGraph,
                                        ruleSet,
@@ -470,23 +489,28 @@ def main():
                                        derivedPreds=bottomUpDerivedPreds,
                                        strictCheck=nameMap[options.strictness],
                                        defaultPredicates=(defaultBasePreds,
-                                                          defaultDerivedPreds)):
+                                                          defaultDerivedPreds),
+                                       noMagic=noMagic):
                 magicRuleNo+=1
-                if options.output == 'rif' and options.method == 'bottomUp':
-                    print >>sys.stderr, rule
+#                if options.output == 'rif' and options.method == 'bottomUp':
+#                    print >>sys.stderr, rule
                 network.buildNetworkFromClause(rule)
-            if len(ruleSet):
+            if len(list(ruleSet)):
                 print >>sys.stderr,"reduction in size of program: %s (%s -> %s clauses)"%(
-                                           100-(float(magicRuleNo)/float(len(ruleSet)))*100,
-                                           len(ruleSet),
+                                           100-(float(magicRuleNo)/float(len(list(ruleSet))))*100,
+                                           len(list(ruleSet)),
                                            magicRuleNo)
             assert factGraph.adornedProgram
             print >>sys.stderr,"Derived predicates (bottom-up)", [factGraph.qname(term) 
                                                  for term in bottomUpDerivedPreds]            
             if options.output == 'rif':
                 print >>sys.stderr,"Rules used for bottom-up evaluation"
-                for clause in factGraph.adornedProgram:
-                    print >>sys.stderr,clause.formula                    
+                if network.rules:
+                    for clause in network.rules:
+                        print >>sys.stderr,clause                    
+                else:
+                    for clause in factGraph.adornedProgram:
+                        print >>sys.stderr,clause                    
                 
     for fileN in options.filter:
         for rule in HornFromN3(fileN):

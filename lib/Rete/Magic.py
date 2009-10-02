@@ -86,15 +86,17 @@ def MagicSetTransformation(factGraph,
     noMagic = noMagic and noMagic or []
     magicPredicates=set()
     replacement={}
-    factGraph.adornedProgram = SetupDDLAndAdornProgram(
+    adornedProgram = SetupDDLAndAdornProgram(
                                    factGraph,
                                    rules,
                                    GOALS,
                                    derivedPreds=derivedPreds,
-                                   strictCheck=DDL_STRICTNESS_FALLBACK_DERIVED,
-                                   defaultPredicates=None)
+                                   strictCheck=strictCheck,
+                                   defaultPredicates=defaultPredicates)
+    if factGraph:
+        factGraph.adornedProgram = adornedProgram
     newRules=[]
-    for rule in factGraph.adornedProgram: 
+    for rule in adornedProgram: 
         magicPositions={}
         #Generate magic rules
         for idx,pred in enumerate(iterCondition(rule.formula.body)):
@@ -164,7 +166,7 @@ def MagicSetTransformation(factGraph,
         for idx,(magicPred,origPred) in magicPositions.items():
             newRule.formula.body.formulae.insert(idx+idxIncrement,magicPred)
             idxIncrement+=1
-        if 'b' in rule.formula.head.adornment:
+        if 'b' in rule.formula.head.adornment and GetOp(rule.formula.head) not in noMagic:
             headMagicPred=rule.formula.head.makeMagicPred()
             if isinstance(newRule.formula.body,Uniterm):
                 newRule.formula.body = And([headMagicPred,newRule.formula.body])
