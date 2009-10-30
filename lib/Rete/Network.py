@@ -59,7 +59,11 @@ class HashablePatternList(object):
     >>> a = HashablePatternList([(Variable('X'),Literal(1),Literal(2))])
     >>> nodes[a] = 1
     >>> nodes[HashablePatternList([None]) + a] = 2
-    >>> nodes
+    >>> b = HashablePatternList([(Variable('Y'),Literal(1),Literal(2))])
+    >>> b in a
+    True
+    >>> a == b 
+    True
      
     """
     def __init__(self,items=None,skipBNodes=False):
@@ -120,13 +124,6 @@ def _mulPatternWithSubstitutions(tokens,consequent,termNode):
     >>> token1 = token1.bindVariables(aNode)
     >>> token2 = token2.bindVariables(aNode)
     >>> inst = PartialInstanciation([token1,token2])
-    >>> list(_mulPatternWithSubstitutions(inst,[Variable('O'),Variable('P'),Variable('S')]))
-    [(u'urn:uuid:alpha', 
-      u'http://www.w3.org/2002/07/owl#differentFrom', 
-      u'urn:uuid:beta'), 
-     (u'urn:uuid:beta', 
-      u'http://www.w3.org/2002/07/owl#differentFrom', 
-      u'urn:uuid:alpha')]
     """
     success = False
     for binding in tokens.bindings:        
@@ -642,7 +639,8 @@ class ReteNetwork:
                     for idx,pattern in enumerate(attachedPatterns):
                         assert isinstance(pattern,HashablePatternList),repr(pattern)                    
                         currNode = self.nodes[pattern]
-                        if isinstance(currNode,BuiltInAlphaNode) and idx < endIdx:
+                        if (isinstance(currNode,BuiltInAlphaNode) or 
+                            isinstance(currNode,BetaNode) and currNode.fedByBuiltin):
                             moveToEnd.append(pattern)
                         else:
                             finalPatternList.append(pattern)
