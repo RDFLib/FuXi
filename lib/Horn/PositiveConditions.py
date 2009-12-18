@@ -347,11 +347,13 @@ class Uniterm(QNameManager,Atomic):
             
     terms = property(_get_terms)
             
-    def getVarMapping(self,otherLit):
+    def getVarMapping(self,otherLit, reverse=False):
         """
         Takes another Uniterm and in every case where the corresponding term 
         for both literals are different variables, we map from the variable
-        for *this* uniterm to the corresponding variable of the other
+        for *this* uniterm to the corresponding variable of the other.
+        The mapping will go in the other direction if the reverse
+        keyword is True
           
         >>> x = Variable('X')
         >>> y = Variable('Y')
@@ -359,17 +361,28 @@ class Uniterm(QNameManager,Atomic):
         >>> lit2 = Uniterm(RDF.type,[RDFS.comment,y])
         >>> lit1.getVarMapping(lit2)[x] == y
         True
+        >>> lit1.getVarMapping(lit2,True)[y] == x
+        True
         """
         map = {}
         if isinstance(self.op,Variable) and isinstance(otherLit.op,Variable) and \
             self.op != otherLit.op:
-            map[self.op] = otherLit.op
+            if reverse:
+                map[otherLit.op] = self.op 
+            else:
+                map[self.op] = otherLit.op
         if isinstance(self.arg[0],Variable) and isinstance(otherLit.arg[0],Variable) \
             and self.arg[0] != otherLit.arg[0]:
-            map[self.arg[0]] = otherLit.arg[0]
+            if reverse:
+                map[otherLit.arg[0]] = self.arg[0]
+            else:
+                map[self.arg[0]] = otherLit.arg[0]
         if isinstance(self.arg[1],Variable) and isinstance(otherLit.arg[1],Variable) and \
             self.arg[1] != otherLit.arg[1]:
-            map[self.arg[1]] = otherLit.arg[1]
+            if reverse:
+                map[otherLit.arg[1]] = self.arg[1] 
+            else:
+                map[self.arg[1]] = otherLit.arg[1]
         return map
 
     def ground(self,varMapping):

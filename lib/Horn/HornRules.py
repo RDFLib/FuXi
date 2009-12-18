@@ -26,11 +26,13 @@ def NetworkFromN3(n3Source,additionalBuiltins=None):
         network.buildNetworkFromClause(rule)
     return network
 
-def HornFromDL(owlGraph, safety = DATALOG_SAFETY_NONE):
+def HornFromDL(owlGraph, safety = DATALOG_SAFETY_NONE, derivedPreds = [],complSkip = []):
     from FuXi.Rete.RuleStore import SetupRuleStore
     ruleStore,ruleGraph,network = SetupRuleStore(makeNetwork=True)
     return network.setupDescriptionLogicProgramming(
                                  owlGraph,
+                                 derivedPreds = derivedPreds,
+                                 expanded = complSkip,
                                  addPDSemantics=False,
                                  constructNetwork=False,
                                  safety = safety)
@@ -226,6 +228,22 @@ class Rule(object):
     def __repr__(self):
         return "Forall %s ( %r )"%(' '.join([var.n3() for var in self.declare]),
                                self.formula)    
+        
+def NormalizeBody(rule):
+    from FuXi.Rete.RuleStore import N3Builtin
+    from itertools import groupby, chain
+    newBody  = []
+    builtIns = []
+    if isinstance(rule.formula.body,And):
+        for lit in rule.formula.body:
+            if isinstance(lit,N3Builtin):
+                builtIns.append(lit)
+            else:
+                newBody.append(lit)
+        newBody.extend(builtIns)
+        rule.formula.body = And(newBody)
+    return rule
+        
 class Clause(object):
     """
     Facts are *not* modelled formally as rules with empty bodies
