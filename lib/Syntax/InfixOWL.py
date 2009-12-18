@@ -524,14 +524,99 @@ class ClassNamespaceFactory(Namespace):
         else:
             return self.term(name)    
     
+def DeepClassClear(classToPrune):
+    """
+    Recursively clear the given class, continuing
+    where any related class is an anonymous class
+    
+    >>> EX = Namespace('http://example.com/')
+    >>> namespace_manager = NamespaceManager(Graph())
+    >>> namespace_manager.bind('ex', EX, override=False)
+    >>> namespace_manager.bind('owl', OWL_NS, override=False)
+    >>> g = Graph()    
+    >>> g.namespace_manager = namespace_manager    
+    >>> Individual.factoryGraph = g
+    >>> classB = Class(EX.B)
+    >>> classC = Class(EX.C)
+    >>> classD = Class(EX.D)
+    >>> classE = Class(EX.E)
+    >>> classF = Class(EX.F)
+    >>> anonClass = EX.someProp|some|classD
+    >>> classF += anonClass
+    >>> list(anonClass.subClassOf)
+    [Class: ex:F ]
+    >>> classA = classE | classF | anonClass    
+    >>> classB += classA
+    >>> classA.equivalentClass = [Class()]
+    >>> classB.subClassOf = [EX.someProp|some|classC]
+    >>> classA
+    ( ex:E or ex:F or ( ex:someProp some ex:D ) )
+    >>> DeepClassClear(classA)
+    >>> classA
+    (  )
+    >>> list(anonClass.subClassOf)
+    []
+    >>> classB
+    Class: ex:B SubClassOf: ( ex:someProp some ex:C )
+    
+    >>> otherClass = classD | anonClass
+    >>> otherClass
+    ( ex:D or ( ex:someProp some ex:D ) )
+    >>> DeepClassClear(otherClass)
+    >>> otherClass
+    (  )
+    >>> otherClass.delete()
+    >>> list(g.triples((otherClass.identifier,None,None)))
+    []
+    """
+    def deepClearIfBNode(_class):
+        if isinstance(classOrIdentifier(_class),BNode):
+            DeepClassClear(_class)
+    classToPrune=CastClass(classToPrune,Individual.factoryGraph)
+    for c in classToPrune.subClassOf:
+        deepClearIfBNode(c)
+    classToPrune.graph.remove((classToPrune.identifier,RDFS.subClassOf,None))
+    for c in classToPrune.equivalentClass:
+        deepClearIfBNode(c)
+    classToPrune.graph.remove((classToPrune.identifier,OWL_NS.equivalentClass,None))
+    inverseClass = classToPrune.complementOf
+    if inverseClass:
+        classToPrune.graph.remove((classToPrune.identifier,OWL_NS.complementOf,None))
+        deepClearIfBNode(inverseClass)
+    if isinstance(classToPrune,BooleanClass):
+        for c in classToPrune:
+            deepClearIfBNode(c)
+        classToPrune.clear()
+        classToPrune.graph.remove((classToPrune.identifier,
+                          classToPrune._operator,
+                          None))    
+        
+class MalformedClass(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+    def __repr__(self): 
+        return self.msg       
+    
 def CastClass(c,graph=None):
     graph = graph is None and c.factoryGraph or graph
     for kind in graph.objects(subject=classOrIdentifier(c),
                               predicate=RDF.type):
         if kind == OWL_NS.Restriction:
-            prop = list(graph.objects(subject=classOrIdentifier(c),
-                                     predicate=OWL_NS.onProperty))[0]
-            return Restriction(prop, graph,identifier=classOrIdentifier(c))
+            kwArgs = {'identifier':classOrIdentifier(c),
+                      'graph'     :graph}
+            for s,p,o in graph.triples((classOrIdentifier(c),
+                                        None,
+                                        None)):
+                if p != RDF.type:
+                    if p == OWL_NS.onProperty:
+                        kwArgs['onProperty'] = o
+                    else:
+                        if p not in Restriction.restrictionKinds:
+                            raise MalformedClass("Malformed restriction!, unknown property: %s"%p)
+                        kwArgs[str(p.split(OWL_NS)[-1])] = o
+            if not set([str(i.split(OWL_NS)[-1]) for i in Restriction.restrictionKinds]).intersection(kwArgs):
+                raise MalformedClass("Malformed owl:Restriction")
+            return Restriction(**kwArgs)
         else:
             for s,p,o in graph.triples_choices((classOrIdentifier(c),
                                                 [OWL_NS.intersectionOf,
@@ -781,6 +866,10 @@ class Class(AnnotatibleTerms):
     def subSumpteeIds(self):
         for s in self.graph.subjects(predicate=RDFS.subClassOf,object=self.identifier):
             yield s
+        
+#    def __iter__(self):
+#        for s in self.graph.subjects(predicate=RDFS.subClassOf,object=self.identifier):
+#            yield Class(s,skipOWLClassMembership=True)
     
     def __repr__(self,full=False,normalization=True):
         """
@@ -852,6 +941,24 @@ class OWLRDFListProxy(object):
             self._rdfList = Collection(self.graph,BNode(),
                                        [classOrIdentifier(m) for m in members])
             self.graph.add((self.identifier,self._operator,self._rdfList.uri)) 
+            
+    def __eq__(self, other):
+        """
+        Equivalence of boolean class constructors is determined by equivalence of its
+        members 
+        """
+        assert isinstance(other,Class),repr(other)+repr(type(other))
+        if isinstance(other,BooleanClass):
+            length = len(self)
+            if length != len(other):
+                return False
+            else:
+                for idx in range(length):
+                    if self[idx] != other[idx]:
+                        return False
+                    return True
+        else:
+            return self.identifier == other.identifier
 
     #Redirect python list accessors to the underlying Collection instance
     def __len__(self):
@@ -887,8 +994,9 @@ class OWLRDFListProxy(object):
 
     def __iadd__(self, other):
         self._rdfList.append(classOrIdentifier(other))
+        return self
 
-class EnumeratedClass(Class,OWLRDFListProxy):
+class EnumeratedClass(OWLRDFListProxy,Class):
     """
     Class for owl:oneOf forms:
     
@@ -979,7 +1087,7 @@ class Callable:
     def __init__(self, anycallable):
         self.__call__ = anycallable    
 
-class BooleanClass(Class,OWLRDFListProxy):
+class BooleanClass(OWLRDFListProxy,Class):
     """
     See: http://www.w3.org/TR/owl-ref/#Boolean
     
@@ -1122,10 +1230,21 @@ class Restriction(Class):
                       (maxCardinality,OWL_NS.maxCardinality),
                       (minCardinality,OWL_NS.minCardinality)]
         validRestrProps = [(i,oTerm) for (i,oTerm) in restrTypes if i] 
-        assert len(validRestrProps) < 2
-        self.restrictionRange = validRestrProps
-        for val,oTerm in validRestrProps:
-            self.graph.add((self.identifier,oTerm,classOrTerm(val)))   
+        assert len(validRestrProps)
+        restrictionRange,restrictionType = validRestrProps.pop()
+        self.restrictionType = restrictionType
+        if isinstance(restrictionRange,Identifier):
+            self.restrictionRange = restrictionRange
+        elif isinstance(restrictionRange,Class):
+            self.restrictionRange = classOrIdentifier(restrictionRange)
+        else:
+            self.restrictionRange = first(self.graph.objects(self.identifier,
+                                                             restrictionType))
+        if (self.identifier,
+            restrictionType,
+            self.restrictionRange) not in self.graph:
+            self.graph.add((self.identifier,restrictionType,self.restrictionRange))
+        assert self.restrictionRange is not None,Class(self.identifier)
         if (self.identifier,RDF.type,OWL_NS.Restriction) not in self.graph:
             self.graph.add((self.identifier,RDF.type,OWL_NS.Restriction))
             self.graph.remove((self.identifier,RDF.type,OWL_NS.Class))
@@ -1139,6 +1258,9 @@ class Restriction(Class):
 
     def isPrimitive(self):
         return False
+
+    def __hash__(self):
+        return hash((self.onProperty,self.restrictionRange))
 
     def __eq__(self, other):
         """
