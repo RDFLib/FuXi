@@ -7,7 +7,7 @@ from FuXi.Rete.BetaNode import PartialInstanciation, LEFT_MEMORY, RIGHT_MEMORY
 from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore
 from FuXi.Rete.Util import renderNetwork,generateTokenSet, xcombine
 from FuXi.DLP.DLNormalization import NormalFormReduction
-from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics, DisjunctiveNormalForm
+from FuXi.DLP import MapDLPtoNetwork, DisjunctiveNormalForm
 from FuXi.Horn import *
 from FuXi.Horn.HornRules import HornFromN3, Ruleset
 from FuXi.Syntax.InfixOWL import *

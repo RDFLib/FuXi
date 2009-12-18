@@ -152,6 +152,8 @@ class selective_memoize(object):
                 if self.cacheableArgKey:
                     items = [(k,v) for k,v in kwds.items() 
                                 if k in self.cacheableArgKey]
+                else:
+                    items = []
                 items.sort()
                 key = key + tuple(items)
             try:
@@ -170,10 +172,19 @@ class selective_memoize(object):
                     self._cache[dump] = result = func(*args, **kwds)
                     return result
         return innerHandler
+
+class InformedLazyGenerator(object):
+    def __init__(self, generator, successful):
+        self.generator  = generator
+        self.successful = successful
+        
+    def __iter__(self):
+        for item in self.generator:
+            yield item        
     
-def lazyGeneratorPeek(iterable):
+def lazyGeneratorPeek(iterable,firstN=1):
     """
-    Lazily peeks into a generator and returns None if it is empty
+    Lazily peeks into an iterable and returns None if it has less than N items 
     or returns another generator over *all* content if it isn't
     
     >>> a=(i for i in [1,2,3])
@@ -185,14 +196,27 @@ def lazyGeneratorPeek(iterable):
     >>> result = lazyGeneratorPeek(a)
     >>> result  # doctest:+ELLIPSIS
     <generator object at ...>
-    >>> list(result)
+    >>> result = list(result)
+    >>> result
     [1, 2, 3]
     >>> lazyGeneratorPeek((i for i in []))
+    >>> lazyGeneratorPeek(result,4)
+    >>> lazyGeneratorPeek(result,3) # doctest:+ELLIPSIS
+    <generator object at ...>
     """
-    item = first(iterable)
-    if item:
-        return (i for i in itertools.chain([item],
-                                           iterable))
+    cnt = firstN
+    header = []
+    for item in iterable:
+        cnt -= 1
+        header.append(item)
+        if not cnt:
+            #Stop after consuming first N items
+            break
+    if not cnt:
+        #There at least N items
+        return InformedLazyGenerator((i for i in itertools.chain(header,iterable)),True)
+    else:
+        return InformedLazyGenerator((i for i in header),False)
 
 def generateTokenSet(graph,debugTriples=[],skipImplies=True):
     """

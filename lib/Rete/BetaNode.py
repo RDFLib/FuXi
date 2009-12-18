@@ -433,9 +433,10 @@ class PartialInstanciation(object):
         return "<PartialInstanciation%s: %s>"%(joinMsg,self.tokens)
 
     def __iter__(self):
-        return self.tokens.__iter__()
+        for i in self.tokens:
+            yield i
     
-    def __len(self):
+    def __len__(self):
         return len(self.tokens)
 
     def addConsistentBinding(self,newJoinVariables):

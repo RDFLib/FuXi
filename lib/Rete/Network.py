@@ -23,8 +23,8 @@ from FuXi.Horn import ComplementExpansion, DATALOG_SAFETY_NONE, \
                       DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Horn.PositiveConditions import Uniterm, SetOperator, Exists, Or
-from FuXi.DLP import MapDLPtoNetwork,non_DHL_OWL_Semantics,NOMINAL_SEMANTICS, IsaFactFormingConclusion
-#from FuXi.Rete.RuleStore import N3Builtin
+from FuXi.DLP import MapDLPtoNetwork,non_DHL_OWL_Semantics,IsaFactFormingConclusion
+from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from Util import generateTokenSet,renderNetwork
 from rdflib import Variable, BNode, URIRef, Literal, Namespace,RDF,RDFS
 from rdflib.util import first
@@ -349,12 +349,11 @@ class ReteNetwork:
         noRules=len(rules)
         if addPDSemantics:
             self.parseN3Logic(StringIO(non_DHL_OWL_Semantics))
-            if (None,OWL_NS.oneOf,None) in owlN3Graph:
-                #Only include list and oneOf semantics
-                #if oneOf axiom is detected in graph 
-                #reduce computational complexity
-                self.parseN3Logic(StringIO(NOMINAL_SEMANTICS))
-#        print "##### DLP rules setup",self
+            for rule in AdditionalRules(owlN3Graph):
+                self.buildNetwork(iter(rule.formula.body),
+                                  iter(rule.formula.head),
+                                  rule)
+                self.rules.add(rule)
         if classifyTBox:
             self.feedFactsToAdd(generateTokenSet(owlN3Graph))
 #        print "##### DLP rules fired against OWL/RDF TBOX",self

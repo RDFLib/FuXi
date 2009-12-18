@@ -15,12 +15,13 @@ import unittest, os, time, itertools, copy
 from FuXi.Rete.RuleStore import SetupRuleStore, N3RuleStore, N3Builtin, LOG
 from FuXi.Rete.AlphaNode import ReteToken
 from FuXi.Rete.BetaNode import project
-from FuXi.Horn.HornRules import Clause, Ruleset, Rule, HornFromN3
-from FuXi.DLP import FUNCTIONAL_SEMANTCS, NOMINAL_SEMANTICS
+from FuXi.Horn.HornRules import Clause, Ruleset, Rule
+from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Rete.Proof import *
 from FuXi.Syntax.InfixOWL import OWL_NS
 from cStringIO import StringIO
+from rdflib.Collection import Collection
 from rdflib.Graph import Graph, ReadOnlyGraphAggregate
 from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
 from rdflib.sparql.Algebra import RenderSPARQLAlgebra
@@ -175,19 +176,11 @@ def MagicSetTransformation(factGraph,
         newRules.append(newRule)
 
     if not newRules:
-#        print "No magic set candidates"
-        if set([OWL_NS.InverseFunctionalProperty,
-                OWL_NS.FunctionalProperty]).intersection(factGraph.objects(predicate=RDF.type)):
-            newRules.extend(HornFromN3(StringIO(FUNCTIONAL_SEMANTCS)))
-        if (None,OWL_NS.oneOf,None) in factGraph:
-            #Only include list and oneOf semantics
-            #if oneOf axiom is detected in graph 
-            #reduce computational complexity
-            newRules.extend(HornFromN3(StringIO(NOMINAL_SEMANTICS)))
+        newRules.extend(AdditionalRules(factGraph))
     for rule in newRules:
         if rule.formula.body:
             yield rule
-
+        
 def NormalizeGoals(goals):
     if isinstance(goals,(list,set)):
         for goal in goals:
@@ -207,6 +200,8 @@ class AdornedRule(Rule):
         for pred in itertools.chain(iterCondition(clause.head),
                                     iterCondition(clause.body)):
             decl.update([term for term in GetArgs(pred) if isinstance(term,Variable)])
+            if isinstance(pred,AdornedUniTerm):
+                self.ruleStr+=''.join(pred.adornment)
             self.ruleStr+=''.join(pred.toRDFTuple())
         super(AdornedRule, self).__init__(clause,decl,nsMapping)        
 
@@ -351,7 +346,7 @@ class AdornedUniTerm(Uniterm):
 
     def clone(self):
         return AdornedUniTerm(self,self.adornment,self.naf)
-        
+                
     def makeMagicPred(self):
         """
         Make a (cloned) magic predicate
@@ -443,7 +438,7 @@ class AdornedUniTerm(Uniterm):
                                  ' '.join([self.normalizeTerm(i) 
                                             for i in self.arg]))
 
-def AdornLiteral(rdfTuple,newNss=None,naf = False):
+def AdornLiteral(rdfTuple,newNss=None,naf = False, skolemTerms = {}):
     """
     An adornment for an n-ary predicate p is a string a of length n on the 
     alphabet {b, f}, where b stands for bound and f stands for free. We 
@@ -471,8 +466,10 @@ def AdornLiteral(rdfTuple,newNss=None,naf = False):
     newNss=newNss is None and {} or newNss
     uTerm = BuildUnitermFromTuple(rdfTuple,newNss)
     opArgs=rdfTuple[1] == RDF.type and [args[0]] or args
-    adornment=[ isinstance(term,(Variable,BNode)) and 'f' or 'b' 
-                for idx,term in enumerate(opArgs) ]
+    def isFreeTerm(term):
+        return isinstance(term,Variable) or (isinstance(term,BNode) and 
+                                             term not in skolemTerms)
+    adornment=[ isFreeTerm(term) and 'f' or 'b' for idx,term in enumerate(opArgs) ]
     return AdornedUniTerm(uTerm,adornment,naf)  
 
 def DerivedPredicateIterator(factsOrBasePreds,
@@ -690,8 +687,73 @@ def PrettyPrintRule(rule):
                                  literal == rule.formula.body.formulae[-1] and '' or ', ')
     else:
         print rule.formula
+
+OWL_PROPERTIES_QUERY=\
+"""
+SELECT ?prop
+WHERE {
+    ?prop a ?propType 
+      FILTER( 
+        ?propType = owl:ObjectProperty || 
+        ?propType = owl:TransitiveProperty ||
+        ?propType = owl:SymmetricProperty ||
+        ?propType = owl:InverseFunctionalProperty ||
+        ?propType = owl:DatatypeProperty )  
+}"""
+
+EXCLUDED_DERIVED_PREDS=\
+[
     
-            
+]
+
+
+def IdentifyDerivedPredicates(ddlMetaGraph,tBox,ruleset=None):
+    """
+    See: http://code.google.com/p/fuxi/wiki/DataDescriptionLanguage#
+    """
+    dPreds = set()
+    DDL = Namespace('http://code.google.com/p/fuxi/wiki/DataDescriptionLanguage#')
+    
+    if ruleset:
+        for rule in ruleset:
+            dPreds.add(GetOp(rule.formula.head))
+    
+    for derivedClassList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                          object=DDL.DerivedClassList):
+        dPreds.update(Collection(ddlMetaGraph,derivedClassList))
+    derivedPropPrefixes = []
+    for derivedPropPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                               object=DDL.DerivedPropertyPrefix):
+        derivedPropPrefixes.extend(Collection(ddlMetaGraph,derivedPropPrefixList))
+    for prop in tBox.query(OWL_PROPERTIES_QUERY):
+        if first(itertools.ifilter(lambda prefix:prop.startswith(prefix),
+                                   derivedPropPrefixes)) and \
+                       (prop,RDF.type,OWL_NS.AnnotationProperty) not in tBox: 
+            dPreds.add(prop)
+    derivedClassPrefixes = []
+    for derivedClsPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                              object=DDL.DerivedClassPrefix):
+        derivedClassPrefixes.extend(Collection(ddlMetaGraph,
+                                               derivedClsPrefixList))
+    for cls in tBox.subjects(predicate=RDF.type,
+                             object=OWL_NS.Class):
+        if first(itertools.ifilter(lambda prefix:cls.startswith(prefix),
+                                   derivedClassPrefixes)): 
+            dPreds.add(cls)
+    nsBindings = dict([(prefix,nsUri) 
+                       for prefix, nsUri in tBox.namespaces()
+                        if prefix])            
+    for queryNode in ddlMetaGraph.subjects(predicate=RDF.type,
+                                   object=DDL.DerivedClassQuery):
+        query = first(ddlMetaGraph.objects(queryNode,RDF.value))
+        for cls in tBox.query(query,
+                              initNs=nsBindings):
+            dPreds.add(cls)
+    for baseClsList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                             object=DDL.BaseClassList):
+        dPreds.difference_update(Collection(ddlMetaGraph,
+                                            baseClsList))
+    return dPreds
 def test():
     unittest.main()    
     # import doctest

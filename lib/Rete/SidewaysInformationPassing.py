@@ -135,7 +135,7 @@ def SetOp(term,value):
             term.op=value
     else:
         raise term        
-                    
+
 def GetOp(term):
     if isinstance(term,N3Builtin):
         return term.uri

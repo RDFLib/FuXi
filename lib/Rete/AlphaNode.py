@@ -198,7 +198,7 @@ class AlphaNode(Node):
         self.builtin = bool(filters.get(self.triplePattern[PREDICATE]))
         self.universalTruths = []
 
-    def alphaNetworkHash(self,groundTermHash=False):
+    def alphaNetworkHash(self,groundTermHash=False,skolemTerms=[]):
         """
         Thus, given a WME w, to determine which alpha memories w should be added to, we need only check whether
         any of these eight possibilities is actually present in the system.  (Some might not be present, since 
@@ -217,7 +217,9 @@ class AlphaNode(Node):
         u'http://www.w3.org/1999/02/22-rdf-syntax-ns#typehttp://www.w3.org/2002/07/owl#InverseFunctionalProperty'
         """
         if groundTermHash:
-            return ''.join([term for term in self.triplePattern if not isinstance(term,(BNode,Variable))])
+            return ''.join([term for term in self.triplePattern 
+                            if not isinstance(term,(BNode,Variable)) or \
+                               isinstance(term,BNode) and term in skolemTerms])
         else:
             return tuple([isinstance(term,(BNode,Variable)) and '0' or '1' for term in self.triplePattern])
 
