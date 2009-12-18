@@ -79,19 +79,10 @@ non_DHL_OWL_Semantics=\
 {?C rdfs:subClassOf ?SC. ?SC rdfs:subClassOf ?C} => {?C owl:equivalentClass ?SC}.
 
 {?C owl:disjointWith ?B. ?M a ?C. ?Y a ?B } => {?M owl:differentFrom ?Y}.
-#{?X log:notEqualTo ?Y. ?A owl:distinctMembers ?L. ?L :item ?X, ?Y} => {?X owl:differentFrom ?Y}.
-#{ [] a owl:AllDifferent; owl:distinctMembers ?L. ?L1 list:in ?L. ?L2 list:in ?L. ?L1 log:notEqualTo ?L2 } => { ?L1 owl:differentFrom ?L2 }.
-#{?L rdf:first ?I} => {?I list:in ?L}.
-#{?L rdf:rest ?R. ?I list:in ?R} => {?I list:in ?L}.
 
 {?P owl:inverseOf ?Q. ?P a owl:InverseFunctionalProperty} => {?Q a owl:FunctionalProperty}.
 {?P owl:inverseOf ?Q. ?P a owl:FunctionalProperty} => {?Q a owl:InverseFunctionalProperty}.
 
-#Inverse functional semantics
-#{?P a owl:FunctionalProperty. ?S ?P ?O. ?S ?P ?Y} => {?O = ?Y}.
-{?P a owl:FunctionalProperty. ?S ?P ?O. ?S ?P ?Y. ?O log:notEqualTo ?Y } => {?O = ?Y}.
-{?P a owl:InverseFunctionalProperty. ?S ?P ?O. ?Y ?P ?O . ?S log:notEqualTo ?Y } => {?S = ?Y}.
-#{?P a owl:InverseFunctionalProperty. ?S ?P ?O. ?Y ?P ?O} => {?S = ?Y}.
 {?T1 = ?T2. ?S = ?T1} => {?S = ?T2}.
 {?T1 ?P ?O. ?T1 = ?T2.} => {?T2 ?P ?O}.
 
@@ -104,33 +95,6 @@ non_DHL_OWL_Semantics=\
 {?S owl:complementOf ?O} => {?O owl:complementOf ?S}.
 {?S owl:disjointWith ?O} => {?O owl:disjointWith ?S}.
 
-"""
-
-FUNCTIONAL_SEMANTCS=\
-"""
-@prefix owl: <http://www.w3.org/2002/07/owl#>.
-@prefix log: <http://www.w3.org/2000/10/swap/log#>.
-
-#Inverse functional semantics
-#{?P a owl:FunctionalProperty. ?S ?P ?O. ?S ?P ?Y} => {?O = ?Y}.
-{?P a owl:FunctionalProperty. ?S ?P ?O. ?S ?P ?Y. ?O log:notEqualTo ?Y } => {?O = ?Y}.
-#{?P a owl:InverseFunctionalProperty. ?S ?P ?O. ?Y ?P ?O} => {?S = ?Y}.
-{?P a owl:InverseFunctionalProperty. ?S ?P ?O. ?Y ?P ?O. ?S log:notEqualTo ?Y } => {?S = ?Y}.
-
-{?T1 = ?T2. ?S = ?T1} => {?S = ?T2}.
-{?T1 ?P ?O. ?T1 = ?T2.} => {?T2 ?P ?O}.
-"""
-
-NOMINAL_SEMANTICS=\
-"""
-@prefix owl: <http://www.w3.org/2002/07/owl#>.
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-@prefix list: <http://www.w3.org/2000/10/swap/list#>.
-
-#For OWL/oneOf
-{?C owl:oneOf ?L. ?X list:in ?L} => {?X a ?C}.
-{?L rdf:first ?I} => {?I list:in ?L}.
-{?L rdf:rest ?R. ?I list:in ?R} => {?I list:in ?L}.
 """
 
 OWL_NS    = Namespace("http://www.w3.org/2002/07/owl#")
