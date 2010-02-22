@@ -18,9 +18,13 @@ def NetworkFromN3(n3Source,additionalBuiltins=None):
     rule_store, rule_graph, network = SetupRuleStore(
                          makeNetwork=True,
                          additionalBuiltins=additionalBuiltins)
-    for ctx in n3Source.contexts():
-        for s,p,o in ctx:
-            rule_store.add((s,p,o),ctx)
+    if isinstance(n3Source,ConjunctiveGraph):
+        for ctx in n3Source.contexts():
+            for s,p,o in ctx:
+                rule_store.add((s,p,o),ctx)
+    else:
+        for s,p,o in n3Source:
+            rule_store.add((s,p,o),n3Source)
     rule_store._finalize()
     for rule in Ruleset(n3Rules=rule_store.rules,nsMapping=rule_store.nsMgr):
         network.buildNetworkFromClause(rule)

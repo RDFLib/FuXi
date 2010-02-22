@@ -798,7 +798,7 @@ def SipStrategy(query,
                                derivedPreds,
                                processedRules.union([
                                  AdornLiteral(query,
-                                              bindingVals=bindings.values())])), 
+                                              skolemTerms=bindings.values())])), 
                               step=step,
                               debug = debug):
                     if rt:
