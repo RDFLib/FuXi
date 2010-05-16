@@ -113,15 +113,17 @@ class SIPGraphArc(object):
         """Visual of graph arc"""
         return "%s - (%s) > %s"%(self.left,self.variables,self.right)        
         
-def CollectSIPArcVars(left,right):
+def CollectSIPArcVars(left,right,phBoundVars):
     """docstring for CollectSIPArcVars"""
     if isinstance(left,list):
         return set(reduce(lambda x,y:x+y,
-                          [GetArgs(t,secondOrder=True) 
+                          [ hasattr(t,'isHead') and phBoundVars or GetArgs(t,secondOrder=True) 
                            for t in left])).intersection(GetArgs(right,
                                                                  secondOrder=True))
     else:
-        return set(GetArgs(left,secondOrder=True)).intersection(
+        incomingVarsToInclude = phBoundVars and phBoundVars or \
+            GetArgs(left,secondOrder=True)
+        return set(incomingVarsToInclude).intersection(
                                                     GetArgs(right,
                                                             secondOrder=True))
         
@@ -165,7 +167,6 @@ def GetArgs(term,secondOrder=False):
     elif isinstance(term,Exists):
         return GetArgs(term.formula, secondOrder)
     else:
-        import pdb;pdb.set_trace()
         raise term        
         
 def IncomingSIPArcs(sip,predOcc):
@@ -244,10 +245,11 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead):
     from FuXi.Rete.Magic import AdornedUniTerm
     occurLookup={}
     boundHead=isinstance(adornedHead,AdornedUniTerm) and 'b' in adornedHead.adornment
+    phBoundVars = list(adornedHead.getDistinguishedVariables(varsOnly=True))
     assert isinstance(clause.head,Uniterm),"Only one literal in the head!"
     def collectSip(left,right):
         if isinstance(left,list):
-            vars=CollectSIPArcVars(left,right)
+            vars=CollectSIPArcVars(left,right,phBoundVars)
             leftList=Collection(sipGraph,None)
             left=list(set(left))            
             [leftList.append(i) for i in [GetOp(ii) for ii in left]]
@@ -255,7 +257,8 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead):
             arc=SIPGraphArc(leftList.uri,getOccurrenceId(right,occurLookup),vars,sipGraph)
             return left
         else:
-            vars=CollectSIPArcVars(left,right)
+            left.isHead = True
+            vars=CollectSIPArcVars(left,right,phBoundVars)
             ph=GetOp(left)
             q=getOccurrenceId(right,occurLookup)
             if boundHead:

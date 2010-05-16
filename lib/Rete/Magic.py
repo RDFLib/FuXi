@@ -205,6 +205,18 @@ class AdornedRule(Rule):
             self.ruleStr+=''.join(pred.toRDFTuple())
         super(AdornedRule, self).__init__(clause,decl,nsMapping)        
 
+    def isRecursive(self):
+        def termHash(term):
+            return GetOp(term),\
+                   reduce(lambda x,y:x+y,term.adornment)
+        headHash = termHash(self.formula.head)
+        def recursiveLiteral(term):
+            return isinstance(term,AdornedUniTerm) and termHash(term) == headHash        
+        if first(itertools.ifilter(recursiveLiteral,iterCondition(self.formula.body))):
+            return True
+        else:
+            return False
+
     def __hash__(self):
         return hash(self.ruleStr)
         
@@ -225,7 +237,7 @@ def AdornRule(derivedPreds,clause,newHead):
     assert len(list(iterCondition(clause.head)))==1
     adornedHead=AdornedUniTerm(clause.head,
                                newHead.adornment)
-    sip=BuildNaturalSIP(clause,derivedPreds,newHead)
+    sip=BuildNaturalSIP(clause,derivedPreds,adornedHead)
     bodyPredReplace={}
     def adornment(arg,headArc,x):
         if headArc:
@@ -438,7 +450,7 @@ class AdornedUniTerm(Uniterm):
                                  ' '.join([self.normalizeTerm(i) 
                                             for i in self.arg]))
 
-def AdornLiteral(rdfTuple,newNss=None,naf = False, skolemTerms = {}):
+def AdornLiteral(rdfTuple,newNss=None,naf = False):
     """
     An adornment for an n-ary predicate p is a string a of length n on the 
     alphabet {b, f}, where b stands for bound and f stands for free. We 
@@ -467,8 +479,7 @@ def AdornLiteral(rdfTuple,newNss=None,naf = False, skolemTerms = {}):
     uTerm = BuildUnitermFromTuple(rdfTuple,newNss)
     opArgs=rdfTuple[1] == RDF.type and [args[0]] or args
     def isFreeTerm(term):
-        return isinstance(term,Variable) or (isinstance(term,BNode) and 
-                                             term not in skolemTerms)
+        return isinstance(term,Variable)
     adornment=[ isFreeTerm(term) and 'f' or 'b' for idx,term in enumerate(opArgs) ]
     return AdornedUniTerm(uTerm,adornment,naf)  
 

@@ -89,6 +89,8 @@ class ImmutableDict(dict):
         raise NotImplementedError, "dict is immutable"
     def update(self,other):
         raise NotImplementedError, "dict is immutable"
+    def normalize(self):
+        return dict([(k,v) for k,v in self.items()])
     def __hash__(self):
         return hash(self._items)
     

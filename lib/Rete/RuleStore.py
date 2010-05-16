@@ -27,6 +27,15 @@ class N3Builtin(object):
         self.func = func
         self.variables = [arg for arg in [self.argument,self.result] if isinstance(arg,Variable)]
         
+    def ground(self,varMapping):
+        self.argument = varMapping.get(self.argument,self.argument)
+        self.result   = varMapping.get(self.result,self.result)
+
+    def renameVariables(self,varMapping):
+        if varMapping:
+            self.argument=varMapping.get(self.argument,self.argument)
+            self.result  =varMapping.get(self.result  ,self.result)
+        
     def binds(self,var):
         return True
     
