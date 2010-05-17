@@ -7,11 +7,13 @@ from FuXi.Rete.BetaNode import LEFT_MEMORY,RIGHT_MEMORY
 from FuXi.Rete.RuleStore import N3RuleStore
 from FuXi.Rete.Util import renderNetwork,generateTokenSet
 from FuXi.Horn.PositiveConditions import Uniterm, BuildUnitermFromTuple
+from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
+from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from FuXi.Horn.HornRules import HornFromN3
 from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics
 from FuXi.Rete.Magic import *
 from FuXi.Rete.SidewaysInformationPassing import *
-from FuXi.Rete.TopDown import PrepareSipCollection, SipStrategy
+from FuXi.Rete.TopDown import PrepareSipCollection, SipStrategy, RDFTuplesToSPARQL
 from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
 from rdflib.Namespace import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,URIRef
@@ -37,6 +39,7 @@ TEST_NS   = Namespace("http://metacognition.info/FuXi/DL-SHIOF-test.n3#")
 LOG       = Namespace("http://www.w3.org/2000/10/swap/log#")
 RDF_TEST  = Namespace('http://www.w3.org/2000/10/rdf-tests/rdfcore/testSchema#')
 OWL_TEST  = Namespace('http://www.w3.org/2002/03owlt/testOntology#')
+LIST      = Namespace('http://www.w3.org/2000/10/swap/list#')
 
 queryNsMapping={'test':'http://metacognition.info/FuXi/test#',
                 'rdf':'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
@@ -81,9 +84,10 @@ Features2Skip = [
 ]
 
 TopDownTests2Skip = [
-    'OWL/FunctionalProperty/Manifest002.rdf',
+    'OWL/FunctionalProperty/Manifest002.rdf', #requires second order predicate derivation 
+    'OWL/unionOf/Manifest002.rdf', # support for disjunctive horn logic 
     'OWL/FunctionalProperty/Manifest004.rdf',
-    'OWL/oneOf/Manifest002.rdf',
+    'OWL/oneOf/Manifest002.rdf', #requires second order predicate derivation
     'OWL/InverseFunctionalProperty/Manifest002.rdf', 
     'OWL/InverseFunctionalProperty/Manifest004.rdf',
     'OWL/oneOf/Manifest003.rdf', #Requires quantification over predicate symbol (2nd order)    
@@ -121,8 +125,6 @@ class OwlTestSuite(unittest.TestCase):
         self.ruleStore=N3RuleStore()
         self.ruleGraph = Graph(self.ruleStore)
         self.ruleFactsGraph = Graph(store)
-#        if not MAGIC_PROOFS:
-#            self.ruleGraph.parse(StringIO(non_DHL_OWL_Semantics),format='n3')
         self.network = ReteNetwork(self.ruleStore,nsMap=nsBinds)
         
         #renderNetwork(self.network,nsMap=nsMap).write_graphviz('owl-rules.dot')
@@ -153,19 +155,21 @@ class OwlTestSuite(unittest.TestCase):
     #                        print CastClass(c,factGraph)
         print "=============="
         self.network.inferredFacts.namespace_manager = factGraph.namespace_manager
-#        if self.network.inferredFacts:
-#            print "Implicit facts: "
-#            print self.network.inferredFacts.serialize(format='turtle')
-#        print "ruleset after MST:"                    
-#        pprint(list(self.network.rules))
-#        print "rate of reduction in the size of the program: ", len len(self.network.rules)
         return sTimeStr
 
     def MagicOWLProof(self,goals,rules,factGraph,conclusionFile):
-#        print "Goals",[AdornLiteral(goal) for goal in goals]
         progLen = len(rules)
         magicRuleNo = 0
         dPreds = []
+        for rule in AdditionalRules(factGraph):
+            print "\tAdding ", rule
+            rules.append(rule)            
+
+        if TOP_DOWN == 'open':
+            goals = [(Variable('SUBJECT'),goalP,goalO) 
+                        for goalS,goalP,goalO in goals 
+                            if goalP != RDF.type or goalO.find(OWL_NS)==-1]
+        
         for rule in MagicSetTransformation(factGraph,
                                            rules,
                                            goals,
@@ -173,22 +177,14 @@ class OwlTestSuite(unittest.TestCase):
             magicRuleNo+=1
             self.network.buildNetworkFromClause(rule)    
             self.network.rules.add(rule)
+        dPreds.append(LIST['in'])
         print "rate of reduction in the size of the program: ", (100-(float(magicRuleNo)/float(progLen))*100)
-
-        if TOP_DOWN:
-#            print "SIP collection:"
-#            for idx,rule in enumerate(factGraph.adornedProgram):
-#                if rule.sip:
-#                    CommonNSBindings(rule.sip,
-#                    {u'magic':MAGIC,
-#                      u'skolem':URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')})
-#                    print rule
-#                    SIPRepresentation(rule.sip)
-#    
+        if TOP_DOWN == 'ground':
             print "ASK { %s }"%('\n'.join([tripleToTriplePattern(factGraph,
                                                                 goal) 
                                   for goal in goals ]))
             timings = 0
+            pprint(list(factGraph.adornedProgram))            
             sipCollection = PrepareSipCollection(factGraph.adornedProgram)
 
             self.network.nsMap['pml'] = PML
@@ -200,27 +196,55 @@ class OwlTestSuite(unittest.TestCase):
                                    factGraph,
                                    dPreds,
                                    bindings={},
-                                   network = self.network))
+                                   network = self.network,
+                                   debug = DEBUG))
+                self.failUnless(derivedAnswer, "Failed to prove ground goal")
                 if not derivedAnswer:
-                    print "failed top-down derivation"
                     raise
+                    print "failed top-down derivation"
                 else:
                     ans,ns = derivedAnswer
-#                    pGraph = Graph() 
-#                    CommonNSBindings(pGraph,self.network.nsMap)
-#                    builder=ProofBuilder(self.network)
-#                    ns.serialize(builder,pGraph)
-#                    print pGraph.serialize(format='n3')
-#                    proofPath = conclusionFile.replace('.rdf','.jpg')
-#                    builder.extractGoalsFromNode(ns)
-#                    builder.renderProof(ns,nsMap = self.network.nsMap).write_jpg('owl-proof.jpg')
+                    self.failUnless(ans, "Failed to prove ground goal")
                     print "=== Passed! ==="
+        elif TOP_DOWN == 'open':
+            nsMap.update(dict([(k,v) 
+                         for k,v in factGraph.namespaces()]))
+            topDownStore=TopDownSPARQLEntailingStore(
+                                        factGraph.store,
+                                        factGraph,
+                                        set(dPreds),
+                                        rules,
+                                        nsBindings=nsMap,
+                                        DEBUG=DEBUG) 
+            #targetGraph = ConjunctiveGraph(topDownStore)
+            targetGraph = Graph(topDownStore)
+            topDownStore.targetGraph = targetGraph 
+            topDownStore.targetGraph.templateMap = {     LOG.equal:"%s = %s",
+                                                    LOG.notEqualTo: "%s != %s" }
+            topDownStore.edb.templateMap = topDownStore.targetGraph.templateMap
+            for pref,nsUri in nsMap.items():
+                targetGraph.bind(pref,nsUri)
+            for goalS,goalP,goalO in goals:
+                if goalP == RDF.type and goalO.find(OWL_NS)+1:
+                        continue                
+                sVar = Variable('SUBJECT')
+                query=RDFTuplesToSPARQL(
+                            [BuildUnitermFromTuple((sVar,goalP,goalO))],
+                             factGraph,
+                             vars=[sVar])
+                print "Open goal to solve ", query
+                rt=targetGraph.query(query,initNs=nsMap)
+                self.failUnless((goalS) in rt, "Failed top-down re-write derivation")
+                if (goalS) in rt:
+                    print "=== Passed! ==="
+                else:
+                    raise
+                    print "failed top-down re-write derivation"
         else:
             for goal in goals:
                 goal=AdornLiteral(goal).makeMagicPred().toRDFTuple()
                 factGraph.add(goal)
             timing=self.calculateEntailments(factGraph)
-    #        print self.network.closureGraph(factGraph,readOnly=True).serialize(format='n3')
             for goal in goals:
                 if goal not in self.network.inferredFacts and goal not in factGraph:
                     print "missing triple %s"%(pformat(goal))
@@ -251,7 +275,7 @@ class OwlTestSuite(unittest.TestCase):
             manifestGraph = Graph(manifestStore)
             manifestGraph.parse(open(manifest))
             rt = manifestGraph.query(
-                                      PARSED_MANIFEST_QUERY,
+                                      MANIFEST_QUERY,
                                       initNs=nsMap,
                                       DEBUG = False)
             #print list(manifestGraph.namespace_manager.namespaces())
@@ -290,9 +314,9 @@ class OwlTestSuite(unittest.TestCase):
                         program.extend(self.network.setupDescriptionLogicProgramming(
                                                                      factGraph,
                                                                      addPDSemantics=False,
-                                                                     constructNetwork=False))
+                                                                     constructNetwork=False))                        
                         print "Original program"
-                        pprint(program)
+#                        pprint(program)
                         timings=[]  
                         #Magic set algorithm is initiated by a query, a single horn ground, 'fact'                    
                         try:   
@@ -342,9 +366,10 @@ class OwlTestSuite(unittest.TestCase):
 #        pprint(testData)
 
 def runTests(options):
-    global MAGIC_PROOFS,TOP_DOWN, SINGLE_TEST 
+    global MAGIC_PROOFS,TOP_DOWN, SINGLE_TEST, DEBUG 
     SINGLE_TEST  = options.singleTest   
     MAGIC_PROOFS = options.bottomUp
+    DEBUG        = options.debug
     if options.bottomUp:
         TOP_DOWN = False
     TOP_DOWN = options.topDown
@@ -381,6 +406,11 @@ if __name__ == '__main__':
     op.add_option('--singleTest', 
                   default='',
       help = 'The identifier for the test to run')        
+    op.add_option('--debug','-v', 
+                  action='store_true',
+                  default=False,
+      help = 'Run the test in verbose mode')        
+    
     op.add_option('--runs', 
                   type='int',
                   default=1,

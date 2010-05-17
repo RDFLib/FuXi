@@ -2,7 +2,7 @@ import ez_setup
 ez_setup.use_setuptools()
 from setuptools  import setup
 setup(name="FuXi",
-      version="1.0-rc-II",
+      version="1.0-rc-III",
       description="An OWL / N3-based in-memory, forward-chaining reasoner for RDF",
       author="Chime Ogbuji",
       author_email="chimezie@ogbuji.net",
@@ -15,6 +15,7 @@ setup(name="FuXi",
         "FuXi.DLP",
         "FuXi.Horn",
         "FuXi.Syntax",
+        "FuXi.SPARQL",
       ],
       install_requires = ['rdflib<3a',],#'telescope'],
       license = "BSD",
