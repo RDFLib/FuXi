@@ -658,8 +658,7 @@ def SipStrategy(query,
         [AlphaNode(r.toRDFTuple()).alphaNetworkHash(True,
                                                     skolemTerms=bindings.values()) 
             for r in processedRules
-                if AdornLiteral(goalRDFStatement,
-                                skolemTerms=bindings.values()).adornment == \
+                if AdornLiteral(goalRDFStatement).adornment == \
                    r.adornment]:
         if debug:
             print >> sys.stderr, "%sGoal already processed..."%\
@@ -797,8 +796,7 @@ def SipStrategy(query,
                                factGraph, 
                                derivedPreds,
                                processedRules.union([
-                                 AdornLiteral(query,
-                                              skolemTerms=bindings.values())])), 
+                                 AdornLiteral(query)])),
                               step=step,
                               debug = debug):
                     if rt:
