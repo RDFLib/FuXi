@@ -412,7 +412,9 @@ def main():
                     strictCheck=nameMap[options.strictness],
                     defaultPredicates=(defaultBasePreds,
                                        defaultDerivedPreds))
-            assert factGraph.adornedProgram,goals
+            if not factGraph.adornedProgram:
+                import warnings
+                warnings.warn("Unable to solve goal via ruleset")
             sipCollection=PrepareSipCollection(factGraph.adornedProgram)
             print >>sys.stderr,"Derived predicates (top-down)", [factGraph.qname(term) 
                                                  for term in topDownDerivedPreds]
@@ -500,7 +502,6 @@ def main():
                                            100-(float(magicRuleNo)/float(len(list(ruleSet))))*100,
                                            len(list(ruleSet)),
                                            magicRuleNo)
-            assert factGraph.adornedProgram
             print >>sys.stderr,"Derived predicates (bottom-up)", [factGraph.qname(term) 
                                                  for term in bottomUpDerivedPreds]            
             if options.output == 'rif':

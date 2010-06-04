@@ -671,9 +671,12 @@ def SipStrategy(query,
             ns = None
         adornedProgram = factGraph.adornedProgram    
         queryPred = GetOp(queryLiteral)
-        #For every rule head matching the query, we invoke the rule, 
-        #thus determining an adornment, and selecting a sip to follow
-        rules = sipCollection.headToRule.get(queryPred,set())
+        if sipCollection is None:
+            rules = []
+        else:
+            #For every rule head matching the query, we invoke the rule, 
+            #thus determining an adornment, and selecting a sip to follow            
+            rules = sipCollection.headToRule.get(queryPred,set())
 
         #maintained list of rules that haven't been processed before and
         #match the query

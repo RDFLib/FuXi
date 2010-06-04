@@ -256,8 +256,9 @@ def manchesterSyntax(thing,store,boolean=None,transientList=False):
             print list(store.objects(subject=thing,predicate=RDF.type))
             raise
             return '[]'#+thing._id.encode('utf-8')+'</em>'            
-        if (thing,RDF.type,OWL_NS.Class) not in store:
-            return qname.encode('utf-8')
+        label=first(Class(thing,graph=store).label)
+        if label:
+            return label.encode('utf-8')
         else:
             return qname.encode('utf-8')
 
@@ -612,7 +613,7 @@ def CastClass(c,graph=None):
                         kwArgs['onProperty'] = o
                     else:
                         if p not in Restriction.restrictionKinds:
-                            raise MalformedClass("Malformed restriction!, unknown property: %s"%p)
+                            continue
                         kwArgs[str(p.split(OWL_NS)[-1])] = o
             if not set([str(i.split(OWL_NS)[-1]) for i in Restriction.restrictionKinds]).intersection(kwArgs):
                 raise MalformedClass("Malformed owl:Restriction")
@@ -727,7 +728,7 @@ class Class(AnnotatibleTerms):
         return hash(self.identifier)
 
     def __eq__(self, other):
-        assert isinstance(other,Class)
+        assert isinstance(other,Class),repr(other)
         return self.identifier == other.identifier
     
     def __iadd__(self, other):
