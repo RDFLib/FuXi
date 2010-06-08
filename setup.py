@@ -18,7 +18,7 @@ setup(name="FuXi",
         "FuXi.SPARQL",
       ],
       install_requires = ['rdflib<3a',],#'telescope'],
-      license = "BSD",
+      license = "Apache",
       keywords = "python logic owl rdf dlp n3 rule reasoner",
       url = "http://code.google.com/p/python-dlp/wiki/FuXi",
       entry_points = {
