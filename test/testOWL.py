@@ -17,7 +17,7 @@ from FuXi.Rete.TopDown import PrepareSipCollection, SipStrategy, RDFTuplesToSPAR
 from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
 from rdflib.Namespace import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,URIRef
-from rdflib.OWL import FunctionalProperty
+#from rdflib.OWL import FunctionalProperty -- invalid / unused import deleted
 from rdflib.store import Store
 from cStringIO import StringIO
 from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
