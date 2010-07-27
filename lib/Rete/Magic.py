@@ -25,7 +25,7 @@ from rdflib.Collection import Collection
 from rdflib.Graph import Graph, ReadOnlyGraphAggregate
 from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
 from rdflib.sparql.Algebra import RenderSPARQLAlgebra
-from rdflib.sparql.bison import Parse
+from rdflib.sparql.parser import parse
 from rdflib.util import first
 from SidewaysInformationPassing import *
 
@@ -188,7 +188,7 @@ def NormalizeGoals(goals):
     elif isinstance(goals,tuple):
         yield sparqlQuery,{}
     else:
-        query=RenderSPARQLAlgebra(Parse(goals))
+        query=RenderSPARQLAlgebra(parse(goals))
         for pattern in query.patterns:
             yield pattern[:3],query.prolog.prefixBindings
     
@@ -462,7 +462,7 @@ def AdornLiteral(rdfTuple,newNss=None,naf = False):
     so indicated by the adornment.    
     
     >>> EX=Namespace('http://doi.acm.org/10.1145/6012.15399#')
-    >>> query=RenderSPARQLAlgebra(Parse(NON_LINEAR_MS_QUERY))
+    >>> query=RenderSPARQLAlgebra(parse(NON_LINEAR_MS_QUERY))
     >>> literal=query.patterns[0][:3]
     >>> literal
     (rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#john'), rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#sg'), ?X)
@@ -723,6 +723,7 @@ def IdentifyDerivedPredicates(ddlMetaGraph,tBox,ruleset=None):
     See: http://code.google.com/p/fuxi/wiki/DataDescriptionLanguage#
     """
     dPreds = set()
+    basePreds = set()
     DDL = Namespace('http://code.google.com/p/fuxi/wiki/DataDescriptionLanguage#')
     
     if ruleset:
@@ -733,24 +734,46 @@ def IdentifyDerivedPredicates(ddlMetaGraph,tBox,ruleset=None):
                                           object=DDL.DerivedClassList):
         dPreds.update(Collection(ddlMetaGraph,derivedClassList))
     derivedPropPrefixes = []
+    basePropPrefixes    = []
     for derivedPropPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
                                                object=DDL.DerivedPropertyPrefix):
         derivedPropPrefixes.extend(Collection(ddlMetaGraph,derivedPropPrefixList))
+    for basePropPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                               object=DDL.BasePropertyPrefix):
+        basePropPrefixes.extend(Collection(ddlMetaGraph,basePropPrefixList))
+        
     for prop in tBox.query(OWL_PROPERTIES_QUERY):
         if first(itertools.ifilter(lambda prefix:prop.startswith(prefix),
                                    derivedPropPrefixes)) and \
                        (prop,RDF.type,OWL_NS.AnnotationProperty) not in tBox: 
             dPreds.add(prop)
+        if first(itertools.ifilter(lambda prefix:prop.startswith(prefix),
+                                   basePropPrefixes)) and \
+                       (prop,RDF.type,OWL_NS.AnnotationProperty) not in tBox and \
+                       prop not in dPreds: 
+            basePreds.add(prop)
+            
     derivedClassPrefixes = []
     for derivedClsPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
                                               object=DDL.DerivedClassPrefix):
         derivedClassPrefixes.extend(Collection(ddlMetaGraph,
                                                derivedClsPrefixList))
+    baseClassPrefixes = []
+    for baseClsPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                             object=DDL.BaseClassPrefix):
+       baseClassPrefixes.extend(Collection(ddlMetaGraph,
+                                           baseClsPrefixList))
     for cls in tBox.subjects(predicate=RDF.type,
                              object=OWL_NS.Class):
         if first(itertools.ifilter(lambda prefix:cls.startswith(prefix),
-                                   derivedClassPrefixes)): 
-            dPreds.add(cls)
+                                   baseClassPrefixes)):
+            if cls not in dPreds: 
+                basePreds.add(cls)
+        if first(itertools.ifilter(lambda prefix:cls.startswith(prefix),
+                                   derivedClassPrefixes)):
+            if cls not in basePreds: 
+                dPreds.add(cls)
+            
     nsBindings = dict([(prefix,nsUri) 
                        for prefix, nsUri in tBox.namespaces()
                         if prefix])            
@@ -760,10 +783,12 @@ def IdentifyDerivedPredicates(ddlMetaGraph,tBox,ruleset=None):
         for cls in tBox.query(query,
                               initNs=nsBindings):
             dPreds.add(cls)
+            
     for baseClsList in ddlMetaGraph.subjects(predicate=RDF.type,
                                              object=DDL.BaseClassList):
-        dPreds.difference_update(Collection(ddlMetaGraph,
-                                            baseClsList))
+        basePreds.update(Collection(ddlMetaGraph,baseClsList))
+                                             
+    dPreds.difference_update(basePreds)
     return dPreds
 def test():
     unittest.main()    

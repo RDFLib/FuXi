@@ -22,6 +22,8 @@ from rdflib.store import Store
 from cStringIO import StringIO
 from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
 from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib.sparql.parser import parse as ParseSPARQL
+from rdflib.sparql.Algebra import ReduceGraphPattern
 import unittest, time, warnings,sys
 
 TEMPLATES = Namespace('http://code.google.com/p/fuxi/wiki/BuiltinSPARQLTemplates#')
@@ -339,13 +341,6 @@ def main():
 
     magicSeeds=[]
     if options.why:
-        try:
-            from rdflib.sparql.parser import parse as ParseSPARQL
-            from rdflib.sparql.Algebra import ReduceGraphPattern
-        except:
-            from rdflib.sparql.bison.Processor import Parse as ParseSPARQL
-            from rdflib.sparql.Algebra import ReduceGraphPattern
-        
         builtinTemplateGraph = Graph()
         if options.builtinTemplates:
             builtinTemplateGraph = Graph().parse(options.builtinTemplates,

@@ -23,7 +23,7 @@ from cStringIO import StringIO
 from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
 from rdflib.syntax.NamespaceManager import NamespaceManager
 from glob import glob
-from rdflib.sparql.bison import Parse
+from rdflib.sparql.parser import parse
 import unittest, os, time, itertools
 
 RDFLIB_CONNECTION=''
@@ -77,7 +77,7 @@ WHERE {
     rtest:conclusionDocument ?conclusion 
   ]
 }"""
-PARSED_MANIFEST_QUERY = Parse(MANIFEST_QUERY)
+PARSED_MANIFEST_QUERY = parse(MANIFEST_QUERY)
 
 Features2Skip = [
     URIRef('http://www.w3.org/2002/07/owl#sameClassAs'),
