@@ -51,7 +51,7 @@ of the ex:CreativeWork class via the '+=' operator
 Class: ex:Opera SubClassOf: ex:MusicalWork
 >>> b = Class(exNs.CreativeWork,graph=g)
 >>> b += a
->>> print list(a.subClassOf)
+>>> print sorted(a.subClassOf,key=lambda c:c.identifier)
 [Class: ex:CreativeWork , Class: ex:MusicalWork ]
 
 And we can then remove it from the extension as well
@@ -769,9 +769,9 @@ class Class(AnnotatibleTerms):
         Chaining 3 intersections
                 
         >>> female      = Class(exNs.Female,graph=g)
-        >>> male        = Class(exNs.Human,graph=g)
+        >>> human        = Class(exNs.Human,graph=g)
         >>> youngPerson = Class(exNs.YoungPerson,graph=g)
-        >>> youngWoman = female & male & youngPerson
+        >>> youngWoman = female & human & youngPerson
         >>> youngWoman
         ex:YoungPerson that ( ex:Female and ex:Human )
         >>> isinstance(youngWoman,BooleanClass)
@@ -1019,15 +1019,9 @@ class EnumeratedClass(OWLRDFListProxy,Class):
     ...                                       exNs.ejike])
     >>> ogbujiBros
     { ex:chime ex:uche ex:ejike }
-    >>> print g.serialize(format='n3')
-    <BLANKLINE>
-    @prefix ex: <http://example.com/>.
-    @prefix owl: <http://www.w3.org/2002/07/owl#>.
-    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-    <BLANKLINE>
-     ex:ogbujicBros a owl:Class;
-         owl:oneOf ( ex:chime ex:uche ex:ejike ). 
-        
+    >>> col = Collection(g,first(g.objects(predicate=OWL_NS.oneOf,subject=ogbujiBros.identifier)))
+    >>> [g.qname(item) for item in col]
+    [u'ex:chime', u'ex:uche', u'ex:ejike']
     """
     _operator = OWL_NS.oneOf
     def isPrimitive(self):
@@ -1251,7 +1245,25 @@ class Restriction(Class):
             self.graph.remove((self.identifier,RDF.type,OWL_NS.Class))
 
     def serialize(self,graph):
-        Property(self.onProperty,graph=self.graph).serialize(graph)
+        """
+        >>> g1 = Graph()
+        >>> g2 = Graph()
+        >>> EX = Namespace("http://example.com/")
+        >>> namespace_manager = NamespaceManager(g1)
+        >>> namespace_manager.bind('ex', EX, override=False)
+        >>> namespace_manager = NamespaceManager(g2)
+        >>> namespace_manager.bind('ex', EX, override=False)
+        >>> Individual.factoryGraph = g1
+        >>> prop = Property(EX.someProp,baseType=OWL_NS.DatatypeProperty)
+        >>> restr1 = (Property(EX.someProp,baseType=OWL_NS.DatatypeProperty))|some|(Class(EX.Foo))
+        >>> restr1
+        ( ex:someProp some ex:Foo )
+        >>> restr1.serialize(g2)
+        >>> Individual.factoryGraph = g2
+        >>> list(Property(EX.someProp,baseType=None).type)
+        [rdflib.URIRef('http://www.w3.org/2002/07/owl#DatatypeProperty')]
+        """
+        Property(self.onProperty,graph=self.graph,baseType=None).serialize(graph)
         for s,p,o in self.graph.triples((self.identifier,None,None)):
             graph.add((s,p,o))
             if p in [OWL_NS.allValuesFrom,OWL_NS.someValuesFrom]:
@@ -1452,9 +1464,13 @@ class Property(AnnotatibleTerms):
                       otherType=None,equivalentProperty=None,comment=None):
         super(Property, self).__init__(identifier,graph)
         assert not isinstance(self.identifier,BNode)
-        if (self.identifier,RDF.type,baseType) not in self.graph:
-            self.graph.add((self.identifier,RDF.type,baseType))
-        self._baseType=baseType
+        if baseType is None:
+            #None give, determine via introspection
+            self._baseType = first(Individual(self.identifier,graph=self.graph).type)
+        else:
+            if (self.identifier,RDF.type,baseType) not in self.graph:
+                self.graph.add((self.identifier,RDF.type,baseType))
+            self._baseType=baseType
         self.subPropertyOf = subPropertyOf
         self.inverseOf     = inverseOf
         self.domain        = domain
@@ -1534,7 +1550,7 @@ class Property(AnnotatibleTerms):
                     
     def _get_subPropertyOf(self):
         for anc in self.graph.objects(subject=self.identifier,predicate=RDFS.subPropertyOf):
-            yield Property(anc,graph=self.graph)
+            yield Property(anc,graph=self.graph,baseType=None)
     def _set_subPropertyOf(self, other):
         if not other:
             return        
@@ -1549,7 +1565,7 @@ class Property(AnnotatibleTerms):
 
     def _get_inverseOf(self):
         for anc in self.graph.objects(subject=self.identifier,predicate=OWL_NS.inverseOf):
-            yield Property(anc,graph=self.graph)
+            yield Property(anc,graph=self.graph,baseType=None)
     def _set_inverseOf(self, other):
         if not other:
             return        

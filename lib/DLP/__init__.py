@@ -669,6 +669,22 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
                     Uniterm(s,[y,z],newNss=owlGraph.namespaces())])
         head = Uniterm(s,[x,z],newNss=owlGraph.namespaces())
         yield Clause(body,head)
+    for s,p,o in owlGraph.triples((None,RDFS.subPropertyOf,None)):
+        # T(rdfs:subPropertyOf(P,Q))     -> Q(x,y) :- P(x,y)        
+        x = Variable("X")
+        y = Variable("Y")
+        body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
+        head = Uniterm(o,[x,y],newNss=owlGraph.namespaces())
+        yield Clause(body,head)
+    for s,p,o in owlGraph.triples((None,OWL_NS.equivalentProperty,None)):
+        # T(owl:equivalentProperty(P,Q)) -> { Q(x,y) :- P(x,y)
+        #                                     P(x,y) :- Q(x,y) }
+        x = Variable("X")
+        y = Variable("Y")
+        body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
+        head = Uniterm(o,[x,y],newNss=owlGraph.namespaces())
+        yield Clause(body,head)
+        yield Clause(head,body)
 
     #Contribution (Symmetric DL roles)
     for s,p,o in owlGraph.triples((None,RDF.type,OWL_NS.SymmetricProperty)):
