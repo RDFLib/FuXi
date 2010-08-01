@@ -1,0 +1,6 @@
+@prefix ex: <http://example.org/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+
+ex:foo ex:x "xxxx";
+       owl:sameAs ex:bar .
+ex:bar ex:y "yyyy" .
