@@ -27,7 +27,7 @@ from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
 from rdflib.sparql.Algebra import RenderSPARQLAlgebra
 from rdflib.sparql.parser import parse
 from rdflib.util import first
-from SidewaysInformationPassing import *
+from FuXi.Rete.SidewaysInformationPassing import *
 
 EX_ULMAN = Namespace('http://doi.acm.org/10.1145/6012.15399#')
 LOG_NS   = Namespace("http://www.w3.org/2000/10/swap/log#")
@@ -69,8 +69,10 @@ def SetupDDLAndAdornProgram(factGraph,
             derivedPreds=list(_derivedPreds)
         else:
             derivedPreds.extend(_derivedPreds)
-    return AdornProgram(factGraph,rules,GOALS,derivedPreds)
-    
+    adornedProgram = AdornProgram(factGraph,rules,GOALS,derivedPreds)
+    if factGraph is not None:
+        factGraph.adornedProgram = adornedProgram    
+    return adornedProgram
 
 def MagicSetTransformation(factGraph,
                            rules,
@@ -94,8 +96,6 @@ def MagicSetTransformation(factGraph,
                                    derivedPreds=derivedPreds,
                                    strictCheck=strictCheck,
                                    defaultPredicates=defaultPredicates)
-    if factGraph:
-        factGraph.adornedProgram = adornedProgram
     newRules=[]
     for rule in adornedProgram: 
         magicPositions={}
@@ -325,9 +325,9 @@ def AdornProgram(factGraph,rs,goals,derivedPreds=None):
             for rule in rs:
                 for clause in LloydToporTransformation(rule.formula):
                     head=isinstance(clause.head,Exists) and clause.head.formula or clause.head
-                    _a=GetOp(head)
-                    _b=GetOp(term)
-                    if isinstance(head,Uniterm) and GetOp(head) == GetOp(term):
+                    headPredicate = GetOp(head)
+                    if isinstance(head,Uniterm) and (GetOp(head) == GetOp(term) or 
+                                                     isinstance(headPredicate,Variable)):
                         #for each rule that has p in its head, we generate an adorned version for the rule
                         adornedRule=AdornRule(derivedPreds,clause,term)
                         adornedProgram.add(adornedRule)

@@ -83,9 +83,6 @@ non_DHL_OWL_Semantics=\
 {?P owl:inverseOf ?Q. ?P a owl:InverseFunctionalProperty} => {?Q a owl:FunctionalProperty}.
 {?P owl:inverseOf ?Q. ?P a owl:FunctionalProperty} => {?Q a owl:InverseFunctionalProperty}.
 
-{?T1 = ?T2. ?S = ?T1} => {?S = ?T2}.
-{?T1 ?P ?O. ?T1 = ?T2.} => {?T2 ?P ?O}.
-
 #For OWL/InverseFunctionalProperty/premises004
 {?C owl:oneOf ?L. ?L rdf:first ?X; rdf:rest rdf:nil. ?P rdfs:domain ?C} => {?P a owl:InverseFunctionalProperty}.
 #For OWL/InverseFunctionalProperty/premises004

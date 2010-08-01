@@ -21,7 +21,7 @@ from rdflib.Graph import ReadOnlyGraphAggregate
 from rdflib import URIRef, RDF, Namespace, Variable
 from rdflib.util import first
 from rdflib.syntax.xml_names import split_uri
-from SidewaysInformationPassing import *
+from FuXi.Rete.SidewaysInformationPassing import *
 
 def PrepareSipCollection(adornedRuleset):
     """
@@ -33,9 +33,17 @@ def PrepareSipCollection(adornedRuleset):
     """
     headToRule = {}
     graphs = []
+    secondOrderRules = set()
     for rule in adornedRuleset:
-        headToRule.setdefault(GetOp(rule.formula.head),set()).add(rule)
+        ruleHead = GetOp(rule.formula.head)
+        if isinstance(ruleHead,Variable):
+            #We store second order rules (i.e., rules whose head is a 
+            #predicate occurrence whose predicate symbol is a variable) aside
+            secondOrderRules.add(rule)
+        headToRule.setdefault(ruleHead,set()).add(rule)
         graphs.append(rule.sip)
+    #Second order rules are mapped from a None key (in order to indicate they are wildcards)
+    headToRule[None]=secondOrderRules
     if not graphs:
         return
     graph = ReadOnlyGraphAggregate(graphs)
@@ -677,6 +685,10 @@ def SipStrategy(query,
             #For every rule head matching the query, we invoke the rule, 
             #thus determining an adornment, and selecting a sip to follow            
             rules = sipCollection.headToRule.get(queryPred,set())
+            if None in sipCollection.headToRule:
+                #If there are second order rules, we add them
+                #since they are a 'wildcard'
+                rules.update(sipCollection.headToRule[None])
 
         #maintained list of rules that haven't been processed before and
         #match the query
