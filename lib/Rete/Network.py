@@ -442,7 +442,6 @@ class ReteNetwork:
                 node.memories[RIGHT_MEMORY].reset()
         self.justifications = {}
         self.proofTracers = {}
-        self.inferredFacts = newinferredFacts and newinferredFacts or Graph()
         self.inferredFacts = newinferredFacts if newinferredFacts is not None else Graph()
         self.workingMemory = set()
         self._resetinstanciationStats()        
