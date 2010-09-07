@@ -7,6 +7,9 @@ from FuXi.Rete.BetaNode import PartialInstanciation, LEFT_MEMORY, RIGHT_MEMORY
 from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore
 from FuXi.Rete.Util import renderNetwork,generateTokenSet, xcombine
 from FuXi.DLP.DLNormalization import NormalFormReduction
+from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
+from FuXi.LP import IdentifyHybridPredicates
+from FuXi.SPARQL.BackwardChainingStore import * 
 from FuXi.DLP import MapDLPtoNetwork, DisjunctiveNormalForm
 from FuXi.Horn import *
 from FuXi.Horn.HornRules import HornFromN3, Ruleset
@@ -137,9 +140,9 @@ def main():
       ' both derived and base (loose), if they are, mark as derived (defaultDerived) '+
       'or as base (defaultBase) predicates, else raise an exception (harsh)')    
     op.add_option('--method',
-                  default='bottomUp',
-                  metavar='evaluation method',
-                  choices = ['bottomUp', 'topDown','both'],
+                  default='naive',
+                  metavar='reasoning algorithm',
+                  choices = ['gms','sld','bfp','naive'],
       help = 'Used with --why to specify how to evaluate answers for query.  '+
       'Either both (default), top-down alone, or bottom-up alone')        
     op.add_option('--firstAnswer',
@@ -311,7 +314,7 @@ def main():
                 print Property(URIRef(mapping[pref]+uri))
         else:
             for p in AllProperties(cGraph):
-                print p.identifier
+                print p.identifier, first(p.label)
                 print repr(p)
             for c in AllClasses(cGraph):
                 if options.normalize:
@@ -372,8 +375,6 @@ def main():
                                         query.prolog).patterns])
         dPreds=[]# p for s,p,o in goals ]
         magicRuleNo = 0
-        if options.output == 'rif' and options.method == 'bottomUp':
-            print >>sys.stderr,"Resulting Magic program: "
         bottomUpDerivedPreds = []
         topDownDerivedPreds  = []
         defaultBasePreds     = []
@@ -390,91 +391,12 @@ def main():
             pref,uri=idb.split(':')
             defaultDerivedPreds.append(URIRef(mapping[pref]+uri))
         defaultDerivedPreds.extend(set([p == RDF.type and o or p for s,p,o in goals]))
-        if options.method in ['both','topDown']:
-            _rules = options.negation and set(ruleSet).union(network.negRules) or \
-                     ruleSet 
-            ruleSet = set(DisjunctiveNormalForm(_rules,
-                                                safetyNameMap[options.safety],
-                                                network))
-            #Reset list of derived predicates
-            dPreds = []
-            factGraph.adornedProgram = \
-                SetupDDLAndAdornProgram(
-                    factGraph,
-                    ruleSet,
-                    goals,
-                    derivedPreds=topDownDerivedPreds,
-                    strictCheck=nameMap[options.strictness],
-                    defaultPredicates=(defaultBasePreds,
-                                       defaultDerivedPreds))
-            if not factGraph.adornedProgram:
-                import warnings
-                warnings.warn("Unable to solve goal via ruleset")
-            sipCollection=PrepareSipCollection(factGraph.adornedProgram)
-            print >>sys.stderr,"Derived predicates (top-down)", [factGraph.qname(term) 
-                                                 for term in topDownDerivedPreds]
-            if options.output == 'rif':
-                print >>sys.stderr,"Rules used for top-down evaluation"
-                for clause in factGraph.adornedProgram:
-                    print >>sys.stderr,clause.formula                    
-            if options.debug and sipCollection:
-                print >>sys.stderr,"Sideways Information Passing (sip) graph: "
-                for sip in SIPRepresentation(sipCollection):
-                    print >>sys.stderr,sip
-            solutions = []
+        
+        if options.method == 'gms':
             for goal in goals:
                 goalSeed=AdornLiteral(goal).makeMagicPred()
                 print >>sys.stderr,"Magic seed fact (used in bottom-up evaluation)",goalSeed
                 magicSeeds.append(goalSeed.toRDFTuple())
-                start = time.time()
-                if options.method in ['topDown','both']:
-                    for derivedAnswer in \
-                            SipStrategy(
-                                       goal,
-                                       sipCollection,
-                                       factGraph,
-                                       topDownDerivedPreds,
-                                       network = network,
-                                       debug=options.debug):
-                        if derivedAnswer:
-                            ans,ns = derivedAnswer
-                            solutions.append((ans,ns))
-                            sTime = time.time() - start
-                            goalRepr = RDFTuplesToSPARQL([AdornLiteral(goal)], factGraph)
-                            if sTime > 1:
-                                sTimeStr = "%s seconds"%sTime
-                            else:
-                                sTime = sTime * 1000
-                                sTimeStr = "%s milli seconds"%sTime                    
-                            print >>sys.stderr,\
-                "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(ans,sTimeStr)
-                            #print >>sys.stderr,ans
-                            if options.firstAnswer:
-                                break
-                            else:
-                                start = time.time()
-                    if solutions:
-                        builder=ProofBuilder(network)
-                        if 'pml' in options.output:
-                            pGraph = Graph()
-                            CommonNSBindings(pGraph,network.nsMap)
-                        for ans,ns in solutions:
-                            if 'pml' in options.output:
-                                ns.serialize(builder,pGraph) 
-                            elif 'proof-graph' in options.output:    
-                                builder.extractGoalsFromNode(ns)
-                        if 'pml' in options.output:                
-                            print pGraph.serialize(format='n3')
-                        elif 'proof-graph' in options.output:
-                            builder.renderProof(ns,nsMap = network.nsMap).write_jpg('owl-proof.jpg')
-                            print open('owl-proof.jpg').read()
-        else:
-            for goal in goals:
-                goalSeed=AdornLiteral(goal).makeMagicPred()
-                print >>sys.stderr,"Magic seed fact (used in bottom-up evaluation)",goalSeed
-                magicSeeds.append(goalSeed.toRDFTuple())
-                
-        if options.method in ['both','bottomUp']:
             if noMagic:
                 print >>sys.stderr,"Predicates whose magic sets will not be calculated"
                 for p in noMagic:
@@ -489,16 +411,22 @@ def main():
                                                           defaultDerivedPreds),
                                        noMagic=noMagic):
                 magicRuleNo+=1
-#                if options.output == 'rif' and options.method == 'bottomUp':
-#                    print >>sys.stderr, rule
                 network.buildNetworkFromClause(rule)
             if len(list(ruleSet)):
                 print >>sys.stderr,"reduction in size of program: %s (%s -> %s clauses)"%(
                                            100-(float(magicRuleNo)/float(len(list(ruleSet))))*100,
                                            len(list(ruleSet)),
                                            magicRuleNo)
-            print >>sys.stderr,"Derived predicates (bottom-up)", [factGraph.qname(term) 
-                                                 for term in bottomUpDerivedPreds]            
+            start = time.time()
+            network.feedFactsToAdd(generateTokenSet(magicSeeds))           
+            sTime = time.time() - start
+            if sTime > 1:
+                sTimeStr = "%s seconds"%sTime
+            else:
+                sTime = sTime * 1000
+                sTimeStr = "%s milli seconds"%sTime
+            print >>sys.stderr, "Time to calculate closure on working memory: ",sTimeStr                                 
+                                                 
             if options.output == 'rif':
                 print >>sys.stderr,"Rules used for bottom-up evaluation"
                 if network.rules:
@@ -506,25 +434,71 @@ def main():
                         print >>sys.stderr,clause                    
                 else:
                     for clause in factGraph.adornedProgram:
-                        print >>sys.stderr,clause                    
-                
+                        print >>sys.stderr,clause 
+            if options.output == 'conflict':
+                network.reportConflictSet()
+            
+        elif options.method == 'niave':
+            start = time.time()                  
+            network.feedFactsToAdd(workingMemory)
+            sTime = time.time() - start
+            if sTime > 1:
+                sTimeStr = "%s seconds"%sTime
+            else:
+                sTime = sTime * 1000
+                sTimeStr = "%s milli seconds"%sTime
+            print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
+            print >>sys.stderr, network
+            if options.output == 'conflict':
+                network.reportConflictSet()            
+            
+        elif options.method in ['sld','bfp']:
+            reasoningAlg = TOP_DOWN_METHOD if options.method == 'sld' \
+                           else BFP_METHOD
+            topDownStore=TopDownSPARQLEntailingStore(
+                            factGraph.store,
+                            factGraph,
+                            idb=ruleSet,
+                            DEBUG=options.debug,
+                            nsBindings=network.nsMap,
+                            decisionProcedure = reasoningAlg,
+                            identifyHybridPredicates = options.method == 'bfp')
+            targetGraph = Graph(topDownStore)
+            for pref,nsUri in network.nsMap.items():
+                targetGraph.bind(pref,nsUri)      
+            start = time.time()                  
+            queryLiteral = EDBQuery([BuildUnitermFromTuple(goal) for goal in goals],
+                                    targetGraph)
+            query = queryLiteral.asSPARQL()
+            print >>sys.stderr, "Goal to solve ", query
+            sTime = time.time() - start
+            result = targetGraph.query(query,initNs=network.nsMap)
+            if result.askAnswer:
+                sTime = time.time() - start
+                if sTime > 1:
+                    sTimeStr = "%s seconds"%sTime
+                else:
+                    sTime = sTime * 1000
+                    sTimeStr = "%s milli seconds"%sTime
+                print >>sys.stderr,\
+    "Time to reach answer ground goal answer of %s: %s"%(result.askAnswer[0],sTimeStr)
+            else:
+                for rt in targetGraph.query(query,initNs=network.nsMap):
+                    sTime = time.time() - start
+                    if sTime > 1:
+                        sTimeStr = "%s seconds"%sTime
+                    else:
+                        sTime = sTime * 1000
+                        sTimeStr = "%s milli seconds"%sTime
+                    if options.firstAnswer:
+                        break
+                    print >>sys.stderr,\
+        "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(rt,sTimeStr)
+                                
     for fileN in options.filter:
         for rule in HornFromN3(fileN):
             network.buildFilterNetworkFromClause(rule)
 
-    start = time.time()
-    if options.why and options.method in ['both','bottomUp']:
-       network.feedFactsToAdd(generateTokenSet(magicSeeds))
-    if not options.why or options.method in ['both','bottomUp']: 
-        network.feedFactsToAdd(workingMemory)
-        sTime = time.time() - start
-        if sTime > 1:
-            sTimeStr = "%s seconds"%sTime
-        else:
-            sTime = sTime * 1000
-            sTimeStr = "%s milli seconds"%sTime
-        print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
-        print >>sys.stderr, network
     if options.negation and network.negRules and options.method in ['both',
                                                                     'bottomUp']:
         now=time.time()      
@@ -538,25 +512,16 @@ def main():
         network.inferredFacts = network.filteredFacts
 
 
-    if not options.why or options.method in ['both','bottomUp']:
-        if options.output == 'conflict':
-            network.reportConflictSet()
-        elif options.output not in ['rif',
-                                    'rif-xml',
-                                    'man-owl',
-                                    'pml',
-                                    'proof-graph']:
-            if options.closure:
-                cGraph = network.closureGraph(factGraph)
-                cGraph.namespace_manager = namespace_manager
-                print cGraph.serialize(destination=None, 
-                                       format=options.output, 
-                                       base=None)
-            elif options.output:
-                print network.inferredFacts.serialize(destination=None, 
-                                                      format=options.output, 
-                                                      base=None)
-            
+    if options.closure:
+        cGraph = network.closureGraph(factGraph)
+        cGraph.namespace_manager = namespace_manager
+        print cGraph.serialize(destination=None, 
+                               format=options.output, 
+                               base=None)
+    elif options.output:
+        print network.inferredFacts.serialize(destination=None, 
+                                              format=options.output, 
+                                              base=None)            
 if __name__ == '__main__':
     from hotshot import Profile, stats
 #    import pycallgraph

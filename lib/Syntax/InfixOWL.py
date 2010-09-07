@@ -228,6 +228,9 @@ def manchesterSyntax(thing,store,boolean=None,transientList=False):
         prop = list(store.objects(subject=thing, predicate=OWL_NS.onProperty))[0]
         prefix,uri,localName = store.compute_qname(prop)
         propString = u':'.join([prefix,localName])
+        label=first(store.objects(subject=prop,predicate=RDFS.label))
+        if label:
+            propString = "'%s'"%label
         for onlyClass in store.objects(subject=thing, predicate=OWL_NS.allValuesFrom):
             return '( %s only %s )'%(propString,manchesterSyntax(onlyClass,store))
         for val in store.objects(subject=thing, predicate=OWL_NS.hasValue):
@@ -498,7 +501,8 @@ def AllProperties(graph):
                                OWL_NS.InverseFunctionalProperty,
                                OWL_NS.TransitiveProperty,
                                OWL_NS.DatatypeProperty,
-                               OWL_NS.ObjectProperty])):
+                               OWL_NS.ObjectProperty,
+                               OWL_NS.AnnotationProperty])):
         if o in [OWL_NS.Symmetric,
                  OWL_NS.InverseFunctionalProperty,
                  OWL_NS.TransitiveProperty,

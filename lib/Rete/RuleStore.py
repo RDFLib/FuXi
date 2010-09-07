@@ -1,6 +1,6 @@
 from __future__ import generators
 import sys
-from rdflib import BNode, RDF, Namespace
+from rdflib import BNode, RDF, Namespace, Variable
 from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
 from rdflib.Literal import Literal
 from pprint import pprint
@@ -26,10 +26,21 @@ class N3Builtin(object):
         self.result = result
         self.func = func
         self.variables = [arg for arg in [self.argument,self.result] if isinstance(arg,Variable)]
+
+    def isSecondOrder(self):
+        return False
         
     def ground(self,varMapping):
+        appliedKeys = set([self.argument,self.result]).intersection(varMapping.keys())
         self.argument = varMapping.get(self.argument,self.argument)
         self.result   = varMapping.get(self.result,self.result)
+        return appliedKeys
+        
+    def isGround(self):
+        for term in [self.result,self.argument]:
+            if isinstance(term,Variable):
+                return False
+        return True
 
     def renameVariables(self,varMapping):
         if varMapping:

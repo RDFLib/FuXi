@@ -8,6 +8,7 @@ The language of positive RIF conditions determines what can appear as a body (th
 """
 import itertools
 from rdflib import Variable, BNode, URIRef, Literal, Namespace,RDF,RDFS
+from rdflib.Literal import _XSD_NS
 from rdflib.util import first
 from rdflib.Collection import Collection
 from rdflib.Graph import ConjunctiveGraph,QuotedGraph,ReadOnlyGraphAggregate, Graph
@@ -287,7 +288,7 @@ class Uniterm(QNameManager,Atomic):
         self.arg = arg and arg or []
         QNameManager.__init__(self)
         if newNss is not None:
-            newNss = isinstance(newNss,dict) and newNss.items() or newNss
+            newNss = newNss.items() if isinstance(newNss,dict) else newNss
             for k,v in newNss:
                 self.nsMgr.bind(k,v)
         self._hash=hash(reduce(lambda x,y:str(x)+str(y),
@@ -334,6 +335,10 @@ class Uniterm(QNameManager,Atomic):
         else:
             self.arg[0]=varMapping.get(self.arg[0],self.arg[0])
             self.arg[1]=varMapping.get(self.arg[1],self.arg[1])
+        #Recalculate the hash after modification
+        self._hash=hash(reduce(lambda x,y:str(x)+str(y),
+            len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))
+            
             
     def _get_terms(self):
         """
@@ -385,10 +390,27 @@ class Uniterm(QNameManager,Atomic):
                 map[self.arg[1]] = otherLit.arg[1]
         return map
 
+    def applicableMapping(self,mapping):
+        """
+        Can the given mapping (presumably from variables to terms) be applied?
+        """
+        return bool(set(mapping).intersection([self.op]+self.arg))        
+
     def ground(self,varMapping):
+        appliedKeys = set([self.op]+self.arg).intersection(varMapping.keys())
         self.op    =varMapping.get(self.op,self.op)
         self.arg[0]=varMapping.get(self.arg[0],self.arg[0])
         self.arg[1]=varMapping.get(self.arg[1],self.arg[1])
+        #Recalculate the hash after modification
+        self._hash=hash(reduce(lambda x,y:str(x)+str(y),
+            len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))        
+        return appliedKeys
+            
+    def isGround(self):
+        for term in [self.op]+self.arg:
+            if isinstance(term,Variable):
+                return False
+        return True
                 
     def __hash__(self):
         return self._hash
@@ -423,19 +445,42 @@ class Uniterm(QNameManager,Atomic):
         try:
             rt = self.nsMgr.qname(val)
             if len(rt.split(':')[0])>1 and rt[0]=='_':
-                return ':'+rt.split(':')[-1]
+                return u':'+rt.split(':')[-1]
             else:
                 return rt
                 
         except:
+            for prefix,uri in self.nsMgr.namespaces():
+                if val.startswith(uri):
+                    return u'%s:%s'%(prefix,val.split(uri)[-1])
             return val
         
     def normalizeTerm(self,term):
         if isinstance(term,Literal):
-            return term.n3()
+            if term.datatype == _XSD_NS.integer:
+                return unicode(term)
+            else:
+                return term.n3()
         else:
             return isinstance(term,Variable) and term.n3() or \
                    self.collapseName(term)        
+   
+    def getArity(self):
+        return 1 if self.op == RDF.type else 2
+        
+    arity = property(getArity)
+   
+    def setOperator(self,newOp):
+        if self.op == RDF.type:
+            self.arg[-1] = newOp
+        else:
+            self.op = newOp
+        
+    def isSecondOrder(self):
+        if self.op == RDF.type:
+            return isinstance(self.arg[-1],Variable)
+        else:
+            return isinstance(self.op,Variable)
         
     def __repr__(self):
         negPrefix = self.naf and 'not ' or ''

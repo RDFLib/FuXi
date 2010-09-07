@@ -148,6 +148,11 @@ def GetOp(term):
     else:
         raise term        
         
+def GetVariables(term,secondOrder=False):
+    for v in GetArgs(term,secondOrder):
+        if isinstance(v,Variable):
+            yield v
+        
 def GetArgs(term,secondOrder=False):
     if isinstance(term,N3Builtin):
         return [term.argument,term.result]
@@ -216,9 +221,10 @@ def findFullSip((rt,vars),right):
                     yield sipOrder
                     
 class InvalidSIPException(Exception):
-    def __init__(self,msg): Exception.__init__(msg)                
+    def __init__(self,msg=None): 
+        super(InvalidSIPException, self).__init__(msg)
         
-def BuildNaturalSIP(clause,derivedPreds,adornedHead):
+def BuildNaturalSIP(clause,derivedPreds,adornedHead, ignoreUnboundDPreds = False):
     """
     Natural SIP:
     
@@ -250,15 +256,19 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead):
     def collectSip(left,right):
         if isinstance(left,list):
             vars=CollectSIPArcVars(left,right,phBoundVars)
+            if not vars and ignoreUnboundDPreds:
+                raise InvalidSIPException("No bound variables for %s"%right)            
             leftList=Collection(sipGraph,None)
             left=list(set(left))            
             [leftList.append(i) for i in [GetOp(ii) for ii in left]]
-            left.append(right)                        
+            left.append(right)   
             arc=SIPGraphArc(leftList.uri,getOccurrenceId(right,occurLookup),vars,sipGraph)
             return left
         else:
             left.isHead = True
             vars=CollectSIPArcVars(left,right,phBoundVars)
+            if not vars and ignoreUnboundDPreds:
+                raise InvalidSIPException("No bound variables for %s"%right)            
             ph=GetOp(left)
             q=getOccurrenceId(right,occurLookup)
             if boundHead:
@@ -266,26 +276,36 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead):
                 sipGraph.add((ph,RDF.type,MAGIC.BoundHeadPredicate))
                 rt=[left,right]
             else:
-                leftList=Collection(sipGraph,None)
-                leftList.append(ph)
-                arc=SIPGraphArc(leftList.uri,q,vars,sipGraph)
-                rt=[left,right]
+                rt=[right]
         return rt
     sipGraph=Graph()  
     if isinstance(clause.body,And):
-        if first(itertools.ifilter(lambda i:isinstance(i,Uniterm) and i.naf or False,
-                                   clause.body)):
-            #There are negative literals in body, ensure
-            #the given sip order puts negated literals at the end
-            bodyOrder=first(
-                    itertools.ifilter(ProperSipOrderWithNegation,
-                                      findFullSip(([clause.head],None), 
-                                                    clause.body)))
+        if ignoreUnboundDPreds:
+            foundSip = False
+            sips = findFullSip(([clause.head],None), clause.body)
+            while not foundSip:
+                sip = sips.next()
+                try:
+                    reduce(collectSip,
+                           iterCondition(And(sip)))
+                    foundSip = True
+                    bodyOrder = sip                           
+                except InvalidSIPException:
+                    foundSip = False
         else:
-            bodyOrder=first(findFullSip(([clause.head],None), clause.body))
-        assert bodyOrder,"Couldn't find a valid SIP for %s"%clause
-        reduce(collectSip,
-               iterCondition(And(bodyOrder)))
+            if first(itertools.ifilter(lambda i:isinstance(i,Uniterm) and i.naf or False,
+                                       clause.body)):
+                #There are negative literals in body, ensure
+                #the given sip order puts negated literals at the end
+                bodyOrder=first(
+                        itertools.ifilter(ProperSipOrderWithNegation,
+                                          findFullSip(([clause.head],None), 
+                                                        clause.body)))
+            else:
+                bodyOrder=first(findFullSip(([clause.head],None), clause.body))
+            assert bodyOrder,"Couldn't find a valid SIP for %s"%clause
+            reduce(collectSip,
+                   iterCondition(And(bodyOrder)))
         sipGraph.sipOrder = And(bodyOrder[1:])
         #assert validSip(sipGraph),sipGraph.serialize(format='n3')
     else:

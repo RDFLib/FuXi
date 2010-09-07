@@ -144,6 +144,13 @@ class Rule(object):
         self.formula = clause
         self.declare = declare and declare or []
         
+    def isSecondOrder(self):
+        secondOrder = [pred 
+            for pred in itertools.chain(iterCondition(self.formula.head),
+                                        iterCondition(self.formula.body))
+              if pred.isSecondOrder()]
+        return bool(secondOrder)
+        
     def isSafe(self):
         """
         A RIF-Core rule, r is safe if and only if

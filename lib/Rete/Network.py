@@ -141,6 +141,12 @@ def _mulPatternWithSubstitutions(tokens,consequent,termNode):
             else:                    
                 tripleVals.append(term)
         yield tuple(tripleVals),binding
+        
+class InferredGoal(Exception): 
+    def __init__(self, msg):
+        self.msg = msg
+    def __repr__(self):
+        return "Goal inferred!: %"%self.msg         
 
 class ReteNetwork:
     """
@@ -340,20 +346,30 @@ class ReteNetwork:
                                                 safety = safety)]
         if ignoreNegativeStratus:
             rules,negRules=rt
-            rules = [r for r in rules]
+            rules = set(rules)
             self.negRules = set(negRules)
         else:
-            rules=rt
+            rules=set(rt)
         if constructNetwork:
             self.rules.update(rules)
-        noRules=len(rules)
+        additionalRules = set(AdditionalRules(owlN3Graph))
         if addPDSemantics:
-            self.parseN3Logic(StringIO(non_DHL_OWL_Semantics))
-            for rule in AdditionalRules(owlN3Graph):
+            from FuXi.Horn.HornRules import HornFromN3
+            additionalRules.update(HornFromN3(StringIO(non_DHL_OWL_Semantics)))
+        
+        if constructNetwork:
+            for rule in additionalRules:
                 self.buildNetwork(iter(rule.formula.body),
                                   iter(rule.formula.head),
                                   rule)
                 self.rules.add(rule)
+        else:
+            rules.update(additionalRules)
+            
+        if constructNetwork:
+            rules = self.rules
+            
+        noRules=len(rules)
         if classifyTBox:
             self.feedFactsToAdd(generateTokenSet(owlN3Graph))
 #        print "##### DLP rules fired against OWL/RDF TBOX",self
@@ -492,29 +508,52 @@ class ReteNetwork:
                 rhsTriple = tuple([BNodeReplacement.get(term,term) for term in rhsTriple])
             if debug:
                 if not tokens.bindings:
-                    tokens._generateBindings()
-            for inferredTriple,binding in _mulPatternWithSubstitutions(tokens,rhsTriple,termNode):
-                if [term for term in inferredTriple if isinstance(term,Variable)]:
-                    #Unfullfilled bindings
-                    continue
-                inferredToken=ReteToken(inferredTriple)
-                self.proofTracers.setdefault(inferredTriple,[]).append(binding)
-                self.justifications.setdefault(inferredTriple,set()).add(termNode)
-                if termNode.filter and inferredTriple not in self.filteredFacts:
-                    self.filteredFacts.add(inferredTriple)
-                if inferredTriple not in self.inferredFacts and inferredToken not in self.workingMemory:                    
-                    if debug:
-                        print "Inferred triple: ", inferredTriple, " from ",termNode 
-                    self.inferredFacts.add(inferredTriple)
-                    self.addWME(inferredToken)
-                    currIdx = self.instanciations.get(termNode,0)
-                    currIdx+=1
-                    self.instanciations[termNode] = currIdx
-                    
-#                    if self.goal is not None and self.goal in self.inferredFacts:
-#                        return                    
-                elif debug:
-                    print "Inferred triple skipped: ", inferredTriple
+                    tokens._generateBindings()                    
+            override,executeFn = termNode.executeActions.get(rhsTriple,(None,None))
+            if override:
+                #There is an execute action associated with this production
+                #that is attaced to the given consequent triple and
+                #is meant to perform all of the production duties
+                #(bypassing the inference of triples, etc.)
+                executeFn(termNode,None,tokens,None,debug)                    
+            else:                
+                for inferredTriple,binding in _mulPatternWithSubstitutions(tokens,rhsTriple,termNode):
+                    if [term for term in inferredTriple if isinstance(term,Variable)]:
+                        #Unfullfilled bindings (skip non-ground head literals)
+                        if executeFn:
+                            #The indicated execute action is supposed to be triggered
+                            #when the indicates RHS triple is inferred for the
+                            #(even if it is not ground)
+                            executeFn(termNode,inferredTriple,tokens,binding,debug)                                        
+                        continue
+                    inferredToken=ReteToken(inferredTriple)
+                    self.proofTracers.setdefault(inferredTriple,[]).append(binding)
+                    self.justifications.setdefault(inferredTriple,set()).add(termNode)
+                    if termNode.filter and inferredTriple not in self.filteredFacts:
+                        self.filteredFacts.add(inferredTriple)
+                    if inferredTriple not in self.inferredFacts and inferredToken not in self.workingMemory:                    
+                        if debug:
+                            print "Inferred triple: ", inferredTriple, " from ",termNode.clause
+                        self.inferredFacts.add(inferredTriple)
+                        self.addWME(inferredToken)
+                        currIdx = self.instanciations.get(termNode,0)
+                        currIdx+=1
+                        self.instanciations[termNode] = currIdx
+                        if executeFn:
+                            #The indicated execute action is supposed to be triggered
+                            #when the indicates RHS triple is inferred for the
+                            #first time
+                            executeFn(termNode,inferredTriple,tokens,binding,debug)
+                        if self.goal is not None and self.goal in self.inferredFacts:
+                           raise InferredGoal("Proved goal " + repr(self.goal))                    
+                    else:
+                        if debug:
+                            print "Inferred triple skipped: ", inferredTriple
+                        if executeFn:
+                            #The indicated execute action is supposed to be triggered
+                            #when the indicates RHS triple is inferred for the
+                            #first time
+                            executeFn(termNode,inferredTriple,tokens,binding,debug)
     
     def addWME(self,wme):
         """

@@ -1,7 +1,7 @@
 """
 """
 
-class Node:
+class Node(object):
     """
     A node in a Rete network.  Behavior between Alpha and Beta (Join) nodes
     """

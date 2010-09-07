@@ -9,8 +9,19 @@ massive joins.
 ]]] -- Magic Sets and Other Strange Ways to Implement Logic Programs, F. Bancilhon,
 D. Maier, Y. Sagiv and J. Ullman, Proc. 5th ACM SIGMOD-SIGACT Symposium on
 Principles of Database Systems, 1986.
-"""
 
+" [..] proposed transformation is to define additional predicates that compute the values that 
+are passed from one predicate to another in the original rules, according to the sip strategy chosen for each
+rule. Each of the original rules is then modified so that it fires only when values for these
+additional predicates are available. These auxiliary predicates are called "magic predicates" and
+the sets of values that they compute are called "magic sets". The intention is that the bottom-up
+evaluation of the modified set of rules simulate the sip we have chosen for each adorned rule,
+thus restricting the search space."
+
+" we are interested in binding propagation and how it can be used to improve the
+ efficiency of evaluation in the presence of recursion
+
+"""
 import unittest, os, time, itertools, copy
 from FuXi.Rete.RuleStore import SetupRuleStore, N3RuleStore, N3Builtin, LOG
 from FuXi.Rete.AlphaNode import ReteToken
@@ -57,7 +68,8 @@ def SetupDDLAndAdornProgram(factGraph,
                             GOALS,
                             derivedPreds=None,
                             strictCheck=DDL_STRICTNESS_FALLBACK_DERIVED,
-                            defaultPredicates=None):
+                            defaultPredicates=None,
+                            ignoreUnboundDPreds=False):
     if not defaultPredicates:
         defaultPredicates = [],[]
     if not derivedPreds:
@@ -65,11 +77,11 @@ def SetupDDLAndAdornProgram(factGraph,
                                                rules,
                                                strict=strictCheck,
                                                defaultPredicates=defaultPredicates)
-        if not isinstance(derivedPreds,list):
+        if not isinstance(derivedPreds,(set,list)):
             derivedPreds=list(_derivedPreds)
         else:
             derivedPreds.extend(_derivedPreds)
-    adornedProgram = AdornProgram(factGraph,rules,GOALS,derivedPreds)
+    adornedProgram = AdornProgram(factGraph,rules,GOALS,derivedPreds,ignoreUnboundDPreds)
     if factGraph is not None:
         factGraph.adornedProgram = adornedProgram    
     return adornedProgram
@@ -98,6 +110,12 @@ def MagicSetTransformation(factGraph,
                                    defaultPredicates=defaultPredicates)
     newRules=[]
     for rule in adornedProgram: 
+        if rule.isSecondOrder():
+            import warnings
+            warnings.warn(
+            "Second order rule no supported by GMS: %s"%rule,
+                    RuntimeWarning)
+            
         magicPositions={}
         #Generate magic rules
         for idx,pred in enumerate(iterCondition(rule.formula.body)):
@@ -229,7 +247,7 @@ def NormalizeUniterm(term):
     elif isinstance(term,N3Builtin):
         return Uniterm(term.uri,term.argument,term.naf) 
     
-def AdornRule(derivedPreds,clause,newHead):
+def AdornRule(derivedPreds,clause,newHead,ignoreUnboundDPreds = False):
     """
     Adorns a horn clause using the given new head and list of
     derived predicates
@@ -237,7 +255,10 @@ def AdornRule(derivedPreds,clause,newHead):
     assert len(list(iterCondition(clause.head)))==1
     adornedHead=AdornedUniTerm(clause.head,
                                newHead.adornment)
-    sip=BuildNaturalSIP(clause,derivedPreds,adornedHead)
+    sip=BuildNaturalSIP(clause,
+                        derivedPreds,
+                        adornedHead,
+                        ignoreUnboundDPreds=ignoreUnboundDPreds)
     bodyPredReplace={}
     def adornment(arg,headArc,x):
         if headArc:
@@ -262,19 +283,29 @@ def AdornRule(derivedPreds,clause,newHead):
 #                For a predicate occurrence with no incoming
 #                arc, the adornment contains only f. For our purposes here, 
 #                we do not distinguish between a predicate with such an 
-#                adornment and an unadorned predicate
-    if (None,RDF.type,MAGIC.SipArc) not in sip:
-        #no sip arcs
-        rule=AdornedRule(Clause(clause.body,
-                                adornedHead))
-    else:                                    
-        rule=AdornedRule(Clause(And([bodyPredReplace.get(p,p) 
-                                    for p in iterCondition(sip.sipOrder)]),
-                                adornedHead))
+#                adornment and an unadorned predicate (we do in order to support open queries)
+            if literal not in bodyPredReplace and ignoreUnboundDPreds:
+                bodyPredReplace[literal]=AdornedUniTerm(NormalizeUniterm(literal),
+                        [ 'f' for arg in GetArgs(literal)],literal.naf)
+    rule=AdornedRule(Clause(And([bodyPredReplace.get(p,p) 
+                                for p in iterCondition(sip.sipOrder)]),
+                            adornedHead))
     rule.sip = sip
     return rule
 
-def AdornProgram(factGraph,rs,goals,derivedPreds=None):
+def compareAdornedPredToRuleHead(aPred,head):
+    """
+    If p_a is an unmarked adorned predicate, then for each rule that has p in its head, ..
+    """
+    headPredicateTerm = GetOp(head)
+    aPredTerm         = GetOp(aPred)
+    assert isinstance(head,Uniterm)
+    if head.getArity() == aPred.getArity():
+        return headPredicateTerm == aPredTerm or isinstance(headPredicateTerm,
+                                                            Variable)
+    return False
+
+def AdornProgram(factGraph,rs,goals,derivedPreds=None,ignoreUnboundDPreds=False):
     """
     The process starts from the given query. The query determines bindings for q, and we replace
     q by an adorned version, in which precisely the positions bound in the query are designated as
@@ -312,11 +343,6 @@ def AdornProgram(factGraph,rs,goals,derivedPreds=None):
             if not  p.marked:
                 rt.append(p)
         return rt
-    def processedAdornedPred(pred,_list):
-        for p in _list:
-            if GetOp(p) == GetOp(pred) and p.marked:# and p.adornment == pred.adornment:
-                return True
-        return False
     toDo=unprocessedPreds(adornedPredicateCollection)
     adornedProgram=set()
     while toDo:
@@ -326,10 +352,12 @@ def AdornProgram(factGraph,rs,goals,derivedPreds=None):
                 for clause in LloydToporTransformation(rule.formula):
                     head=isinstance(clause.head,Exists) and clause.head.formula or clause.head
                     headPredicate = GetOp(head)
-                    if isinstance(head,Uniterm) and (GetOp(head) == GetOp(term) or 
-                                                     isinstance(headPredicate,Variable)):
+                    if compareAdornedPredToRuleHead(term,head):
                         #for each rule that has p in its head, we generate an adorned version for the rule
-                        adornedRule=AdornRule(derivedPreds,clause,term)
+                        adornedRule=AdornRule(derivedPreds,
+                                              clause,
+                                              term,
+                                              ignoreUnboundDPreds=ignoreUnboundDPreds)                        
                         adornedProgram.add(adornedRule)
                         #The adorned version of a rule contains additional adorned
                         #predicates, and these are added
@@ -341,7 +369,7 @@ def AdornProgram(factGraph,rs,goals,derivedPreds=None):
                                             AdornLiteral(pred.toRDFTuple(),
                                                          nsBindings,
                                                          pred.naf) or pred 
-                            if GetOp(pred) in derivedPreds and not processedAdornedPred(aPred,adornedPredicateCollection):
+                            if GetOp(pred) in derivedPreds and aPred not in adornedPredicateCollection:
                                 adornedPredicateCollection.add(aPred)
             term.marked=True
         toDo=unprocessedPreds(adornedPredicateCollection)
@@ -391,6 +419,13 @@ class AdornedUniTerm(Uniterm):
     #            self.op==other.op and\
     #            self.arg==other.arg
                 
+    def hasBindings(self):
+        for idx,term in enumerate(GetArgs(self)):
+            if self.adornment[idx]=='b':
+                if not varsOnly or isinstance(term,Variable):
+                    return True
+        return False
+                
     def getDistinguishedVariables(self,varsOnly=False):
         if self.op == RDF.type:
             for idx,term in enumerate(GetArgs(self)):
@@ -399,9 +434,11 @@ class AdornedUniTerm(Uniterm):
                         yield term
         else:
             for idx,term in enumerate(self.arg):
-                if self.adornment[idx]=='b':
-                    if not varsOnly or isinstance(term,Variable):
-                        yield term
+                try:
+                    if self.adornment[idx]=='b':
+                        if not varsOnly or isinstance(term,Variable):
+                            yield term
+                except IndexError: pass
                   
     def getBindings(self,uniterm):
         rt={}
