@@ -2,7 +2,7 @@ import ez_setup
 ez_setup.use_setuptools()
 from setuptools  import setup
 setup(name="FuXi",
-      version="1.0",
+      version="1.1",
       description="An OWL / N3-based in-memory, logic reasoning system for RDF",
       author="Chime Ogbuji",
       author_email="chimezie@gmail.com",
@@ -11,11 +11,12 @@ setup(name="FuXi",
       },
       packages=[
         "FuXi",
+        "FuXi.LP",
+        "FuXi.SPARQL",
         "FuXi.Rete",
         "FuXi.DLP",
         "FuXi.Horn",
         "FuXi.Syntax",
-        "FuXi.SPARQL",
       ],
       install_requires = ['rdflib<3a',],#'telescope'],
       license = "Apache",

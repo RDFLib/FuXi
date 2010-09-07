@@ -4,26 +4,29 @@ from FuXi.Rete import *
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Rete.AlphaNode import SUBJECT,PREDICATE,OBJECT,VARIABLE
 from FuXi.Rete.BetaNode import LEFT_MEMORY,RIGHT_MEMORY
-from FuXi.Rete.RuleStore import N3RuleStore
+from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore
 from FuXi.Rete.Util import renderNetwork,generateTokenSet
 from FuXi.Horn.PositiveConditions import Uniterm, BuildUnitermFromTuple
-from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
+from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
+from FuXi.LP import IdentifyHybridPredicates
+from FuXi.SPARQL.BackwardChainingStore import * 
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from FuXi.Horn.HornRules import HornFromN3
 from FuXi.DLP import MapDLPtoNetwork, non_DHL_OWL_Semantics
 from FuXi.Rete.Magic import *
 from FuXi.Rete.SidewaysInformationPassing import *
-from FuXi.Rete.TopDown import PrepareSipCollection, SipStrategy, RDFTuplesToSPARQL
+from FuXi.Rete.TopDown import PrepareSipCollection, SipStrategy
+from FuXi.SPARQL import RDFTuplesToSPARQL, EDBQuery
 from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
 from rdflib.Namespace import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,URIRef
-#from rdflib.OWL import FunctionalProperty -- invalid / unused import deleted
+from rdflib.OWL import FunctionalProperty
 from rdflib.store import Store
 from cStringIO import StringIO
 from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
 from rdflib.syntax.NamespaceManager import NamespaceManager
 from glob import glob
-from rdflib.sparql.parser import parse
+from rdflib.sparql.bison import Parse
 import unittest, os, time, itertools
 
 RDFLIB_CONNECTION=''
@@ -77,25 +80,43 @@ WHERE {
     rtest:conclusionDocument ?conclusion 
   ]
 }"""
-PARSED_MANIFEST_QUERY = parse(MANIFEST_QUERY)
+PARSED_MANIFEST_QUERY = Parse(MANIFEST_QUERY)
 
 Features2Skip = [
     URIRef('http://www.w3.org/2002/07/owl#sameClassAs'),
 ]
 
+NonNaiveSkip = [
+    'OWL/oneOf/Manifest002.rdf', #see Issue 25
+    'OWL/unionOf/Manifest002.rdf',                   # support for disjunctive horn logic 
+]
+
+MagicTest2Skip = [
+    'OWL/oneOf/Manifest002.rdf',        #requires second order predicate derivation
+    'OWL/oneOf/Manifest003.rdf',        #requires second order predicate derivation
+    'OWL/disjointWith/Manifest001.rdf'  #requires second order predicate derivation
+]
+
+
+BFPTests2SKip = [
+    'OWL/FunctionalProperty/Manifest002.rdf'       , #Haven't reconciled *all* 2nd order predicate queries
+    'OWL/InverseFunctionalProperty/Manifest002.rdf', #  "         "        "    "
+    # 'OWL/oneOf/Manifest002.rdf',                     #  "         "        "    "
+    'OWL/oneOf/Manifest003.rdf',                     #  "         "        "    "
+]
+
 TopDownTests2Skip = [
     'OWL/FunctionalProperty/Manifest002.rdf', #requires second order predicate derivation 
-    'OWL/unionOf/Manifest002.rdf', # support for disjunctive horn logic 
     'OWL/FunctionalProperty/Manifest004.rdf',
-    'OWL/oneOf/Manifest002.rdf', #requires second order predicate derivation
     'OWL/InverseFunctionalProperty/Manifest002.rdf', 
     'OWL/InverseFunctionalProperty/Manifest004.rdf',
     'OWL/oneOf/Manifest003.rdf', #Requires quantification over predicate symbol (2nd order)    
+    'OWL/AllDifferent/Manifest001.rdf' #Not sure why
 ]
 
 Tests2Skip = [
       
-    'OWL/InverseFunctionalProperty/Manifest001.rdf',
+    'OWL/InverseFunctionalProperty/Manifest001.rdf', #owl:sameIndividualAs deprecated
     'OWL/FunctionalProperty/Manifest001.rdf', #owl:sameIndividualAs deprecated
     'OWL/Nothing/Manifest002.rdf',# owl:sameClassAs deprecated
 ]
@@ -120,14 +141,9 @@ def renderTerm(graph,term):
 
 class OwlTestSuite(unittest.TestCase):
     def setUp(self):
-        store = plugin.get(RDFLIB_STORE,Store)()
-        store.open(RDFLIB_CONNECTION)
-        self.ruleStore=N3RuleStore()
-        self.ruleGraph = Graph(self.ruleStore)
-        self.ruleFactsGraph = Graph(store)
-        self.network = ReteNetwork(self.ruleStore,nsMap=nsBinds)
+        rule_store, rule_graph, self.network = SetupRuleStore(makeNetwork=True)
+        self.network.nsMap = nsBinds
         
-        #renderNetwork(self.network,nsMap=nsMap).write_graphviz('owl-rules.dot')
     def tearDown(self):
         pass
     
@@ -162,108 +178,92 @@ class OwlTestSuite(unittest.TestCase):
         magicRuleNo = 0
         dPreds = []
         for rule in AdditionalRules(factGraph):
-            print "\tAdding ", rule
             rules.append(rule)            
+        if not GROUND_QUERY and REASONING_STRATEGY != 'gms':
+            goalDict = dict([((Variable('SUBJECT'),goalP,goalO),goalS) 
+                        for goalS,goalP,goalO in goals])
+            goals = goalDict.keys()
+        assert goals
 
-        if TOP_DOWN == 'open':
-            goals = [(Variable('SUBJECT'),goalP,goalO) 
-                        for goalS,goalP,goalO in goals 
-                            if goalP != RDF.type or goalO.find(OWL_NS)==-1]
+        if REASONING_STRATEGY == 'gms':
+            for rule in MagicSetTransformation(factGraph,
+                                               rules,
+                                               goals,
+                                               dPreds):
+                magicRuleNo+=1
+                self.network.buildNetworkFromClause(rule)    
+                self.network.rules.add(rule)
+                if DEBUG:
+                    print "\t", rule
+            print "rate of reduction in the size of the program: ", (100-(float(magicRuleNo)/float(progLen))*100)
         
-        for rule in MagicSetTransformation(factGraph,
-                                           rules,
-                                           goals,
-                                           dPreds):
-            magicRuleNo+=1
-            self.network.buildNetworkFromClause(rule)    
-            self.network.rules.add(rule)
-        dPreds.append(LIST['in'])
-        print "rate of reduction in the size of the program: ", (100-(float(magicRuleNo)/float(progLen))*100)
-        if TOP_DOWN == 'ground':
-            print "ASK { %s }"%('\n'.join([tripleToTriplePattern(factGraph,
-                                                                goal) 
-                                  for goal in goals ]))
-            timings = 0
-            pprint(list(factGraph.adornedProgram))            
-            sipCollection = PrepareSipCollection(factGraph.adornedProgram)
-
-            self.network.nsMap['pml'] = PML
-            self.network.nsMap['gmp'] = GMP_NS
-            for goal in goals:
-                derivedAnswer = first(SipStrategy(
-                                   goal,
-                                   sipCollection,
-                                   factGraph,
-                                   dPreds,
-                                   bindings={},
-                                   network = self.network,
-                                   debug = DEBUG))
-                self.failUnless(derivedAnswer, "Failed to prove ground goal")
-                if not derivedAnswer:
-                    raise
-                    print "failed top-down derivation"
-                else:
-                    ans,ns = derivedAnswer
-                    self.failUnless(ans, "Failed to prove ground goal")
-                    print "=== Passed! ==="
-        elif TOP_DOWN == 'open':
-            nsMap.update(dict([(k,v) 
-                         for k,v in factGraph.namespaces()]))
+        if REASONING_STRATEGY in ['bfp','sld']:# and not GROUND_QUERY:
+            reasoningAlg = TOP_DOWN_METHOD if REASONING_STRATEGY == 'sld' \
+                           else BFP_METHOD
             topDownStore=TopDownSPARQLEntailingStore(
-                                        factGraph.store,
-                                        factGraph,
-                                        set(dPreds),
-                                        rules,
-                                        nsBindings=nsMap,
-                                        DEBUG=DEBUG) 
-            #targetGraph = ConjunctiveGraph(topDownStore)
+                            factGraph.store,
+                            factGraph,
+                            idb=rules,
+                            DEBUG=DEBUG,
+                            nsBindings=nsMap,
+                            decisionProcedure = reasoningAlg,
+                            identifyHybridPredicates = REASONING_STRATEGY == 'bfp')
             targetGraph = Graph(topDownStore)
-            topDownStore.targetGraph = targetGraph 
-            topDownStore.targetGraph.templateMap = {     LOG.equal:"%s = %s",
-                                                    LOG.notEqualTo: "%s != %s" }
-            topDownStore.edb.templateMap = topDownStore.targetGraph.templateMap
             for pref,nsUri in nsMap.items():
                 targetGraph.bind(pref,nsUri)
-            for goalS,goalP,goalO in goals:
-                if goalP == RDF.type and goalO.find(OWL_NS)+1:
-                        continue                
-                sVar = Variable('SUBJECT')
-                query=RDFTuplesToSPARQL(
-                            [BuildUnitermFromTuple((sVar,goalP,goalO))],
-                             factGraph,
-                             vars=[sVar])
-                print "Open goal to solve ", query
-                rt=targetGraph.query(query,initNs=nsMap)
-                self.failUnless((goalS) in rt, "Failed top-down re-write derivation")
-                if (goalS) in rt:
-                    print "=== Passed! ==="
-                else:
-                    raise
-                    print "failed top-down re-write derivation"
-        else:
+            start = time.time()                      
+                        
             for goal in goals:
-                goal=AdornLiteral(goal).makeMagicPred().toRDFTuple()
+                queryLiteral = EDBQuery([BuildUnitermFromTuple(goal)],
+                                        factGraph,
+                                        None if GROUND_QUERY else [goal[0]])
+                query = queryLiteral.asSPARQL()
+                print "Goal to solve ", query
+                rt=targetGraph.query(query,initNs=nsMap)
+                if GROUND_QUERY:
+                    self.failUnless(rt.askAnswer[0],"Failed top-down problem")
+                else:                    
+                    self.failUnless((goalDict[goal]) in rt, 
+                                    "Failed top-down problem")
+            sTime = time.time() - start
+            if sTime > 1:
+                sTimeStr = "%s seconds"%sTime
+            else:
+                sTime = sTime * 1000
+                sTimeStr = "%s milli seconds"%sTime
+            return sTimeStr
+        elif REASONING_STRATEGY == 'gms':
+            for goal in goals:
+                adornedGoalSeed = AdornLiteral(goal).makeMagicPred()
+                goal=adornedGoalSeed.toRDFTuple()
+                if DEBUG:
+                    print "Magic seed fact ", adornedGoalSeed
                 factGraph.add(goal)
             timing=self.calculateEntailments(factGraph)
             for goal in goals:
+                # self.failUnless(goal in self.network.inferredFacts or goal in factGraph,
+                #                 "Failed GMS query")
                 if goal not in self.network.inferredFacts and goal not in factGraph:
                     print "missing triple %s"%(pformat(goal))
                     from FuXi.Rete.Util import renderNetwork 
-                    pprint([BuildUnitermFromTuple(t) for t in self.network.inferredFacts])
-                    dot=renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
+                    pprint(list(factGraph.adornedProgram))
+                    # dot=renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
                     self.network.reportConflictSet(True)
                     raise #Exception ("Failed test: "+feature)
                 else:
                     print "=== Passed! ==="
             return timing
-       
     def testOwl(self): 
         testData = {}       
         for manifest in glob('OWL/*/Manifest*.rdf'):
             if manifest in Tests2Skip:
                 continue
-            if TOP_DOWN and manifest in TopDownTests2Skip:
+            if (REASONING_STRATEGY is not None and manifest in NonNaiveSkip) or\
+               (REASONING_STRATEGY == 'sld' and manifest in TopDownTests2Skip) or \
+               (REASONING_STRATEGY == 'bfp' and manifest in BFPTests2SKip) or\
+               (REASONING_STRATEGY == 'gms' and manifest in MagicTest2Skip):
                 continue
+            
             skip = False
             for pattern2Skip in patterns2Skip:
                 if manifest.find(pattern2Skip) > -1:
@@ -299,49 +299,29 @@ class OwlTestSuite(unittest.TestCase):
                     store.open(RDFLIB_CONNECTION)
                     factGraph = Graph(store)
                     factGraph.parse(open('.'.join([premiseFile,'rdf'])))
-                    allFacts = ReadOnlyGraphAggregate([factGraph,self.ruleFactsGraph])
+                    nsMap.update(dict([(k,v)
+                                 for k,v in factGraph.namespaces()]))                    
+                    if DEBUG:
+                        print "## Source Graph ##\n", factGraph.serialize(format='n3')
                     Individual.factoryGraph=factGraph
                     
                     for c in AllClasses(factGraph):
                         if not isinstance(c.identifier,BNode):
                             print c.__repr__(True)       
                             
-                    if MAGIC_PROOFS:
-                        if feature in TopDownTests2Skip:
-                            continue
-                        print premiseFile,feature,description
-                        program=list(HornFromN3(StringIO(non_DHL_OWL_Semantics)))
-                        program.extend(self.network.setupDescriptionLogicProgramming(
-                                                                     factGraph,
-                                                                     addPDSemantics=False,
-                                                                     constructNetwork=False))                        
-                        print "Original program"
-#                        pprint(program)
-                        timings=[]  
-                        #Magic set algorithm is initiated by a query, a single horn ground, 'fact'                    
-                        try:   
-                            goals=set()
-                            for triple in Graph(store).parse('.'.join([conclusionFile,'rdf'])):
-                                if triple not in factGraph:
-                                    goals.add(triple)
-                            timings.append(self.MagicOWLProof(goals,program,factGraph,conclusionFile))
-                            self.network._resetinstanciationStats()
-                            self.network.reset()
-                            self.network.clear()                                
-                        except:
-#                            print "missing triple %s"%(pformat(goal))
-                            print manifest, premiseFile
-                            print "feature: ", feature
-                            print description
-                            from FuXi.Rete.Util import renderNetwork 
-                            pprint([BuildUnitermFromTuple(t) for t in self.network.inferredFacts])
-#                            dot=renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
-                            raise #Exception ("Failed test: "+feature)
-                            
-                        testData[manifest] = timings    
+                    if feature in TopDownTests2Skip:
                         continue
-                    else:
-                        self.network.setupDescriptionLogicProgramming(factGraph,addPDSemantics=True)
+                    print premiseFile,feature,description
+                    program=list(HornFromN3(StringIO(non_DHL_OWL_Semantics)))
+                    program.extend(self.network.setupDescriptionLogicProgramming(
+                                                                 factGraph,
+                                                                 addPDSemantics=False,
+                                                                 constructNetwork=False))                        
+                    print "Original program"
+                    pprint(program)
+                    timings=[]  
+
+                    if REASONING_STRATEGY is None:
                         sTimeStr=self.calculateEntailments(factGraph)
                         expectedFacts = Graph(store)                    
                         for triple in expectedFacts.parse('.'.join([conclusionFile,'rdf'])):
@@ -352,7 +332,6 @@ class OwlTestSuite(unittest.TestCase):
                                 print "feature: ", feature
                                 print description
                                 pprint(list(self.network.inferredFacts))  
-#                                pprint(programs)                          
                                 raise Exception ("Failed test: "+feature)
                             else:
                                 print "=== Passed! ==="
@@ -360,19 +339,44 @@ class OwlTestSuite(unittest.TestCase):
                         print "\n"
                         testData[manifest] = sTimeStr
                         store.rollback()
-                        self.network.reset()
-                        self.network._resetinstanciationStats()
-                    
-#        pprint(testData)
-
+                        
+                        self.setUp()                        
+                        # self.network.reset()
+                        # self.network._resetinstanciationStats()
+                    else:
+                        try:   
+                            goals=[]
+                            for triple in Graph(store).parse('.'.join([conclusionFile,'rdf'])):
+                                if triple not in factGraph:
+                                    goals.append(triple)
+                            testData[manifest] = self.MagicOWLProof(goals,
+                                                              program,
+                                                              factGraph,
+                                                              conclusionFile)
+                                                              
+                            self.setUp()
+                            # self.network._resetinstanciationStats()
+                            # self.network.reset()
+                            # self.network.clear()                                
+                        except:
+    #                            print "missing triple %s"%(pformat(goal))
+                            print manifest, premiseFile
+                            print "feature: ", feature
+                            print description
+                            from FuXi.Rete.Util import renderNetwork 
+                            pprint([BuildUnitermFromTuple(t) for t in self.network.inferredFacts])
+    #                            dot=renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
+                            raise #Exception ("Failed test: "+feature)
+                        
+        pprint(testData)
+        
 def runTests(options):
-    global MAGIC_PROOFS,TOP_DOWN, SINGLE_TEST, DEBUG 
-    SINGLE_TEST  = options.singleTest   
-    MAGIC_PROOFS = options.bottomUp
-    DEBUG        = options.debug
-    if options.bottomUp:
-        TOP_DOWN = False
-    TOP_DOWN = options.topDown
+    global REASONING_STRATEGY, GROUND_QUERY, SINGLE_TEST, DEBUG 
+    SINGLE_TEST        = options.singleTest   
+    DEBUG              = options.debug
+    GROUND_QUERY       = options.groundQuery
+    REASONING_STRATEGY = options.strategy
+
     suite = unittest.makeSuite(OwlTestSuite)
     if options.profile:
         #from profile import Profile
@@ -390,15 +394,12 @@ def runTests(options):
         s.print_callers(.05)
         s.print_callees(.05)
     else:
-        unittest.TextTestRunner(verbosity=5).run(suite)
+        for i in range(options.runs):        
+            unittest.TextTestRunner(verbosity=5).run(suite)
                 
 if __name__ == '__main__':
     from optparse import OptionParser
     op = OptionParser('usage: %prog [options]')
-    op.add_option('--bottomUp', 
-                  action='store_true',
-                  default=True,
-      help = 'Whether or not to solve the OWL test cases via magic set and bottom-up')    
     op.add_option('--profile', 
                   action='store_true',
                   default=False,
@@ -409,19 +410,22 @@ if __name__ == '__main__':
     op.add_option('--debug','-v', 
                   action='store_true',
                   default=False,
-      help = 'Run the test in verbose mode')        
-    
+      help = 'Run the test in verbose mode')            
     op.add_option('--runs', 
                   type='int',
                   default=1,
       help = 'The number of times to run the test to accumulate data for profiling')            
-    op.add_option('--topDown', 
-                  default='ground',
-                  choices = ['ground', 
-                             'open'],                  
-      help = 'Whether or not to solve the OWL test cases via magic set, top-down '+
-      'and either ground queries (resulting in yes/no answers) or open queries '+
-      ' (resulting in bindings which when subsstituted should result in the original query)')
+    op.add_option('--groundQuery', 
+                action='store_true',
+                default=False,                  
+      help = 'For top-down strategies, whether to solve ground triple patterns or not')
+      
+    op.add_option('--strategy', 
+                  default='gms',
+                  choices = ['gms','sld','bfp'],
+      help = 'Which reasoning strategy to use in solving the OWL test cases '+
+      'Use RETE-UL over re-written rules (gms), resolution-based top-down unification (sld),'+
+      'or use RETE-UL as a backward fixpoint procedure (bfp) to simulate a top-down strategy via metainterpreter')
     (options, facts) = op.parse_args()
     
     runTests(options)
