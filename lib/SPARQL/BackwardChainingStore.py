@@ -156,7 +156,9 @@ class TopDownSPARQLEntailingStore(Store):
                         debug=self.DEBUG)
             bfp.createTopDownReteNetwork(self.DEBUG)
             rt=bfp.answers(debug=self.DEBUG)
-            print >>sys.stderr, "Query was not ground" if isNotGround is not None else "Query was ground"
+            if self.DEBUG:
+                print >>sys.stderr, "Goal/Query: ", tp
+                print >>sys.stderr, "Query was not ground" if isNotGround is not None else "Query was ground"
             if isNotGround is not None:
                 for item in bfp.goalSolutions:
                     yield item,None
@@ -179,31 +181,47 @@ class TopDownSPARQLEntailingStore(Store):
         try:
             tp = goalsRemaining.next()
             assert isinstance(bindings,dict)
-            for nextAnswer,ns in self.invokeDecisionProcedure(
-                                        tp,
-                                        factGraph,
-                                        bindings,
-                                        self.DEBUG,
-                                        sipCollection):
-                nonGroundGoal = isinstance(nextAnswer,dict) 
-                if nonGroundGoal or nextAnswer:
-                    #Either we recieved bindings from top-down evaluation
-                    #or we (successfully) proved a ground query
-                    if not nonGroundGoal:
-                        #Attempt to prove a ground query, return the response
-                        rt = nextAnswer
-                    else:
-                        #Recieved solutions to 'open' query, merge with given bindings
-                        #and continue
-                        rt = mergeMappings1To2(bindings,nextAnswer)
-                    #either answers were provided (the goal wasn't grounded) or
-                    #the goal was ground and successfully proved
-                    for ansDict in self.conjunctiveSipStrategy(
-                                             goalsRemaining,
-                                             sipCollection,
-                                             factGraph,
-                                             rt):
-                        yield ansDict
+            dPred = self.derivedPredicateFromTriple(tp)
+            if dPred is None:
+                baseEDBQuery = EDBQuery([BuildUnitermFromTuple(tp)],
+                                        self.edb,
+                                        bindings=bindings)
+                if self.DEBUG:
+                    print >>sys.stderr,"Evaluating TP against EDB: ",\
+                    baseEDBQuery.asSPARQL() 
+                query,rt = baseEDBQuery.evaluate()    
+                _vars = baseEDBQuery.returnVars
+                for item in rt:
+                    item.update(bindings)
+                    yield item                
+            else:
+                if self.DEBUG:
+                    print >>sys.stderr,"Goal/Query: ", tp
+                for nextAnswer,ns in self.invokeDecisionProcedure(
+                                            tp,
+                                            factGraph,
+                                            bindings,
+                                            self.DEBUG,
+                                            sipCollection):
+                    nonGroundGoal = isinstance(nextAnswer,dict) 
+                    if nonGroundGoal or nextAnswer:
+                        #Either we recieved bindings from top-down evaluation
+                        #or we (successfully) proved a ground query
+                        if not nonGroundGoal:
+                            #Attempt to prove a ground query, return the response
+                            rt = nextAnswer
+                        else:
+                            #Recieved solutions to 'open' query, merge with given bindings
+                            #and continue
+                            rt = mergeMappings1To2(bindings,nextAnswer)
+                        #either answers were provided (the goal wasn't grounded) or
+                        #the goal was ground and successfully proved
+                        for ansDict in self.conjunctiveSipStrategy(
+                                                 goalsRemaining,
+                                                 sipCollection,
+                                                 factGraph,
+                                                 rt):
+                            yield ansDict
         except StopIteration:
             yield bindings
             
@@ -294,7 +312,7 @@ class TopDownSPARQLEntailingStore(Store):
             rt =   TopEvaluate(queryObj,
                                graph,
                                initBindings,
-                               DEBUG=DEBUG,
+                               DEBUG=self.DEBUG,
                                dataSetBase=dataSetBase,
                                extensionFunctions=extensionFunctions)
             return plugin.get('SPARQLQueryResult',QueryResult)(rt)

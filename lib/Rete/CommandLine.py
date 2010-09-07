@@ -35,11 +35,9 @@ def main():
     from optparse import OptionParser
     op = OptionParser('usage: %prog [options] factFile1 factFile2 ... factFileN')
     op.add_option('--why', 
-                  action='append',
-                  default=[],
-      help = 'Used with --filter to solve queries (the heads of filter-rules) '+
-             'in a top-down fashion using the adorned program and sip for each rule '+
-             'In this way OWL-DLP, OWL2-RL, N3, (and RIF) theories can be solved / queried')    
+                  default=None,
+      help = 'Specifies the goals to solve for using the non-niave methods'+
+              'see --method')    
     op.add_option('--closure', 
                   action='store_true',
                   default=False,
@@ -77,6 +75,13 @@ def main():
       help = 'Used with --output=man-owl to determine which '+
              'classes within the entire OWL/RDF are targetted for serialization'+
              '.  Can be used more than once')
+    op.add_option('--hybrid',
+                  action='store_true',
+                  default=False,
+      help = 'Used with with --method=bfp to determine whether or not to '+
+             'peek into the fact graph to identify predicates that are both '+
+             'derived and base.  This is expensive for large fact graphs'+
+             'and is explicitely not used against SPARQL endpoints')
     op.add_option('--property',
                   action='append',
                   dest='properties',
@@ -89,6 +94,9 @@ def main():
                   default=False,
       help = "Used with --output=man-owl to attempt to determine if the ontology is 'normalized' [Rector, A. 2003]"+
       "The default is %default")
+    op.add_option('--ddlGraph', 
+                default=False,
+      help = "The location of a N3 Data Description document describing the IDB predicates")      
     op.add_option('--input-format', 
                   default='xml',
                   dest='inputFormat',
@@ -187,12 +195,25 @@ def main():
                   action='store_true',
                   default=False,
       help = 'Use Description Logic Programming (DLP) to extract rules from OWL/RDF.  The default is %default')
+    op.add_option('--sparqlEndpoint', 
+                action='store_true',
+                default=False,
+    help = 'Indicates that the sole argument is the URI of a SPARQL endpoint to query')
+
     op.add_option('--ontology', 
                   action='append',
                   default=[],
                   metavar='PATH_OR_URI',
       help = 'The path to an OWL RDF/XML graph to use DLP to extract rules from '+
-      '(other wise, fact graph(s) are used)  ')    
+      '(other wise, fact graph(s) are used)  ') 
+      
+    op.add_option('--ontologyFormat', 
+                default='xml',
+                dest='ontologyFormat',
+                metavar='RDF_FORMAT',
+                choices = ['xml', 'trix', 'n3', 'nt', 'rdfa'],
+    help = "The format of the OWL RDF/XML graph specified via --ontology.  The default is %default")
+   
     op.add_option('--builtinTemplates', 
                   default=None,
                   metavar='N3_DOC_PATH_OR_URI',
@@ -214,11 +235,15 @@ def main():
         nsBinds[pref]=nsUri
     
     namespace_manager = NamespaceManager(Graph())
-    factGraph = Graph() 
+    if options.sparqlEndpoint:
+        factGraph = Graph(plugin.get('SPARQL',Store)(facts[0])) 
+        options.hybrid = False
+    else:
+        factGraph = Graph() 
     ruleSet = Ruleset()
 
     for fileN in options.rules:
-        if options.ruleFacts:
+        if options.ruleFacts and not options.sparqlEndpoint:
             factGraph.parse(fileN,format='n3')
             print >>sys.stderr,"Parsing RDF facts from ", fileN
         if options.builtins:
@@ -240,14 +265,16 @@ def main():
     closureDeltaGraph.namespace_manager = namespace_manager
     factGraph.namespace_manager = namespace_manager
 
-    for fileN in facts:
-        factGraph.parse(fileN,format=options.inputFormat)
+    if not options.sparqlEndpoint:
+        for fileN in facts:
+            factGraph.parse(fileN,format=options.inputFormat)
         
-    if facts:
+    if not options.sparqlEndpoint and facts:
         for pref,uri in factGraph.namespaces():
             nsBinds[pref]=uri
         
     if options.stdin:
+        assert not options.sparqlEndpoint,"Cannot use --stdin with --sparqlEndpoint"
         factGraph.parse(sys.stdin,format=options.inputFormat)
         
     #Normalize namespace mappings
@@ -261,8 +288,9 @@ def main():
         
     if options.normalForm:
         NormalFormReduction(factGraph)
-                
-    workingMemory = generateTokenSet(factGraph)
+
+    if not options.sparqlEndpoint:
+        workingMemory = generateTokenSet(factGraph)
     if options.builtins:
         import imp
         userFuncs = imp.load_source('builtins', options.builtins)
@@ -279,8 +307,12 @@ def main():
         if options.ontology:
             ontGraph = Graph()
             for fileN in options.ontology:
-                ontGraph.parse(fileN)
-             
+                ontGraph.parse(fileN,format=options.ontologyFormat)
+                for prefix,uri in ontGraph.namespaces():
+                    nsBinds[prefix] = uri
+                    namespace_manager.bind(prefix, uri, override=False)
+                    if options.sparqlEndpoint:
+                        factGraph.store.bind(prefix,uri)
         else:
             ontGraph=factGraph
         NormalFormReduction(ontGraph)
@@ -356,8 +388,8 @@ def main():
                                  TEMPLATES.filterTemplate,
                                  None))])
         goals=[]
-        for query in options.why:
-            query = ParseSPARQL(query) 
+        if options.why:
+            query = ParseSPARQL(options.why) 
             network.nsMap['pml'] = PML
             network.nsMap['gmp'] = GMP_NS
             network.nsMap['owl'] = OWL_NS        
@@ -387,10 +419,17 @@ def main():
         for pred in options.noMagic:
             pref,uri=pred.split(':')
             noMagic.append(URIRef(mapping[pref]+uri))
-        for idb in options.idb: 
-            pref,uri=idb.split(':')
-            defaultDerivedPreds.append(URIRef(mapping[pref]+uri))
-        defaultDerivedPreds.extend(set([p == RDF.type and o or p for s,p,o in goals]))
+        if options.ddlGraph:
+            ddlGraph = Graph().parse(options.ddlGraph,format='n3')
+            defaultDerivedPreds=IdentifyDerivedPredicates(
+                                    ddlGraph,
+                                    Graph(),
+                                    ruleSet)
+        else:
+            for idb in options.idb: 
+                pref,uri=idb.split(':')
+                defaultDerivedPreds.append(URIRef(mapping[pref]+uri))
+            defaultDerivedPreds.extend(set([p == RDF.type and o or p for s,p,o in goals]))
         
         if options.method == 'gms':
             for goal in goals:
@@ -455,24 +494,27 @@ def main():
         elif options.method in ['sld','bfp']:
             reasoningAlg = TOP_DOWN_METHOD if options.method == 'sld' \
                            else BFP_METHOD
+            topDownDPreds = defaultDerivedPreds  if options.ddlGraph else None
             topDownStore=TopDownSPARQLEntailingStore(
                             factGraph.store,
                             factGraph,
                             idb=ruleSet,
                             DEBUG=options.debug,
+                            derivedPredicates = topDownDPreds,
                             nsBindings=network.nsMap,
                             decisionProcedure = reasoningAlg,
-                            identifyHybridPredicates = options.method == 'bfp')
+                            identifyHybridPredicates = 
+                            options.hybrid if options.method == 'bfp' else False)
             targetGraph = Graph(topDownStore)
             for pref,nsUri in network.nsMap.items():
                 targetGraph.bind(pref,nsUri)      
             start = time.time()                  
-            queryLiteral = EDBQuery([BuildUnitermFromTuple(goal) for goal in goals],
-                                    targetGraph)
-            query = queryLiteral.asSPARQL()
-            print >>sys.stderr, "Goal to solve ", query
+            # queryLiteral = EDBQuery([BuildUnitermFromTuple(goal) for goal in goals],
+            #                         targetGraph)
+            # query = queryLiteral.asSPARQL()
+            # print >>sys.stderr, "Goal to solve ", query
             sTime = time.time() - start
-            result = targetGraph.query(query,initNs=network.nsMap)
+            result = targetGraph.query(options.why,initNs=network.nsMap)
             if result.askAnswer:
                 sTime = time.time() - start
                 if sTime > 1:
@@ -483,7 +525,7 @@ def main():
                 print >>sys.stderr,\
     "Time to reach answer ground goal answer of %s: %s"%(result.askAnswer[0],sTimeStr)
             else:
-                for rt in targetGraph.query(query,initNs=network.nsMap):
+                for rt in result:
                     sTime = time.time() - start
                     if sTime > 1:
                         sTimeStr = "%s seconds"%sTime

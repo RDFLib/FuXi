@@ -4,7 +4,7 @@ from FuXi.Horn.PositiveConditions import QNameManager,SetOperator, Condition, Or
 from FuXi.Rete.Util import selective_memoize
 from FuXi.Rete.RuleStore import *
 from FuXi.Rete.Proof import ImmutableDict
-from rdflib import URIRef, RDF, Namespace, Variable
+from rdflib import URIRef, RDF, Namespace, Variable, Literal
 from rdflib.util import first
 from FuXi.Rete.BetaNode import project
 from FuXi.Rete.SidewaysInformationPassing import GetArgs, iterCondition, GetOp, GetVariables
@@ -82,6 +82,8 @@ def renderTerm(graph,term):
        qname = normalizeUri(term,hasattr(graph,'revNsMap') and graph.revNsMap or \
                             dict([(u,p) for p,u in graph.namespaces()]))
        return qname[0] == '_' and u"<%s>"%term or qname
+   elif isinstance(term,Literal):
+       return term.n3()
    else:
        try:
            return isinstance(term,BNode) and term.n3() or graph.qname(term)
@@ -178,11 +180,21 @@ def RunQuery(subQueryJoin,
        return subquery,rt
 
 class EDBQuery(QNameManager,SetOperator,Condition):
-    """A list of frames (comprised of EDB predicates) meant for evaluation over a large EDB"""
+    """
+    A list of frames (comprised of EDB predicates) meant for evaluation over a large EDB
+    
+    lst is a conjunct of terms
+    factGraph is the RDF graph to evaluate queries over
+    returnVars is the return variables (None, the default, will cause the list
+     to be built via instrospection on lst)
+    bindings is a solution mapping to apply to the terms in lst 
+    
+    
+    """
     def __init__(self, 
                  lst, 
                  factGraph,                  
-                 returnVars=[], 
+                 returnVars=None, 
                  bindings={}, 
                  varMap={}, 
                  symIncAxMap = {}, 
@@ -203,8 +215,14 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                                               lst)
             self.returnVars = list(openVars)
         else:
-            self.returnVars = (returnVars if isinstance(returnVars,list) 
-                                  else list(returnVars)) if returnVars else []
+            if returnVars is None:
+                #return vars not specified, but meant to be determined by 
+                #constructor 
+                self.returnVars = self.getOpenVars()
+            else:
+                #Note if returnVars is an empty list, this
+                self.returnVars = (returnVars if isinstance(returnVars,list) 
+                                      else list(returnVars)) if returnVars else []
             termList = lst
             
         super(EDBQuery, self).__init__(termList)

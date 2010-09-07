@@ -770,6 +770,9 @@ def IdentifyDerivedPredicates(ddlMetaGraph,tBox,ruleset=None):
     for derivedClassList in ddlMetaGraph.subjects(predicate=RDF.type,
                                           object=DDL.DerivedClassList):
         dPreds.update(Collection(ddlMetaGraph,derivedClassList))
+    for derivedClassList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                          object=DDL.DerivedPropertyList):
+        dPreds.update(Collection(ddlMetaGraph,derivedClassList))        
     derivedPropPrefixes = []
     basePropPrefixes    = []
     for derivedPropPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
