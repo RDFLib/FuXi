@@ -369,7 +369,7 @@ class OwlTestSuite(unittest.TestCase):
                             raise #Exception ("Failed test: "+feature)
                         
         pprint(testData)
-        
+
 def runTests(options):
     global REASONING_STRATEGY, GROUND_QUERY, SINGLE_TEST, DEBUG 
     SINGLE_TEST        = options.singleTest   
@@ -396,7 +396,19 @@ def runTests(options):
     else:
         for i in range(options.runs):        
             unittest.TextTestRunner(verbosity=5).run(suite)
-                
+            
+def defaultOptions():
+    class Holder(object):
+        '''Empty class to add attributes to.'''
+    options = Holder()
+    options.__setattr__("groundQuery", False)
+    options.__setattr__("profile", False)
+    options.__setattr__("singleTest", '')
+    options.__setattr__("debug", False)
+    options.__setattr__("runs", 1)
+    options.__setattr__("strategy", "gms")
+    return options   
+
 if __name__ == '__main__':
     from optparse import OptionParser
     op = OptionParser('usage: %prog [options]')
