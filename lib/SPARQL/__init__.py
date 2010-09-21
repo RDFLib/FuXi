@@ -39,8 +39,8 @@ def tripleToTriplePattern(graph,term):
        return "FILTER(%s)"%(template%(term.argument.n3(),
                                       term.result.n3()))
    else:
-       return "%s %s %s"%tuple([renderTerm(graph,term) 
-                                   for term in term.toRDFTuple()])
+       return "%s %s %s"%tuple([renderTerm(graph,term,predTerm=idx==1) 
+                                   for idx,term in enumerate(term.toRDFTuple())])
 
 @selective_memoize([0])
 def normalizeUri(rdfTerm,revNsMap):
@@ -75,8 +75,8 @@ def compute_qname(uri,revNsMap):
        revNsMap[namespace]=prefix
    return (prefix, namespace, name)
 
-def renderTerm(graph,term):
-   if term == RDF.type:
+def renderTerm(graph,term,predTerm=False):
+   if term == RDF.type and predTerm:
        return ' a '
    elif isinstance(term,URIRef):
        qname = normalizeUri(term,hasattr(graph,'revNsMap') and graph.revNsMap or \

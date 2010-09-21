@@ -714,7 +714,6 @@ def SipStrategy(query,
             if debug:
                 print >> sys.stderr, "%sProcessing rule"%\
                 ('\t'*proofLevel), rule.formula
-                
             try:
                 #Invoke the rule
                 if buildProof:

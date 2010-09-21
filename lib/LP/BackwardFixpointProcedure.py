@@ -383,12 +383,13 @@ class BackwardFixpointProcedure(object):
         """
         for rule in set(self.specializeAdornedRuleset(debug)):
             self.metaInterpNetwork.buildNetworkFromClause(rule)
-#        if debug:
-#            sortedBFPRules =[
-#                str("%s : %s")%(key,self.bfpLookup[key])
-#                    for key in sorted(self.bfpLookup,
-#                                      key=lambda items: str(items[1])+items[0])]
-#            pprint(sortedBFPRules)
+        if debug:
+            sortedBFPRules =[
+                str("%s : %s")%(key,self.bfpLookup[key])
+                    for key in sorted(self.bfpLookup,
+                                     key=lambda items: str(items[1])+items[0])]
+            for _ruleStr in sortedBFPRules:
+                print _ruleStr
             
         self.evalHash   = {}
         self.actionHash = {}

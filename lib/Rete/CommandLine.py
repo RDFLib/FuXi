@@ -31,6 +31,14 @@ import unittest, time, warnings,sys
 
 TEMPLATES = Namespace('http://code.google.com/p/fuxi/wiki/BuiltinSPARQLTemplates#')
 
+RDF_SERIALIZATION_FORMATS = [
+    'xml', 
+    'TriX', 
+    'pretty-xml',
+    'turtle',
+    'n3', 
+]
+
 def main():
     from optparse import OptionParser
     op = OptionParser('usage: %prog [options] factFile1 factFile2 ... factFileN')
@@ -554,13 +562,13 @@ def main():
         network.inferredFacts = network.filteredFacts
 
 
-    if options.closure:
+    if options.closure and options.output in RDF_SERIALIZATION_FORMATS:
         cGraph = network.closureGraph(factGraph)
         cGraph.namespace_manager = namespace_manager
         print cGraph.serialize(destination=None, 
                                format=options.output, 
                                base=None)
-    elif options.output:
+    elif options.output and options.output in RDF_SERIALIZATION_FORMATS:
         print network.inferredFacts.serialize(destination=None, 
                                               format=options.output, 
                                               base=None)            

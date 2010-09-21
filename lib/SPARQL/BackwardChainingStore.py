@@ -171,7 +171,7 @@ class TopDownSPARQLEntailingStore(Store):
                         else:
                             bfp.metaInterpNetwork.inferredFacts.remove((None,GetOp(queryPred),None))
                     bfp.metaInterpNetwork.reportConflictSet(True,sys.stderr)
-                    yield True,None
+                yield True,None
 
     def conjunctiveSipStrategy(self,goalsRemaining,sipCollection,factGraph,bindings={}):
         """
@@ -272,7 +272,7 @@ class TopDownSPARQLEntailingStore(Store):
             if groundConjunct:
                 baseEDBQuery = EDBQuery(groundConjunct,self.edb)
                 subQuery,ans = baseEDBQuery.evaluate(DEBUG)
-                assert isinstance(ans,bool)
+                assert isinstance(ans,bool),ans
             if groundConjunct and not ans:
                 askResult = False
             else:
