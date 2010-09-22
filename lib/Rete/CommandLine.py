@@ -160,7 +160,7 @@ def main():
                   metavar='reasoning algorithm',
                   choices = ['gms','sld','bfp','naive'],
       help = 'Used with --why to specify how to evaluate answers for query.  '+
-      'Either both (default), top-down alone, or bottom-up alone')        
+      'One of: gms,sld,bfp,naive')
     op.add_option('--firstAnswer',
                   default=False,
                   action='store_true',
@@ -396,23 +396,22 @@ def main():
                                  TEMPLATES.filterTemplate,
                                  None))])
         goals=[]
-        if options.why:
-            query = ParseSPARQL(options.why) 
-            network.nsMap['pml'] = PML
-            network.nsMap['gmp'] = GMP_NS
-            network.nsMap['owl'] = OWL_NS        
-            nsBinds.update(network.nsMap)
-            network.nsMap = nsBinds
-            if not query.prolog:
-                    query.prolog = Prolog(None, [])
-                    query.prolog.prefixBindings.update(nsBinds)
-            else:
-                for prefix, nsInst in nsBinds.items():
-                    if prefix not in query.prolog.prefixBindings:
-                        query.prolog.prefixBindings[prefix] = nsInst
-            goals.extend([(s,p,o) for s,p,o,c in ReduceGraphPattern(
-                                        query.query.whereClause.parsedGraphPattern,
-                                        query.prolog).patterns])
+        query = ParseSPARQL(options.why) 
+        network.nsMap['pml'] = PML
+        network.nsMap['gmp'] = GMP_NS
+        network.nsMap['owl'] = OWL_NS        
+        nsBinds.update(network.nsMap)
+        network.nsMap = nsBinds
+        if not query.prolog:
+                query.prolog = Prolog(None, [])
+                query.prolog.prefixBindings.update(nsBinds)
+        else:
+            for prefix, nsInst in nsBinds.items():
+                if prefix not in query.prolog.prefixBindings:
+                    query.prolog.prefixBindings[prefix] = nsInst
+        goals.extend([(s,p,o) for s,p,o,c in ReduceGraphPattern(
+                                    query.query.whereClause.parsedGraphPattern,
+                                    query.prolog).patterns])
         dPreds=[]# p for s,p,o in goals ]
         magicRuleNo = 0
         bottomUpDerivedPreds = []
@@ -484,21 +483,7 @@ def main():
                         print >>sys.stderr,clause 
             if options.output == 'conflict':
                 network.reportConflictSet()
-            
-        elif options.method == 'niave':
-            start = time.time()                  
-            network.feedFactsToAdd(workingMemory)
-            sTime = time.time() - start
-            if sTime > 1:
-                sTimeStr = "%s seconds"%sTime
-            else:
-                sTime = sTime * 1000
-                sTimeStr = "%s milli seconds"%sTime
-            print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
-            print >>sys.stderr, network
-            if options.output == 'conflict':
-                network.reportConflictSet()            
-            
+                        
         elif options.method in ['sld','bfp']:
             reasoningAlg = TOP_DOWN_METHOD if options.method == 'sld' \
                            else BFP_METHOD
@@ -544,7 +529,20 @@ def main():
                         break
                     print >>sys.stderr,\
         "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(rt,sTimeStr)
-                                
+    elif options.method == 'naive':
+        start = time.time()                  
+        network.feedFactsToAdd(workingMemory)
+        sTime = time.time() - start
+        if sTime > 1:
+            sTimeStr = "%s seconds"%sTime
+        else:
+            sTime = sTime * 1000
+            sTimeStr = "%s milli seconds"%sTime
+        print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
+        print >>sys.stderr, network
+        if options.output == 'conflict':
+            network.reportConflictSet()            
+                                    
     for fileN in options.filter:
         for rule in HornFromN3(fileN):
             network.buildFilterNetworkFromClause(rule)
