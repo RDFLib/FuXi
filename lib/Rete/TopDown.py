@@ -714,6 +714,11 @@ def SipStrategy(query,
             if debug:
                 print >> sys.stderr, "%sProcessing rule"%\
                 ('\t'*proofLevel), rule.formula
+                if debug and sipCollection:
+                    print >>sys.stderr,"Sideways Information Passing (sip) graph for %s: "%queryLiteral
+                    print >>sys.stdout, sipCollection.serialize(format='n3')
+                    for sip in SIPRepresentation(sipCollection):
+                        print >>sys.stderr,sip                
             try:
                 #Invoke the rule
                 if buildProof:
