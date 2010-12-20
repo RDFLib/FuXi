@@ -4,7 +4,12 @@
 Implementation of Sideways Information Passing graph (builds it from a given ruleset)
 """
 
-import unittest, os, sys, itertools, md5
+import unittest, os, sys, itertools
+try:
+    from hashlib import md5 as createDigest
+except:
+    from md5 import new as createDigest
+
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Horn.HornRules import Ruleset
 from FuXi.Rete.RuleStore import SetupRuleStore, N3Builtin
@@ -17,6 +22,11 @@ from FuXi.Rete.Util import selective_memoize
 from cStringIO import StringIO
 from pprint import pprint;
 from rdflib import Namespace, Variable, BNode
+
+def makeMD5Digest(value):
+    return createDigest(
+            isinstance(value, unicode) and value.encode('utf-8')
+            or value).hexdigest()
 
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
 
@@ -53,7 +63,7 @@ def RenderSIPCollection(sipGraph,dot=None):
             NCol=Collection(sipGraph,N)
             
         if q not in nodes:
-            newNode=Node(md5.new(q).hexdigest(),
+            newNode=Node(makeMD5Digest(q),
                          label=normalizeTerm(q,sipGraph),
                          shape='plaintext')                
             nodes[q]=newNode        
@@ -70,7 +80,7 @@ def RenderSIPCollection(sipGraph,dot=None):
             bNode,leftNode,markedEdgeLabel = dot.leftNodesLookup[nodeLabel]
 #            print "\t",nodeLabel,edgeLabel, markedEdgeLabel,not edgeLabel == markedEdgeLabel
         else:
-            leftNode=Node(md5.new(bNode).hexdigest(),label=nodeLabel,shape='plaintext')
+            leftNode=Node(makeMD5Digest(bNode),label=nodeLabel,shape='plaintext')
             dot.leftNodesLookup[nodeLabel] = (bNode,leftNode,edgeLabel)
             nodes[bNode]=leftNode
             dot.add_node(leftNode)

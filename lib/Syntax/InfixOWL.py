@@ -1121,6 +1121,12 @@ class BooleanClass(OWLRDFListProxy,Class):
         assert not members or not rdfList,"This is a previous boolean class description!"+repr(Collection(self.graph,rdfList[0]).n3())        
         OWLRDFListProxy.__init__(self, rdfList, members)
 
+    def copy(self):
+        """
+        Create a copy of this class
+        """
+        copyOfClass = BooleanClass(operator=self._operator,members=list(self),graph=self.graph)
+
     def serialize(self,graph):
         clonedList = Collection(graph,BNode())
         for cl in self._rdfList:

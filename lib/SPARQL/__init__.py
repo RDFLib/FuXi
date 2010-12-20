@@ -1,6 +1,7 @@
 import copy
-from itertools import chain
-from FuXi.Horn.PositiveConditions import QNameManager,SetOperator, Condition, Or, And
+from itertools import chain, takewhile
+from FuXi.Horn.PositiveConditions import QNameManager,SetOperator, Condition, Or, And, Uniterm
+from FuXi.Rete.RuleStore import N3Builtin
 from FuXi.Rete.Util import selective_memoize
 from FuXi.Rete.RuleStore import *
 from FuXi.Rete.Proof import ImmutableDict
@@ -179,6 +180,27 @@ def RunQuery(subQueryJoin,
                    rt and '[]')# .. %s answers .. ]'%len(rt) or '[]')
        return subquery,rt
 
+def EDBQueryFromBodyIterator(factGraph,remainingBodyList,derivedPreds,hybridPredicates=None):
+    hybridPredicates = hybridPredicates if hybridPredicates is not None else []
+    def sparqlResolvable(literal):
+        if isinstance(literal,Uniterm):
+            return not literal.naf and (GetOp(literal) not in derivedPreds
+                or GetOp(literal) in hybridPredicates)
+        else:
+            return isinstance(literal,N3Builtin) and \
+                   literal.uri in factGraph.templateMap
+    def sparqlResolvableNoTemplates(literal):
+        if isinstance(literal,Uniterm):
+            return not literal.naf and (GetOp(literal) not in derivedPreds
+                or GetOp(literal) in hybridPredicates)
+        else:
+            return False
+    return list(
+                 takewhile(
+                     hasattr(factGraph,'templateMap') and sparqlResolvable or \
+                     sparqlResolvableNoTemplates,
+                     remainingBodyList))
+
 class EDBQuery(QNameManager,SetOperator,Condition):
     """
     A list of frames (comprised of EDB predicates) meant for evaluation over a large EDB
@@ -255,6 +277,7 @@ class EDBQuery(QNameManager,SetOperator,Condition):
             else:
                 appliedVars.update(item.ground(mapping))
         self.bindings = project(self.bindings,appliedVars,True)
+        self.returnVars = self.getOpenVars()
         return appliedVars
                 
     def accumulateBindings(self, bindings):
@@ -292,6 +315,9 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                                  not self.returnVars,
                                  self.returnVars,
                                  self.symmAtomicInclusion)
+        
+    def __len__(self):
+        return len(self.formulae)
         
     def __hash__(self):
         from FuXi.Rete.Network import HashablePatternList
