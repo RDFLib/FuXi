@@ -13,7 +13,7 @@ The Memories are implemented with consistent binding hashes. Unlinking is not im
 activations are mitigated (somewhat) by the hash / Set mechanism.
               
 """
-import unittest, os, time, sys
+import unittest, os, time, sys, copy
 from itertools import izip, ifilter
 from pprint import pprint
 from AlphaNode import AlphaNode, BuiltInAlphaNode, ReteToken
@@ -21,6 +21,7 @@ from Node import Node
 from RuleStore import N3Builtin
 from IteratorAlgebra import hash_join
 from Util import xcombine
+from rdflib.util import first
 from rdflib import Variable, BNode,RDF,RDFS,Literal
 from rdflib.Collection import Collection
 from itertools import izip
@@ -189,6 +190,13 @@ class PartialInstanciation(object):
             self._generateHash()
             self._generateBindings()
 
+    def copy(self):
+        tokenList = []
+        for token in self.tokens:
+            wme = copy.deepcopy(token)
+            tokenList.append(wme)
+        return PartialInstanciation(tokenList,consistentBindings = self.joinedBindings)
+
     def _generateHash(self):
         tokenHashes = [hash(token) for token in self.tokens]
         tokenHashes.sort()
@@ -215,142 +223,30 @@ class PartialInstanciation(object):
         """
         Generates a list of dictionaries - each a unique variable substitution (binding)
         which applies to the ReteTokens in this PartialInstanciation
-    
-        >>> aNode = AlphaNode((Variable('S'),Variable('P'),Variable('O')))
-        >>> token1 = ReteToken((URIRef('urn:uuid:alpha'),OWL_NS.differentFrom,URIRef('urn:uuid:beta')))
-        >>> token2 = ReteToken((URIRef('urn:uuid:beta'),OWL_NS.differentFrom,URIRef('urn:uuid:alpha')))
-        >>> cVars = { Variable('P') : OWL_NS.differentFrom }
-        >>> inst = PartialInstanciation([token1.bindVariables(aNode),token2.bindVariables(aNode)],consistentBindings=cVars)
-        >>> inst
-        <PartialInstanciation (joined on ?P): Set([<ReteToken: S->urn:uuid:beta,P->http://www.w3.org/2002/07/owl#differentFrom,O->urn:uuid:alpha>, <ReteToken: S->urn:uuid:alpha,P->http://www.w3.org/2002/07/owl#differentFrom,O->urn:uuid:beta>])>
-        >>> inst.joinedBindings
-        {u'P': u'http://www.w3.org/2002/07/owl#differentFrom'}
-        >>> inst.tokens
-        Set([<ReteToken: S->urn:uuid:beta,P->http://www.w3.org/2002/07/owl#differentFrom,O->urn:uuid:alpha>, <ReteToken: S->urn:uuid:alpha,P->http://www.w3.org/2002/07/owl#differentFrom,O->urn:uuid:beta>])
-        >>> inst.bindings        
-        [{u'P': u'http://www.w3.org/2002/07/owl#differentFrom', u'S': u'urn:uuid:beta', u'O': u'urn:uuid:alpha'}, {u'P': u'http://www.w3.org/2002/07/owl#differentFrom', u'S': u'urn:uuid:alpha', u'O': u'urn:uuid:beta'}]
-        
-        Ensure unjoined variables with different names aren't bound to the same value 
+
+        Unjoined variables with different names aren't bound to the same value
         (B and Y aren't both bound to "Bart Simpson" simultaneously)
         
-        >>> aNode1 = AlphaNode((Variable('A'),URIRef('urn:uuid:name'),Variable('B')))
-        >>> aNode2 = AlphaNode((Variable('X'),URIRef('urn:uuid:name'),Variable('Y')))
-        >>> token1 = ReteToken((URIRef('urn:uuid:bart'),URIRef('urn:uuid:name'),Literal("Bart Simpson")))
-        >>> token1 = token1.bindVariables(aNode1)
-        >>> token2 = ReteToken((URIRef('urn:uuid:b'),URIRef('urn:uuid:name'),Literal("Bart Simpson")))
-        >>> token2 = token2.bindVariables(aNode2)
-        >>> inst = PartialInstanciation([token1,token2])
-        >>> pprint(inst.bindings)
-        [{u'A': u'urn:uuid:bart',
-          u'B': rdflib.Literal('Bart Simpson',language=None,datatype=None),
-          u'X': u'urn:uuid:b',
-          u'Y': rdflib.Literal('Bart Simpson',language=None,datatype=None)}]
-
-        Ensure different variables which bind to the same value *within* a token includes this combination
+        Different variables which bind to the same value *within* a token includes this combination
         in the resulting bindings
 
-        >>> aNode1 = AlphaNode((Variable('P1'),RDF.type,URIRef('urn:uuid:Prop1')))
-        >>> aNode2 = AlphaNode((Variable('P2'),RDF.type,URIRef('urn:uuid:Prop1')))
-        >>> aNode3 = AlphaNode((Variable('P1'),Variable('P2'),RDFS.Class))
-        >>> token1 = ReteToken((RDFS.domain,RDFS.domain,RDFS.Class))
-        >>> token2 = ReteToken((RDFS.domain,RDF.type,URIRef('urn:uuid:Prop1')))
-        >>> token3 = ReteToken((RDFS.range,RDF.type,URIRef('urn:uuid:Prop1')))
-        >>> token4 = ReteToken((RDFS.range,RDFS.domain,RDFS.Class))
-        >>> inst = PartialInstanciation([token1.bindVariables(aNode3),token2.bindVariables(aNode1),token3.bindVariables(aNode2),token4.bindVariables(aNode3)])
-        >>> len(inst.bindings)
-        3
-        >>> inst.bindings
-        [{u'P2': u'http://www.w3.org/2000/01/rdf-schema#range', u'P1': u'http://www.w3.org/2000/01/rdf-schema#domain'}, {u'P2': u'http://www.w3.org/2000/01/rdf-schema#domain', u'P1': u'http://www.w3.org/2000/01/rdf-schema#domain'}, {u'P2': u'http://www.w3.org/2000/01/rdf-schema#domain', u'P1': u'http://www.w3.org/2000/01/rdf-schema#range'}]
-                
-        >>> aNode1 = AlphaNode((Variable('X'),RDF.value,Literal(2)))
-        >>> aNode2 = AlphaNode((Variable('X'),RDF.type,Variable('Y')))                            
-        >>> aNode3 = AlphaNode((Variable('Z'),URIRef('urn:uuid:Prop1'),Variable('W')))
-        >>> token2 = ReteToken((URIRef('urn:uuid:Foo'),RDF.value,Literal(2))).bindVariables(aNode1)
-        >>> token3 = ReteToken((URIRef('urn:uuid:Foo'),RDF.type,URIRef('urn:uuid:Baz'))).bindVariables(aNode2)
-        >>> token5 = ReteToken((URIRef('urn:uuid:Bar'),URIRef('urn:uuid:Prop1'),URIRef('urn:uuid:Beezle'))).bindVariables(aNode3)
-        >>> inst = PartialInstanciation([token2,token3,token5],consistentBindings={Variable('X'):URIRef('urn:uuid:Foo')})
-        >>> pprint(list(inst.tokens))
-        [<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>,
-         <ReteToken: X->urn:uuid:Foo>,
-         <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>]
-        >>> inst.bindings
-        [{u'Y': u'urn:uuid:Baz', u'X': u'urn:uuid:Foo', u'Z': u'urn:uuid:Bar', u'W': u'urn:uuid:Beezle'}]
-        
-        >>> inst = PartialInstanciation([token2],consistentBindings={Variable('X'):URIRef('urn:uuid:Foo')})
-        >>> inst.bindings
-        [{u'X': u'urn:uuid:Foo'}]
-        
-        >>> aNode1 = AlphaNode((Variable('P'),OWL_NS.inverseOf,Variable('Q')))
-        >>> aNode2 = AlphaNode((Variable('P'),RDF.type,OWL_NS.InverseFunctionalProperty))
-        >>> token1 = ReteToken((URIRef('urn:uuid:Foo'),OWL_NS.inverseOf,URIRef('urn:uuid:Bar'))).bindVariables(aNode1)
-        >>> token2 = ReteToken((URIRef('urn:uuid:Foo'),RDF.type,OWL_NS.InverseFunctionalProperty)).bindVariables(aNode1)
-        >>> inst = PartialInstanciation([token1,token2],consistentBindings={Variable('P'):URIRef('urn:uuid:Foo'),Variable('Q'):URIRef('urn:uuid:Bar')})
-        >>> inst._generateBindings()
-        >>> inst.bindings
-        [{u'Q': u'urn:uuid:Bar', u'P': u'urn:uuid:Foo'}]
         """
-        if len(self.tokens) == 1:
-            self.bindings = [list(self.tokens)[0].bindingDict.copy()]
-            return
-        bindings  = []
-        forcedBindings = []
-        isolatedBindings = {}
+
+        def product(*args):
+            if not args:
+                return iter(((),)) # yield tuple()
+            return (items + (item,)
+                    for items in product(*args[:-1]) for item in args[-1])
+
+        disjunctiveDict = {}
         for token in self.tokens:
-            noIterations = 0
-            newDict = {}
-            for key in ifilter(
-                    lambda x:x not in self.joinedBindings,
-                    token.bindingDict.keys()):            
-                var = key
-                newDict[var] = token.bindingDict[var]
-                noIterations+=1
-            if noIterations == 1:
-                isolatedBindings.setdefault(var,set()).add(token.bindingDict[var])
-            elif noIterations > 1:
-                forcedBindings.append(newDict)
-        revIsolBindings = {}
-        for vals in isolatedBindings.itervalues():
-            for val in vals:
-                revIsolBindings.setdefault(val,set()).add(var)
-        if isolatedBindings:
-            for i in xcombine(*tuple([tuple([(key,val) for val in vals]) 
-                        for key,vals in iteritems(isolatedBindings) ])):
-                isolatedDict = dict(i)                
-                for val in isolatedDict.itervalues():
-                    keysForVal = revIsolBindings[val] 
-                    if len(keysForVal) <= 1:
-                        newDict = isolatedDict.copy()
-                        newDict.update(self.joinedBindings)
-                        if newDict not in bindings:
-                            bindings.append(newDict)
-        def collapse(left,right):
-            if isinstance(left,list):
-                if not left:
-                    if isinstance(right,list):
-                        return right
-                    else:
-                        return [right]
-                elif isinstance(right,list):
-                    return reduce([left,right])
-                elif len(left)==1:
-                    u = self.unify(left[0],right)
-                    if isinstance(u,list):
-                        return u 
-                    else:
-                        return [u]
-                else:
-                    return left+[right]
-            elif isinstance(right,list) and not right and left:
-                return [left]
-            return self.unify(left,right)
-        for forcedBinding in forcedBindings:
-            newDict = forcedBinding.copy()
-            newDict.update(self.joinedBindings)
-            if newDict not in bindings:
-                bindings.append(newDict)
-        self.bindings = reduce(collapse,bindings,[])
-        if not self.bindings:
-            self.bindings = [self.joinedBindings]
+            for key,val in token.bindingDict.items():
+                disjunctiveDict.setdefault(key,set()).add(val)
+        keys = list(disjunctiveDict)
+        bindings = [dict([(keys[idx],val) for idx,val in enumerate(entry)])
+            for entry in product(*tuple([disjunctiveDict[var]
+                                         for var in disjunctiveDict]))]
+        self.bindings = bindings
 
     def __hash__(self):
         return self.hash 
@@ -391,13 +287,22 @@ class PartialInstanciation(object):
         #only a subset of the tokens in this partial instanciation will be 'merged' with
         #the new token - joined on the new join variables
         newJoinDict = dict([(v,None) for v in newJoinVariables])
+        unmappedJoinVars = set(newJoinDict)
         #newJoinDict.update(dict([(v,None) for v in newJoinVariables]))
         for binding in self.bindings:
             for key,val in newJoinDict.iteritems():
                 boundVal = binding.get(key)
                 if boundVal is not None:
+                    unmappedJoinVars.discard(key)
                     if val is None:
                         newJoinDict[key]=boundVal
+        if unmappedJoinVars:
+            for unmappedVar in unmappedJoinVars:
+                for token in self.tokens:
+                    unmappedVarVal = token.getVarBindings().get(unmappedVar)
+                    if unmappedVarVal is not None:
+                        assert newJoinDict[unmappedVar] is None or unmappedVarVal == newJoinDict[unmappedVar]
+                        newJoinDict[unmappedVar] = unmappedVarVal
         self.joinedBindings.update(newJoinDict)
         self._generateBindings()             
         
@@ -578,14 +483,19 @@ class BetaNode(Node):
                  aPassThru=False,
                  leftVariables=None,
                  rightVariables=None,
-                 executeActions={},
+                 executeActions=None,
                  ReteMemoryKind=ReteMemory):
         self.ReteMemoryKind = ReteMemoryKind
         self.instanciatingTokens = set()
         self.aPassThru = aPassThru 
         self.name = BNode()
         self.network = None
+        
+        #used by terminal nodes only
         self.consequent = set() #List of tuples in RHS
+        self.rules = set()
+        self.antecedent = None
+        self.headAtoms = set()
         self.leftNode = leftNode
         self.rightNode = rightNode #The incoming right input of a BetaNode is always an AlphaNode
         self.memories = {}
@@ -622,7 +532,7 @@ class BetaNode(Node):
             self.commonVariables = [leftVar for leftVar in self.leftVariables if leftVar in self.rightVariables]
         self.leftIndex  = {}
         self.rightIndex = {}
-        self.executeActions = executeActions
+        self.executeActions = executeActions if executeActions is not None else {}
 
     def connectIncomingNodes(self,leftNode,rightNode):
         if leftNode:
@@ -632,21 +542,36 @@ class BetaNode(Node):
                 leftNode.unlinkedMemory = self.ReteMemoryKind(self,LEFT_MEMORY)
 #                print "unlinked %s from %s"%(leftNode,self)
             elif self.leftNode:            
-                leftNode.descendentMemory.append(self.memories[LEFT_MEMORY])
+                leftNode.updateDescendentMemory(self.memories[LEFT_MEMORY])
                 leftNode.descendentBetaNodes.add(self)        
-        rightNode.descendentMemory.append(self.memories[RIGHT_MEMORY])
+        rightNode.updateDescendentMemory(self.memories[RIGHT_MEMORY])
         rightNode.descendentBetaNodes.add(self)
+        
+    def clauseRepresentation(self):
+        if len(self.rules)>1:
+            return "And(%s) :- %s"%(
+                ' '.join([repr(atom) for atom in self.headAtoms]),
+                self.antecedent
+            )
+        else:
+            return repr(first(self.rules).formula)
+            
+    def actionsForTerminalNode(self):
+        for rhsTriple in self.consequent:
+            override,executeFn = self.executeActions.get(rhsTriple,(None,None))
+            if executeFn is not None:
+                yield override, executeFn
         
     def __repr__(self):
         if self.executeActions:
-            actionStr = ' with %s actions'%(len(self.executeActions))
+            actionStr = ' with %s actions'%(len(list(self.actionsForTerminalNode())))
         else:
             actionStr = ''
         if self.consequent and self.fedByBuiltin:
             nodeType = 'TerminalBuiltin(%s)%s'%(
                 self.memories[self._oppositeMemory(self.fedByBuiltin)].filter,actionStr)
         elif self.consequent:
-            nodeType = 'TerminalNode%s (%s)'%(actionStr,self.clause)
+            nodeType = 'TerminalNode%s (%s)'%(actionStr,self.clauseRepresentation())
         elif self.fedByBuiltin:
             nodeType = 'Builtin(%s)'%(self.memories[self._oppositeMemory(self.fedByBuiltin)].filter)
         else:            
@@ -668,7 +593,7 @@ class BetaNode(Node):
                     print "\t## %s memory ##"%memoryPosition[memory.position]
                     print "\t",memory.successor
                     if memory.successor.consequent:
-                        print "\t", memory.successor.clause
+                        print "\t", memory.successor.clauseRepresentation()
                 #print self,partInstOrList
                 memory.addToken(partInstOrList,debug)
                 if memory.successor.aPassThru or not memory.successor.checkNullActivation(memory.position):
@@ -724,7 +649,7 @@ class BetaNode(Node):
             print "### Right Memory ###"
             pprint(list(self.memories[RIGHT_MEMORY]))
             print "####################"
-            print self.clause
+            print self.clauseRepresentation()
         if self.aPassThru:
             if self.consequent:
                 if self.rightNode is None:
@@ -783,8 +708,8 @@ class BetaNode(Node):
                 for binding in partialInst.bindings:
                     lhs = builtin.argument
                     rhs = builtin.result
-                    lhs = isinstance(lhs,Variable) and binding[lhs] or lhs
-                    rhs = isinstance(rhs,Variable) and binding[rhs] or rhs
+                    lhs = binding.get(lhs) if isinstance(lhs,Variable) else lhs
+                    rhs = binding.get(rhs) if isinstance(rhs,Variable) else rhs
                     assert lhs is not None and rhs is not None
                     if builtin.func(lhs,rhs):
                         if debug:

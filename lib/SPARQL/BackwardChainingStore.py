@@ -114,6 +114,8 @@ class TopDownSPARQLEntailingStore(Store):
         self.decisionProcedure = decisionProcedure
         self.edb.templateMap   = DEFAULT_BUILTIN_MAP if templateMap is None\
                                  else templateMap
+        self.queryNetworks     = []
+        self.edbQueries        = set()
         if identifyHybridPredicates:
             self.hybridPredicates = IdentifyHybridPredicates(edb,
                                                              self.derivedPredicates)
@@ -155,7 +157,10 @@ class TopDownSPARQLEntailingStore(Store):
                         hybridPredicates=self.hybridPredicates,
                         debug=self.DEBUG)
             bfp.createTopDownReteNetwork(self.DEBUG)
+            bfp.checkNetworkWellformedness()
             rt=bfp.answers(debug=self.DEBUG)
+            self.queryNetworks.append((bfp.metaInterpNetwork,tp))
+            self.edbQueries.update(bfp.edbQueries)
             if self.DEBUG:
                 print >>sys.stderr, "Goal/Query: ", tp
                 print >>sys.stderr, "Query was not ground" if isNotGround is not None else "Query was ground"

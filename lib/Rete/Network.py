@@ -242,12 +242,13 @@ class ReteNetwork:
             self.ruleStore.formulae.setdefault(rhs,Formula(rhs)).append(term.toRDFTuple())
         assert nonEmptyHead,"Filters must conclude something!"
         self.ruleStore.rules.append((self.ruleStore.formulae[lhs],self.ruleStore.formulae[rhs]))
-        self.buildNetwork(iter(self.ruleStore.formulae[lhs]),
+        tNode = self.buildNetwork(iter(self.ruleStore.formulae[lhs]),
                              iter(self.ruleStore.formulae[rhs]),
                              rule,
                              filter=True)
         self.alphaNodes = [node for node in self.nodes.values() if isinstance(node,AlphaNode)]
         self.rules.add(rule)
+        return tNode
                         
     def buildNetworkFromClause(self,rule):
         lhs = BNode()
@@ -276,11 +277,12 @@ class ReteNetwork:
                           SyntaxWarning,2)            
             return
         self.ruleStore.rules.append((self.ruleStore.formulae[lhs],self.ruleStore.formulae[rhs]))
-        self.buildNetwork(iter(self.ruleStore.formulae[lhs]),
+        tNode = self.buildNetwork(iter(self.ruleStore.formulae[lhs]),
                              iter(self.ruleStore.formulae[rhs]),
                              rule)
         self.alphaNodes = [node for node in self.nodes.values() if isinstance(node,AlphaNode)]
         self.rules.add(rule)
+        return tNode
         
     def calculateStratifiedModel(self,database):
         """
@@ -375,6 +377,17 @@ class ReteNetwork:
 #        print "##### DLP rules fired against OWL/RDF TBOX",self
         return rules
     
+    def reportSize(self,tokenSizeThreshold=1200,stream=sys.stdout):
+        for pattern,node in self.nodes.items():
+            if isinstance(node,BetaNode):
+                for largeMem in itertools.ifilter(
+                                   lambda i:len(i) > tokenSizeThreshold,
+                                   node.memories.itervalues()):
+                    if largeMem:
+                        print >>stream, "Large apha node memory extent: "
+                        pprint(pattern)
+                        print >>stream, len(largeMem)        
+    
     def reportConflictSet(self,closureSummary=False,stream=sys.stdout):
         tNodeOrder = [tNode 
                         for tNode in self.terminalNodes 
@@ -382,7 +395,7 @@ class ReteNetwork:
         tNodeOrder.sort(key=lambda x:self.instanciations[x],reverse=True)
         for termNode in tNodeOrder:
             print >>stream,termNode
-            print >>stream,"\t", termNode.clause
+            print >>stream,"\t", termNode.clauseRepresentation()
             print >>stream,"\t\t%s instanciations"%self.instanciations[termNode]
         if closureSummary:        
             print >>stream ,self.inferredFacts.serialize(format='turtle')
@@ -494,15 +507,15 @@ class ReteNetwork:
                 for t in term.toRDFTuple():
                     if isinstance(t,existential and BNode or Variable):
                         yield t
-        clause = termNode.clause
         
         #replace existentials in the head with new BNodes!
         BNodeReplacement = {}
-        if isinstance(clause.head,Exists):
-            BNodeReplacement = dict([(bN,BNode()) 
-                                        for bN in clause.head.declare 
-                                            if not isinstance(clause.body,Exists) or 
-                                               bN not in clause.body.declare])
+        for rule in termNode.rules:
+            if isinstance(rule.formula.head,Exists):
+                for bN in rule.formula.head.declare:
+                    if not isinstance(rule.formula.body,Exists) or \
+                       bN not in rule.formula.body.declare:
+                       BNodeReplacement[bN] = BNode()
         for rhsTriple in termNode.consequent:
             if BNodeReplacement:
                 rhsTriple = tuple([BNodeReplacement.get(term,term) for term in rhsTriple])
@@ -510,6 +523,7 @@ class ReteNetwork:
                 if not tokens.bindings:
                     tokens._generateBindings()                    
             override,executeFn = termNode.executeActions.get(rhsTriple,(None,None))
+            
             if override:
                 #There is an execute action associated with this production
                 #that is attaced to the given consequent triple and
@@ -533,7 +547,8 @@ class ReteNetwork:
                         self.filteredFacts.add(inferredTriple)
                     if inferredTriple not in self.inferredFacts and inferredToken not in self.workingMemory:                    
                         if debug:
-                            print "Inferred triple: ", inferredTriple, " from ",termNode.clause
+                            print "Inferred triple: ", inferredTriple, " from ",termNode.clauseRepresentation()
+                        inferredToken.debug = True
                         self.inferredFacts.add(inferredTriple)
                         self.addWME(inferredToken)
                         currIdx = self.instanciations.get(termNode,0)
@@ -621,11 +636,28 @@ class ReteNetwork:
     def checkDuplicateRules(self):
         checkedClauses={}
         for tNode in self.terminalNodes:
-            collision = checkedClauses.get(tNode.clause)
-            assert collision is None,"%s collides with %s"%(tNode,checkedClauses[tNode.clause])
-            checkedClauses.setdefault(tNode.clause,[]).append(tNode) 
+            for rule in tNode.rules:
+                collision = checkedClauses.get(rule.formula)
+                assert collision is None,"%s collides with %s"%(tNode,checkedClauses[rule.formula])
+                checkedClauses.setdefault(tNode.rule.formula,[]).append(tNode)
+
+    def registerReteAction(self,headTriple,override,executeFn):
+        """
+        Register the given execute function for any rule with the
+        given head using the override argument to determine whether or
+        not the action completely handles the firing of the rule.
+
+        The signature of the execute action is as follows:
+
+        def someExecuteAction(tNode, inferredTriple, token, binding):
+            .. pass ..
+        """
+        for tNode in self.terminalNodes:
+            for rule in tNode.rules:
+                headTriple = rule.formula.head.toRDFTuple()
+                tNode.executeActions[headTriple] = (override,executeFn)
     
-    def buildNetwork(self,lhsIterator,rhsIterator,rule,filter=False):
+    def buildNetwork(self,lhsIterator,rhsIterator,rule,_filter=False):
         """
         Takes an iterator of triples in the LHS of an N3 rule and an iterator of the RHS and extends
         the Rete network, building / reusing Alpha 
@@ -660,15 +692,18 @@ class ReteNetwork:
                         terminalNode = node
                     else:
                         paddedLHSPattern = HashablePatternList([None])+attachedPatterns[0]                    
-                        terminalNode = self.nodes.get(paddedLHSPattern,BetaNode(None,node,aPassThru=True))
-                        self.nodes[paddedLHSPattern] = terminalNode    
-                        node.connectToBetaNode(terminalNode,RIGHT_MEMORY)                            
-                    terminalNode.rule = (LHS,consequents)
+                        terminalNode = self.nodes.get(paddedLHSPattern)
+                        if terminalNode is None:
+                            #New terminal node
+                            terminalNode = BetaNode(None,node,aPassThru=True)
+                            self.nodes[paddedLHSPattern] = terminalNode    
+                            node.connectToBetaNode(terminalNode,RIGHT_MEMORY)                            
                     terminalNode.consequent.update(consequents)
+                    terminalNode.rules.add(rule)
+                    terminalNode.antecedent = rule.formula.body
                     terminalNode.network    = self
-                    terminalNode.clause = rule.formula
-                    terminalNode.horn_rule = rule
-                    terminalNode.filter = filter
+                    terminalNode.headAtoms.update(rule.formula.head)
+                    terminalNode.filter = _filter
                     self.terminalNodes.add(terminalNode)                    
                 else:              
                     moveToEnd = []
@@ -683,16 +718,16 @@ class ReteNetwork:
                         else:
                             finalPatternList.append(pattern)
                     terminalNode = self.attachBetaNodes(chain(finalPatternList,moveToEnd))
-                    terminalNode.rule = (LHS,consequents)
                     terminalNode.consequent.update(consequents)
+                    terminalNode.rules.add(rule)
+                    terminalNode.antecedent = rule.formula.body                    
                     terminalNode.network    = self
-                    terminalNode.clause = rule.formula
-                    terminalNode.horn_rule = rule
-                    terminalNode.filter = filter
+                    terminalNode.headAtoms.update(rule.formula.head)
+                    terminalNode.filter = _filter
                     self.terminalNodes.add(terminalNode)
                     self._resetinstanciationStats()                        
                 #self.checkDuplicateRules()
-                return
+                return terminalNode
             if HashablePatternList([currentPattern]) in self.nodes:
                 #Current pattern matches an existing alpha node
                 matchedPatterns.append(currentPattern)

@@ -815,7 +815,9 @@ def IdentifyDerivedPredicates(ddlMetaGraph,tBox,ruleset=None):
                 dPreds.add(cls)
             
     nsBindings = dict([(prefix,nsUri) 
-                       for prefix, nsUri in tBox.namespaces()
+                       for prefix, nsUri in itertools.chain(
+                               tBox.namespaces(),
+                               ddlMetaGraph.namespaces())
                         if prefix])            
     for queryNode in ddlMetaGraph.subjects(predicate=RDF.type,
                                    object=DDL.DerivedClassQuery):

@@ -222,7 +222,13 @@ class OwlTestSuite(unittest.TestCase):
                 rt=targetGraph.query(query,initNs=nsMap)
                 if GROUND_QUERY:
                     self.failUnless(rt.askAnswer[0],"Failed top-down problem")
-                else:                    
+                else:                   
+                    if (goalDict[goal]) not in rt or DEBUG:
+                        for network,_goal in topDownStore.queryNetworks:
+                            print network,_goal
+                            network.reportConflictSet(True)
+                        for query in topDownStore.edbQueries:
+                            print query.asSPARQL()
                     self.failUnless((goalDict[goal]) in rt, 
                                     "Failed top-down problem")
             sTime = time.time() - start

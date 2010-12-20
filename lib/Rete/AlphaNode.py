@@ -3,7 +3,6 @@
 from RuleStore import N3Builtin
 from rdflib import Variable, BNode,RDF,Variable,Literal,RDFS, URIRef, Namespace
 from rdflib.Graph import Graph 
-from sets import Set
 from ReteVocabulary import RETE_NS
 from Node import Node
 
@@ -123,22 +122,33 @@ class ReteToken:
                 
     def __repr__(self):        
         return "<ReteToken: %s>"%(
-            ','.join(["%s->%s"%(var,val) for var,val in [self.subject,self.predicate,self.object_] if isinstance(var,(Variable,BNode))])
+            ','.join(["%s->%s"%(var,val) for var,val in self.getVarBindings(False)])
         )
-            
+
+    def getVarBindings(self,asDict=True):
+        _vars=[]
+        for var,val in [self.subject,self.predicate,self.object_]:
+            if isinstance(var,(Variable)):
+                _vars.append((var,val))
+        return dict(_vars) if asDict else _vars
+
+    def getUniterm(self):
+        from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
+        return BuildUnitermFromTuple(tuple([val for var,val in [self.subject,self.predicate,self.object_]]))
+
     def asTuple(self):
         return (self.subject[VALUE],self.predicate[VALUE],self.object_[VALUE])
         
-    def bindVariables(self,alphaNode):
+    def bindVariables(self,thing):
         """
         This function, called when a token passes a node test, associates token terms with variables
         in the node test         
         """
-        if isinstance(alphaNode,BuiltInAlphaNode):
-            self.pattern = list(alphaNode.n3builtin)
-            self.subject   = (alphaNode.n3builtin.argument,self.subject[VALUE])
-            self.predicate = (alphaNode.n3builtin.uri,self.predicate[VALUE])
-            self.object_   = (alphaNode.n3builtin.result,self.object_[VALUE])
+        if isinstance(thing,BuiltInAlphaNode):
+            self.pattern = list(thing.n3builtin)
+            self.subject   = (thing.n3builtin.argument,self.subject[VALUE])
+            self.predicate = (thing.n3builtin.uri,self.predicate[VALUE])
+            self.object_   = (thing.n3builtin.result,self.object_[VALUE])
             assert not self.bindingDict,self.bindingDict
             bindHashItems = []
             for var,val in [self.subject,self.predicate,self.object_]:
@@ -149,12 +159,12 @@ class ReteToken:
                     bindHashItems.append(val)
             #self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
             self.hash = hash(reduce(lambda x,y:x+y,bindHashItems))
-            return self            
-        else:
-            self.pattern = alphaNode.triplePattern
-            self.subject   = (alphaNode.triplePattern[SUBJECT],self.subject[VALUE])
-            self.predicate = (alphaNode.triplePattern[PREDICATE],self.predicate[VALUE])
-            self.object_   = (alphaNode.triplePattern[OBJECT],self.object_[VALUE])
+            return self
+        elif isinstance(thing,AlphaNode):
+            self.pattern = thing.triplePattern
+            self.subject   = (thing.triplePattern[SUBJECT],self.subject[VALUE])
+            self.predicate = (thing.triplePattern[PREDICATE],self.predicate[VALUE])
+            self.object_   = (thing.triplePattern[OBJECT],self.object_[VALUE])
             assert not self.bindingDict,self.bindingDict
             bindHashItems = []
             for var,val in [self.subject,self.predicate,self.object_]:
@@ -165,8 +175,14 @@ class ReteToken:
                     bindHashItems.append(val)
             #self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
             self.hash = hash(reduce(lambda x,y:x+y,bindHashItems))
-            return self            
-    
+            return self
+        elif isinstance(thing,dict):
+            revDict=dict([(v,k) for k,v in thing.items()])
+            #create mapping from variable to value if in range of mapping
+            self.subject   = (revDict.get(self.subject[VALUE],self.subject[VALUE]),self.subject[VALUE])
+            self.predicate = (revDict.get(self.predicate[VALUE],self.predicate[VALUE]),self.predicate[VALUE])
+            self.object_   = (revDict.get(self.object_[VALUE],self.object_[VALUE]),self.object_[VALUE])
+
 def defaultIntraElementTest(aReteToken,triplePattern):
     """
     'Standard' Charles Forgy intra element token pattern test.
@@ -295,7 +311,7 @@ class AlphaNode(Node):
                 #self.relinked = True
                 memory.successor.leftUnlinkedNodes = set()
             if aReteToken.debug:
-                    print "Added %s to %s"%(aReteToken,memory.successor)
+                print "Added %s to %s"%(aReteToken,memory.successor)
             if memory.successor.aPassThru or not memory.successor.checkNullActivation(memory.position):
                 if aReteToken.debug:
                     print "Propagated from %s"%(self)
