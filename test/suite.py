@@ -26,6 +26,7 @@ import test_network_reset
 import test_superproperty_entailment
 import testExistentialInHead
 import testOWL
+import testReteAction
 import testSkolemization
 import traceback
 import types
@@ -229,6 +230,7 @@ def suite():
     suite.addTest(unittest.makeSuite(test_network_reset.NetworkReset,'test'))
     suite.addTest(unittest.makeSuite(test_superproperty_entailment.test_superproperty_entailment,'test'))
     suite.addTest(unittest.makeSuite(testExistentialInHead.ExistentialInHeadTest,'test'))
+    suite.addTest(unittest.makeSuite(testReteAction.ReteActionTest,'test'))
     suite.addTest(unittest.makeSuite(testSkolemization.UnionSkolemizedTest,'test'))
     return suite
 def splash(txt):
