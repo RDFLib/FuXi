@@ -1,5 +1,4 @@
 from pprint import pprint, pformat
-from sets import Set
 from FuXi.Rete import *
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Rete.AlphaNode import SUBJECT,PREDICATE,OBJECT,VARIABLE
@@ -111,7 +110,8 @@ TopDownTests2Skip = [
     'OWL/InverseFunctionalProperty/Manifest002.rdf', 
     'OWL/InverseFunctionalProperty/Manifest004.rdf',
     'OWL/oneOf/Manifest003.rdf', #Requires quantification over predicate symbol (2nd order)    
-    'OWL/AllDifferent/Manifest001.rdf' #Not sure why
+#    'OWL/AllDifferent/Manifest001.rdf', #Not sure why
+    'OWL/distinctMembers/Manifest001.rdf' #Not sure why
 ]
 
 Tests2Skip = [
@@ -165,7 +165,7 @@ class OwlTestSuite(unittest.TestCase):
         tNodeOrder.sort(key=lambda x:self.network.instanciations[x],reverse=True)
         for termNode in tNodeOrder:
             print termNode
-            print "\t", termNode.clause
+            print "\t", termNode.rules
             print "\t\t%s instanciations"%self.network.instanciations[termNode]
     #                    for c in AllClasses(factGraph):
     #                        print CastClass(c,factGraph)

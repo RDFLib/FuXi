@@ -8,7 +8,11 @@ generating a walk through the proof space in the process.
 Native Prolog-like Python implementation for RIF-Core, OWL 2, and SPARQL.  
 """
 
-import itertools, copy, md5, pickle
+import itertools, copy, pickle
+try:
+    from hashlib import md5 as createDigest
+except:
+    from md5 import new as createDigest
 from FuXi.Rete.AlphaNode import ReteToken, AlphaNode
 from FuXi.Horn.HornRules import Clause, Ruleset, Rule, HornFromN3
 from FuXi.Rete.RuleStore import *
@@ -22,6 +26,11 @@ from rdflib.util import first
 from rdflib.syntax.xml_names import split_uri
 from FuXi.Rete.SidewaysInformationPassing import *
 from FuXi.SPARQL import EDBQuery, normalizeBindingsAndQuery
+
+def makeMD5Digest(value):
+    return createDigest(
+            isinstance(value, unicode) and value.encode('utf-8')
+            or value).hexdigest()
 
 def PrepareSipCollection(adornedRuleset):
     """
@@ -330,8 +339,7 @@ def invokeRule(priorAnswers,
                     queryStep = InferenceStep(None,source='some RDF graph')
                     queryStep.groundQuery = subquery
                     queryStep.bindings = {}#combinedAnswers[-1]
-                    queryHash = URIRef("tag:info@fuxi.googlecode.com:Queries#"+md5.new(
-                                                subquery).hexdigest())
+                    queryHash = URIRef("tag:info@fuxi.googlecode.com:Queries#"+makeMD5Digest(subquery))
                     queryStep.identifier = queryHash
                     for subGoal in conjGroundLiterals:
                         subNs=NodeSet(subGoal.toRDFTuple(),

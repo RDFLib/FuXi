@@ -27,7 +27,7 @@ from pprint import pprint
 from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
 from rdflib.util import first
 from rdflib.Graph import ReadOnlyGraphAggregate
-from FuXi.SPARQL import EDBQuery, EDBQueryFromBodyIterator
+from FuXi.SPARQL import EDBQuery, EDBQueryFromBodyIterator, ConjunctiveQueryMemoize
 from FuXi.Rete.SidewaysInformationPassing import GetArgs, GetVariables, SIPRepresentation
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Rete.SidewaysInformationPassing import iterCondition, GetOp
@@ -228,14 +228,30 @@ class QueryExecution(object):
                                 if v not in queryVars
                         ]
                 ]
-                queryStr,rt = _qLit.evaluate(self.bfp.debug)
-                if not isinstance(rt,bool):
-                    #Non-ground, single atom CQ
+                isGround = not _qLit.returnVars
+                rt = self.tabledQuery(_qLit)
+                if isGround:
+                    if first(rt):
+                        self.handleQueryAnswer(origQuery,
+                                               token,
+                                               self.bfp.debug,
+                                               ({},binding))
+                else:
                     for ans in rt:
                         if self.bfp.debug: pprint(ans)
-                        self.handleQueryAnswer(origQuery,token,self.bfp.debug,(ans,binding))
-                elif rt:
-                    self.handleQueryAnswer(origQuery,token,self.bfp.debug,({},binding))
+                        self.handleQueryAnswer(origQuery,
+                                               token,
+                                               self.bfp.debug,
+                                               (ans,binding))
+
+    @ConjunctiveQueryMemoize()
+    def tabledQuery(self,conjQuery):
+        queryStr,rt = conjQuery.evaluate(self.bfp.debug)
+        if isinstance(rt,bool):
+            yield rt
+        else:
+            for item in rt:
+                yield item
 
     def handleQueryAnswer(self,literal,token,debug,bindings=None):
         edbResult = literal.copy()
@@ -404,6 +420,7 @@ class BackwardFixpointProcedure(object):
         self.pushDownMDBQ = pushDownMDBQ
         self.pushDownQueries = {}
         self.maxEDBFront2End = {}
+        self.queryCache      = {}
         self.queryPredicates = set()
         self.sipCollection = sipCollection
         self.goal = BuildUnitermFromTuple(goal)

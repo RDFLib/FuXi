@@ -245,7 +245,7 @@ class ReteNetwork:
         tNode = self.buildNetwork(iter(self.ruleStore.formulae[lhs]),
                              iter(self.ruleStore.formulae[rhs]),
                              rule,
-                             filter=True)
+                             aFilter=True)
         self.alphaNodes = [node for node in self.nodes.values() if isinstance(node,AlphaNode)]
         self.rules.add(rule)
         return tNode
@@ -548,7 +548,7 @@ class ReteNetwork:
                     if inferredTriple not in self.inferredFacts and inferredToken not in self.workingMemory:                    
                         if debug:
                             print "Inferred triple: ", inferredTriple, " from ",termNode.clauseRepresentation()
-                        inferredToken.debug = True
+                            inferredToken.debug = True
                         self.inferredFacts.add(inferredTriple)
                         self.addWME(inferredToken)
                         currIdx = self.instanciations.get(termNode,0)
@@ -654,10 +654,12 @@ class ReteNetwork:
         """
         for tNode in self.terminalNodes:
             for rule in tNode.rules:
+                if not isinstance(rule.formula.head, Uniterm):
+                    continue
                 headTriple = rule.formula.head.toRDFTuple()
                 tNode.executeActions[headTriple] = (override,executeFn)
     
-    def buildNetwork(self,lhsIterator,rhsIterator,rule,_filter=False):
+    def buildNetwork(self,lhsIterator,rhsIterator,rule,aFilter=False):
         """
         Takes an iterator of triples in the LHS of an N3 rule and an iterator of the RHS and extends
         the Rete network, building / reusing Alpha 
@@ -703,7 +705,7 @@ class ReteNetwork:
                     terminalNode.antecedent = rule.formula.body
                     terminalNode.network    = self
                     terminalNode.headAtoms.update(rule.formula.head)
-                    terminalNode.filter = _filter
+                    terminalNode.filter = aFilter
                     self.terminalNodes.add(terminalNode)                    
                 else:              
                     moveToEnd = []
@@ -723,7 +725,7 @@ class ReteNetwork:
                     terminalNode.antecedent = rule.formula.body                    
                     terminalNode.network    = self
                     terminalNode.headAtoms.update(rule.formula.head)
-                    terminalNode.filter = _filter
+                    terminalNode.filter = aFilter
                     self.terminalNodes.add(terminalNode)
                     self._resetinstanciationStats()                        
                 #self.checkDuplicateRules()

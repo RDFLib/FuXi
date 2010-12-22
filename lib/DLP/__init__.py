@@ -43,7 +43,6 @@ T(owl:TransitiveProperty(P))   -> P(x,z) :- P(x,y) ^ P(y,z)
 """
 
 from __future__ import generators
-from sets import Set
 from rdflib import BNode, RDF, Namespace, Variable, RDFS
 from rdflib.util import first
 from rdflib.Collection import Collection

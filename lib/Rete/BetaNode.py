@@ -553,8 +553,10 @@ class BetaNode(Node):
                 ' '.join([repr(atom) for atom in self.headAtoms]),
                 self.antecedent
             )
-        else:
+        elif len(self.rules)>0:
             return repr(first(self.rules).formula)
+        else:
+            return ''
             
     def actionsForTerminalNode(self):
         for rhsTriple in self.consequent:

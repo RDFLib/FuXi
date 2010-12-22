@@ -318,15 +318,6 @@ def AdornProgram(factGraph,rs,goals,derivedPreds=None,ignoreUnboundDPreds=False)
     adorned predicates, and these are added to the collection, unless they already appear
     there. The process terminates when no unmarked adorned predicates are left.
         
-    >>> ruleStore,ruleGraph=SetupRuleStore(StringIO(PROGRAM2))
-    >>> ruleStore._finalize()
-    >>> fg=Graph().parse(StringIO(PROGRAM2),format='n3')
-    >>> rs,query=AdornProgram(fg,ruleGraph,NON_LINEAR_MS_QUERY)
-    >>> for rule in rs: print rule
-    Forall ?Y ?X ( ex:sg(?X ?Y) :- ex:flat(?X ?Y) )
-    Forall ?Y ?Z4 ?X ?Z1 ?Z2 ?Z3 ( ex:sg(?X ?Y) :- And( ex:up(?X ?Z1) ex:sg(?Z1 ?Z2) ex:flat(?Z2 ?Z3) ex:sg(?Z3 ?Z4) ex:down(?Z4 ?Y) ) )
-    >>> print query
-    (rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#john'), rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#sg'), ?X)
     """
     from FuXi.DLP import LloydToporTransformation
 #    rs=rs is None and Ruleset(n3Rules=ruleGraph.store.rules,
@@ -524,20 +515,6 @@ def DerivedPredicateIterator(factsOrBasePreds,
                              ruleset,
                              strict=DDL_STRICTNESS_FALLBACK_DERIVED,
                              defaultPredicates=None):
-    """
-    >>> ruleStore,ruleGraph=SetupRuleStore()
-    >>> g=ruleGraph.parse(StringIO(MAGIC_PROGRAM1),format='n3')
-    >>> ruleStore._finalize()
-    >>> ruleFacts=Graph().parse(StringIO(MAGIC_PROGRAM1),format='n3')
-    >>> for lit in DerivedPredicateIterator(ruleFacts,ruleGraph): print lit
-    ex:anc(?X ?Y)
-    >>> ruleStore,ruleGraph=SetupRuleStore()
-    >>> g=ruleGraph.parse(StringIO(PROGRAM2),format='n3')
-    >>> ruleStore._finalize()
-    >>> ruleFacts=Graph().parse(StringIO(PROGRAM2),format='n3')    
-    >>> for lit in DerivedPredicateIterator(ruleFacts,ruleGraph): print lit
-    ex:sg(?X ?Y)
-    """
     if not defaultPredicates:
         defaultPredicates = [],[]
     defaultBasePreds,defaultDerivedPreds = defaultPredicates
@@ -658,50 +635,7 @@ def NormalizeLPDb(ruleGraph,fact_db):
         rs.append(newRule)
     return rs
 
-#class AdornProgramTest(unittest.TestCase):
-#    def setUp(self):
-#        self.ruleStore,self.ruleGraph=SetupRuleStore(StringIO(PROGRAM2))
-#        self.ruleStore._finalize()
-#        self.ruleStrings=[
-#        'Forall ?Y ?X ( :sg_bf(?X ?Y) :- And( :sg_magic(?X) ex:flat(?X ?Y) ) )',
-#        'Forall  ( :sg_magic(?Z1) :- And( :sg_magic(?X) ex:up(?X ?Z1) ) )',
-#        'Forall ?Z4 ?Y ?X ?Z1 ?Z2 ?Z3 ( :sg_bf(?X ?Y) :- And( :sg_magic(?X) ex:up(?X ?Z1) :sg_magic(?Z1) :sg_bf(?Z1 ?Z2) ex:flat(?Z2 ?Z3) :sg_magic(?Z3) :sg_bf(?Z3 ?Z4) ex:down(?Z4 ?Y) ) )',
-#        'Forall  ( :sg_magic(?Z3) :- And( :sg_magic(?X) ex:up(?X ?Z1) :sg_bf(?Z1 ?Z2) ex:flat(?Z2 ?Z3) ) )',
-#        ]
-#
-#    def testAdorn(self):
-#        fg=Graph().parse(StringIO(PROGRAM2),format='n3')
-#        rules=Ruleset(n3Rules=self.ruleGraph.store.rules,
-#                   nsMapping=self.ruleStore.nsMgr)
-#        from pprint import pprint;pprint(self.ruleStrings)        
-#        for rule in MagicSetTransformation(fg,
-#                                           rules,
-#                                           NON_LINEAR_MS_QUERY,
-#                                           [MAGIC.sg]):
-#            self.failUnless(repr(rule) in self.ruleStrings, repr(rule))
 
-class AdornProgramTest(unittest.TestCase):
-    def setUp(self):
-        self.ruleStore,self.ruleGraph=SetupRuleStore(StringIO(PROGRAM2))
-        self.ruleStore._finalize()
-        self.ruleStrings=[
-        'Forall ?Y ?X ( :sg_bf(?X ?Y) :- And( :sg_magic(?X) ex:flat(?X ?Y) ) )',
-        'Forall  ( :sg_magic(?Z1) :- And( :sg_magic(?X) ex:up(?X ?Z1) ) )',
-        'Forall ?Z4 ?Y ?X ?Z1 ?Z2 ?Z3 ( :sg_bf(?X ?Y) :- And( :sg_magic(?X) ex:up(?X ?Z1) :sg_magic(?Z1) :sg_bf(?Z1 ?Z2) ex:flat(?Z2 ?Z3) :sg_magic(?Z3) :sg_bf(?Z3 ?Z4) ex:down(?Z4 ?Y) ) )',
-        'Forall  ( :sg_magic(?Z3) :- And( :sg_magic(?X) ex:up(?X ?Z1) :sg_bf(?Z1 ?Z2) ex:flat(?Z2 ?Z3) ) )',
-        ]
-
-    def testAdorn(self):
-        fg=Graph().parse(StringIO(PROGRAM2),format='n3')
-        rules=Ruleset(n3Rules=self.ruleGraph.store.rules,
-                   nsMapping=self.ruleStore.nsMgr)
-        from pprint import pprint;pprint(self.ruleStrings)        
-        for rule in MagicSetTransformation(fg,
-                                           rules,
-                                           NON_LINEAR_MS_QUERY,
-                                           [MAGIC.sg]):
-            self.failUnless(repr(rule) in self.ruleStrings, repr(rule))
-        
 def buildMagicBody(N,prevPredicates,adornedHead,derivedPreds,noMagic=[]):
     unboundHead='b' in adornedHead.adornment
     if unboundHead:

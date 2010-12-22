@@ -198,7 +198,7 @@ def main():
                   default=False,
                   metavar='PATH_TO_PYTHON_MODULE',
       help = "The path to a python module with function definitions (and a "+
-      "dicitonary called ADDITIONAL_FILTERS) to use for builtins implementations")    
+      "dicitonary called ADDITIONAL_FILTERS) to use for builtins implementations")
     op.add_option('--dlp', 
                   action='store_true',
                   default=False,
@@ -488,12 +488,25 @@ def main():
             reasoningAlg = TOP_DOWN_METHOD if options.method == 'sld' \
                            else BFP_METHOD
             topDownDPreds = defaultDerivedPreds  if options.ddlGraph else None
+            if options.builtinTemplates:
+                builtinTemplateGraph = Graph().parse(options.builtinTemplates,
+                                                    format='n3')
+                builtinDict = dict([(pred,template)
+                              for pred,_ignore,template in 
+                                    builtinTemplateGraph.triples(
+                                        (None,
+                                         TEMPLATES.filterTemplate,
+                                         None))])
+            else:
+                builtinDict = None
+            
             topDownStore=TopDownSPARQLEntailingStore(
                             factGraph.store,
                             factGraph,
                             idb=ruleSet,
                             DEBUG=options.debug,
                             derivedPredicates = topDownDPreds,
+                            templateMap = builtinDict,
                             nsBindings=network.nsMap,
                             decisionProcedure = reasoningAlg,
                             identifyHybridPredicates = 
@@ -529,6 +542,10 @@ def main():
                         break
                     print >>sys.stderr,\
         "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(rt,sTimeStr)
+            if options.output == 'conflict' and options.method == 'bfp':
+                for _network,_goal in topDownStore.queryNetworks:
+                    print _network, _goal
+                    _network.reportConflictSet()            
     elif options.method == 'naive':
         start = time.time()                  
         network.feedFactsToAdd(workingMemory)

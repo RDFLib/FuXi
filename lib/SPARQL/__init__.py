@@ -1,6 +1,6 @@
 import copy
 from itertools import chain, takewhile
-from FuXi.Horn.PositiveConditions import QNameManager,SetOperator, Condition, Or, And, Uniterm
+from FuXi.Horn.PositiveConditions import QNameManager,SetOperator, Condition, Or, And, Uniterm, BuildUnitermFromTuple
 from FuXi.Rete.RuleStore import N3Builtin
 from FuXi.Rete.Util import selective_memoize
 from FuXi.Rete.RuleStore import *
@@ -201,6 +201,56 @@ def EDBQueryFromBodyIterator(factGraph,remainingBodyList,derivedPreds,hybridPred
                      sparqlResolvableNoTemplates,
                      remainingBodyList))
 
+class ConjunctiveQueryMemoize(object):
+    """
+    Ideas from MemoizeMutable class of Recipe 52201 by Paul Moore and
+    from memoized decorator of http://wiki.python.org/moin/PythonDecoratorLibrary
+
+    A memoization decorator of a function which take (as argument): a
+    graph and a conjunctive query and returns a generator over results of evaluating
+    the conjunctive query against the graph
+    """
+    def __init__(self,cache = None):
+        self._cache = cache if cache is not None else {}
+
+    def produceAnswersAndCache(self,answers,key,cache=None):
+        cache = cache if cache is not None else []
+        for item in answers:
+            self._cache.setdefault(key,cache).append(item)
+            yield item
+
+    def __call__(self, func):
+        def innerHandler(queryExecAction,conjQuery):
+            key = (conjQuery.factGraph,conjQuery)
+            try:
+                rt = self._cache.get(key)
+                if rt is not None:
+                    for item in rt:
+                        yield item
+                else:
+                    for item in self.produceAnswersAndCache(
+                            func(queryExecAction,
+                                 conjQuery),
+                            key):
+                        yield item
+            except TypeError:
+                try:
+                    dump = pickle.dumps(key)
+                except pickle.PicklingError:
+                    for item in func(*args, **kwds):
+                        yield item
+                else:
+                    if dump in self._cache:
+                        for item in self._cache[dump]:
+                            yield item
+                    else:
+                        for item in self.produceAnswersAndCache(
+                                func(queryExecAction,
+                                     conjQuery),
+                                dump):
+                            yield item
+        return innerHandler
+
 class EDBQuery(QNameManager,SetOperator,Condition):
     """
     A list of frames (comprised of EDB predicates) meant for evaluation over a large EDB
@@ -209,8 +259,8 @@ class EDBQuery(QNameManager,SetOperator,Condition):
     factGraph is the RDF graph to evaluate queries over
     returnVars is the return variables (None, the default, will cause the list
      to be built via instrospection on lst)
-    bindings is a solution mapping to apply to the terms in lst 
-    
+    bindings is a solution mapping to apply to the terms in lst
+
     
     """
     def __init__(self, 
@@ -318,13 +368,28 @@ class EDBQuery(QNameManager,SetOperator,Condition):
         
     def __len__(self):
         return len(self.formulae)
-        
+
+    def __eq__(self,other):
+        return hash(self) == hash(other)
+
     def __hash__(self):
+        """
+        >>> g = Graph()
+        >>> lit1 = (Variable('X'),RDF.type,Variable('Y'))
+        >>> q1 = EDBQuery([BuildUnitermFromTuple(lit1)],g)
+        >>> q2 = EDBQuery([BuildUnitermFromTuple(lit1)],g)
+        >>> q1 == q2
+        True
+        >>> d = {q1:True}
+        >>> q2 in d
+        True
+
+        """
         from FuXi.Rete.Network import HashablePatternList
         conj=HashablePatternList(
                     [term.toRDFTuple() for term in self.formulae],
                     skipBNodes=True)
-        return hash(conj) 
+        return hash(conj)
         
     def extend(self, query, newVarMap = None):
         assert not query.symmAtomicInclusion  
