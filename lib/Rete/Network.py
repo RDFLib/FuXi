@@ -654,6 +654,8 @@ class ReteNetwork:
         """
         for tNode in self.terminalNodes:
             for rule in tNode.rules:
+                if not isinstance(rule.formula.head, Uniterm):
+                    continue
                 headTriple = rule.formula.head.toRDFTuple()
                 tNode.executeActions[headTriple] = (override,executeFn)
     
