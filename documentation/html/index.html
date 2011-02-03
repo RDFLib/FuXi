@@ -222,17 +222,24 @@ a Horn ruleset from a parsed Notation 3 graph.</p>
 <dl class="function">
 <dt id="FuXi.Horn.HornRules.HornFromN3">
 <tt class="descclassname">FuXi.Horn.HornRules.</tt><tt class="descname">HornFromN3</tt><big>(</big><em>n3Source</em>, <em>additionalBuiltins=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.HornRules.HornFromN3" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Takes the path or URL of a N3 document, and a mapping from predicates
+to functions that implement any builtins found in the N3 document</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="FuXi.Horn.HornRules.HornFromDL">
 <tt class="descclassname">FuXi.Horn.HornRules.</tt><tt class="descname">HornFromDL</tt><big>(</big><em>owlGraph</em>, <em>safety=0</em>, <em>derivedPreds=</em><span class="optional">[</span><span class="optional">]</span>, <em>complSkip=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#FuXi.Horn.HornRules.HornFromDL" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Takes an OWL RDF graph, an indication of what level of ruleset safety
+(see: <a class="reference external" href="http://code.google.com/p/fuxi/wiki/FuXiUserManual#Rule_Safety">http://code.google.com/p/fuxi/wiki/FuXiUserManual#Rule_Safety</a>) to apply,
+and a list of derived predicates and returns a Ruleset instance comprised of
+the rules extracted from the OWL RDF graph (using a variation of the OWL 2 RL transformation)</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="FuXi.Horn.HornRules.NetworkFromN3">
 <tt class="descclassname">FuXi.Horn.HornRules.</tt><tt class="descname">NetworkFromN3</tt><big>(</big><em>n3Source</em>, <em>additionalBuiltins=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.HornRules.NetworkFromN3" title="Permalink to this definition">¶</a></dt>
-<dd><p>Takes an N3 / RDF conjunctive graph and returns a ReteNetwork</p>
+<dd><p>Takes an N3 / RDF conjunctive graph and returns a ReteNetwork built from
+the rules in the N3 graph</p>
 </dd></dl>
 
 </div>
@@ -768,7 +775,9 @@ by disjunction, conjunction, and subsumption</p>
 <dl class="function">
 <dt id="FuXi.Syntax.InfixOWL.ComponentTerms">
 <tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">ComponentTerms</tt><big>(</big><em>cls</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.ComponentTerms" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Takes a Class instance and returns a generator over the classes that
+are involved in its definition, ignoring unamed classes</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="FuXi.Syntax.InfixOWL.DeepClassClear">
@@ -1004,7 +1013,7 @@ where any related class is an anonymous class</p>
 
 <dl class="class">
 <dt id="FuXi.Syntax.InfixOWL.Restriction">
-<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Restriction</tt><big>(</big><em>onProperty</em>, <em>graph=&lt;Graph identifier=BXSSvOLx2 (&lt;class 'rdflib.Graph.Graph'&gt;)&gt;</em>, <em>allValuesFrom=None</em>, <em>someValuesFrom=None</em>, <em>value=None</em>, <em>cardinality=None</em>, <em>maxCardinality=None</em>, <em>minCardinality=None</em>, <em>identifier=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Restriction</tt><big>(</big><em>onProperty</em>, <em>graph=&lt;Graph identifier=TQKQyyyD2 (&lt;class 'rdflib.Graph.Graph'&gt;)&gt;</em>, <em>allValuesFrom=None</em>, <em>someValuesFrom=None</em>, <em>value=None</em>, <em>cardinality=None</em>, <em>maxCardinality=None</em>, <em>minCardinality=None</em>, <em>identifier=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
 <dt>restriction ::= &#8216;restriction(&#8216; datavaluedPropertyID dataRestrictionComponent </dt>
 <dd><blockquote class="first">
