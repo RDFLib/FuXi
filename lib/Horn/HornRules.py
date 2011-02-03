@@ -12,7 +12,8 @@ from rdflib.Graph import Graph, ConjunctiveGraph
 
 def NetworkFromN3(n3Source,additionalBuiltins=None):
     """
-    Takes an N3 / RDF conjunctive graph and returns a ReteNetwork
+    Takes an N3 / RDF conjunctive graph and returns a ReteNetwork built from
+    the rules in the N3 graph
     """
     from FuXi.Rete.RuleStore import SetupRuleStore
     rule_store, rule_graph, network = SetupRuleStore(
@@ -31,6 +32,12 @@ def NetworkFromN3(n3Source,additionalBuiltins=None):
     return network
 
 def HornFromDL(owlGraph, safety = DATALOG_SAFETY_NONE, derivedPreds = [],complSkip = []):
+    """
+    Takes an OWL RDF graph, an indication of what level of ruleset safety
+    (see: http://code.google.com/p/fuxi/wiki/FuXiUserManual#Rule_Safety) to apply,
+    and a list of derived predicates and returns a Ruleset instance comprised of
+    the rules extracted from the OWL RDF graph (using a variation of the OWL 2 RL transformation)
+    """
     from FuXi.Rete.RuleStore import SetupRuleStore
     ruleStore,ruleGraph,network = SetupRuleStore(makeNetwork=True)
     return network.setupDescriptionLogicProgramming(
@@ -42,6 +49,10 @@ def HornFromDL(owlGraph, safety = DATALOG_SAFETY_NONE, derivedPreds = [],complSk
                                  safety = safety)
 
 def HornFromN3(n3Source,additionalBuiltins=None):
+    """
+    Takes the path or URL of a N3 document, and a mapping from predicates
+    to functions that implement any builtins found in the N3 document
+    """
     from FuXi.Rete.RuleStore import SetupRuleStore, N3RuleStore
     if isinstance(n3Source,ConjunctiveGraph):
         store=N3RuleStore(additionalBuiltins=additionalBuiltins)
