@@ -108,6 +108,7 @@ import os, itertools
 from pprint import pprint
 from rdflib import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,BNode,Literal,Variable
+from rdflib import OWL
 from rdflib.Literal import _XSD_NS
 from rdflib.Identifier import Identifier
 from rdflib.util import first
@@ -496,14 +497,14 @@ def AllClasses(graph):
 def AllProperties(graph):
     prevProps=set()
     for s,p,o in graph.triples_choices(
-               (None,RDF.type,[OWL_NS.Symmetric,
+               (None,RDF.type,[OWL_NS.SymmetricProperty,
                                OWL_NS.FunctionalProperty,
                                OWL_NS.InverseFunctionalProperty,
                                OWL_NS.TransitiveProperty,
                                OWL_NS.DatatypeProperty,
                                OWL_NS.ObjectProperty,
                                OWL_NS.AnnotationProperty])):
-        if o in [OWL_NS.Symmetric,
+        if o in [OWL_NS.SymmetricProperty,
                  OWL_NS.InverseFunctionalProperty,
                  OWL_NS.TransitiveProperty,
                  OWL_NS.ObjectProperty]:
@@ -527,7 +528,69 @@ class ClassNamespaceFactory(Namespace):
         if name.startswith("__"): # ignore any special Python names!
             raise AttributeError
         else:
-            return self.term(name)    
+            return self.term(name)
+
+CLASS_RELATIONS = set(
+        OWL.resourceProperties
+    ).difference([OWL.onProperty,
+                  OWL.allValuesFrom,
+                  OWL.hasValue,
+                  OWL.someValuesFrom,
+                  OWL.inverseOf,
+                  OWL.imports,
+                  OWL.versionInfo,
+                  OWL.backwardCompatibleWith,
+                  OWL.incompatibleWith,
+                  OWL.unionOf,
+                  OWL.intersectionOf,
+                  OWL.oneOf])
+
+def ComponentTerms(cls):
+    """
+    Takes a Class instance and returns a generator over the classes that
+    are involved in its definition, ignoring unamed classes
+    """
+    if OWL_NS.Restriction in cls.type:
+        try:
+            cls=CastClass(cls,Individual.factoryGraph)
+            for s,p,innerClsId in cls.factoryGraph.triples_choices((cls.identifier,
+                                                              [OWL_NS.allValuesFrom,
+                                                               OWL_NS.someValuesFrom],
+                                                              None)):
+                innerCls = Class(innerClsId,skipOWLClassMembership=True)
+                if isinstance(innerClsId,BNode):
+                    for _c in ComponentTerms(innerCls):
+                        yield _c
+                else:
+                    yield innerCls
+        except: pass
+    else:
+        cls=CastClass(cls,Individual.factoryGraph)
+        if isinstance(cls,BooleanClass):
+            for _cls in cls:
+                _cls = Class(_cls,skipOWLClassMembership=True)
+                if isinstance(_cls.identifier,BNode):
+                    for _c in ComponentTerms(_cls):
+                        yield _c
+                else:
+                    yield _cls
+        else:
+            for innerCls in cls.subClassOf:
+                if isinstance(innerCls.identifier,BNode):
+                    for _c in ComponentTerms(innerCls):
+                        yield _c
+                else:
+                    yield innerCls
+            for s,p,o in cls.factoryGraph.triples_choices(
+                (classOrIdentifier(cls),
+                 CLASS_RELATIONS,
+                 None)
+            ):
+                if isinstance(o,BNode):
+                    for _c in ComponentTerms(CastClass(o,Individual.factoryGraph)):
+                        yield _c
+                else:
+                    yield innerCls
     
 def DeepClassClear(classToPrune):
     """
@@ -851,7 +914,59 @@ class Class(AnnotatibleTerms):
         pass            
                 
     complementOf = property(_get_complementOf, _set_complementOf, _del_complementOf)
-    
+
+
+    def _get_parents(self):
+        """
+        computed attributes that returns a generator over taxonomic 'parents'
+        by disjunction, conjunction, and subsumption
+
+        >>> exNs = Namespace('http://example.com/')
+        >>> namespace_manager = NamespaceManager(Graph())
+        >>> namespace_manager.bind('ex', exNs, override=False)
+        >>> namespace_manager.bind('owl', OWL_NS, override=False)
+        >>> g = Graph()
+        >>> g.namespace_manager = namespace_manager
+        >>> Individual.factoryGraph = g
+        >>> brother = Class(exNs.Brother)
+        >>> sister  = Class(exNs.Sister)
+        >>> sibling = brother | sister
+        >>> sibling.identifier = exNs.Sibling
+        >>> sibling
+        ( ex:Brother or ex:Sister )
+        >>> first(brother.parents)
+        Class: ex:Sibling EquivalentTo: ( ex:Brother or ex:Sister )
+        >>> parent = Class(exNs.Parent)
+        >>> male   = Class(exNs.Male)
+        >>> father = parent & male
+        >>> father.identifier = exNs.Father
+        >>> list(father.parents)
+        [Class: ex:Parent , Class: ex:Male ]
+        
+        """
+        for parent in itertools.chain(self.subClassOf,
+                                      self.equivalentClass):
+            yield parent
+
+
+        link = first(self.factoryGraph.subjects(RDF.first,self.identifier))
+        if link:
+            listSiblings = list(self.factoryGraph.transitive_subjects(RDF.rest,
+                                                                      link))
+            if listSiblings:
+                collectionHead = listSiblings[-1]
+            else:
+                collectionHead = link
+            for disjCls in self.factoryGraph.subjects(OWL_NS.unionOf,collectionHead):
+                if isinstance(disjCls,URIRef):
+                    yield Class(disjCls,skipOWLClassMembership=True)
+        for rdfList in self.factoryGraph.objects(self.identifier,OWL_NS.intersectionOf):
+            for member in OWLRDFListProxy([rdfList],graph=self.factoryGraph):
+                if isinstance(member,URIRef):
+                    yield Class(member,skipOWLClassMembership=True)
+
+    parents = property(_get_parents)
+
     def isPrimitive(self):
         if (self.identifier,RDF.type,OWL_NS.Restriction) in self.graph:
             return False
@@ -935,7 +1050,9 @@ class Class(AnnotatibleTerms):
         return (isinstance(self.identifier,BNode) and "Some Class " or "Class: %s "%self.qname)+klassDescr
 
 class OWLRDFListProxy(object):
-    def __init__(self,rdfList,members=None):
+    def __init__(self,rdfList,members=None,graph=None):
+        if graph:
+            self.graph = graph
         members = members and members or []
         if rdfList:
             self._rdfList = Collection(self.graph,rdfList[0])
@@ -1521,19 +1638,19 @@ class Property(AnnotatibleTerms):
                 else:
                     inverseRepr=repr(first(self.inverseOf))
                 rt.append(u"  inverseOf( %s )%s"%(inverseRepr,
-                            OWL_NS.Symmetric in self.type and u' Symmetric' or u''))
+                            OWL_NS.SymmetricProperty in self.type and u' Symmetric' or u''))
             for s,p,roleType in self.graph.triples_choices((self.identifier,
                                                             RDF.type,
-                                                            [OWL_NS.Functional,
+                                                            [OWL_NS.FunctionalProperty,
                                                              OWL_NS.InverseFunctionalProperty,
-                                                             OWL_NS.Transitive])):
+                                                             OWL_NS.TransitiveProperty])):
                 rt.append(unicode(roleType.split(OWL_NS)[-1]))
         else:
             rt.append('DatatypeProperty( %s %s'\
                        %(self.qname,first(self.comment) and first(self.comment) or ''))            
             for s,p,roleType in self.graph.triples((self.identifier,
                                                     RDF.type,
-                                                    OWL_NS.Functional)):
+                                                    OWL_NS.FunctionalProperty)):
                 rt.append(u'   Functional')
         def canonicalName(term,g):
             normalizedName=classOrIdentifier(term)
