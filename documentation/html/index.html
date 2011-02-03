@@ -1,0 +1,1198 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>FuXi’s Documentation &mdash; FuXi v1.2 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="FuXi v1.2 documentation" href="#" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="#">FuXi v1.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="fuxi-s-documentation">
+<h1>FuXi&#8217;s Documentation<a class="headerlink" href="#fuxi-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p>FuXi is a Python-based, bi-directional logical reasoning system for the semantic web.  FuXi aims to be the engine for contemporary expert
+systems based on the Semantic Web technologies.  It is named after the <a class="reference external" href="http://en.wikipedia.org/wiki/Fu_Hsi">first</a> of the Three Sovereigns of ancient China.  It originally formed from
+an idea to express the underlying symbols (and their relationships) in the Yi Jing or Zhou Yi (&#8220;The Book of Changes&#8221;) in
+OWL and RDF in order to reason over their structural relationships.</p>
+<p>For an overview of the architecture, please read <a class="reference external" href="http://code.google.com/p/fuxi/wiki/Overview">FuXi Overview</a> and
+<a class="reference external" href="http://code.google.com/p/fuxi/wiki/FuXiUserManual">FuXi User Manual</a> for more information.</p>
+<p>Documentation of key classes and methods (referenced in above Wikis)</p>
+<div class="toctree-wrapper compound">
+<ul class="simple">
+</ul>
+</div>
+</div>
+<div class="section" id="fuxi-rete">
+<h1>FuXi.Rete<a class="headerlink" href="#fuxi-rete" title="Permalink to this headline">¶</a></h1>
+<p>An implementation of most of the RETE-UL algorithms outlined in the PhD thesis (1995) of Robert Doorenbos: <em>Production Matching for Large Learning Systems</em>.  See
+<a class="reference external" href="http://code.google.com/p/fuxi/wiki/FuXiUserManual#FuXi_.Rete">FuXi.Rete</a> in manual for how to use SetupRuleStore to create an ReteNetwork.</p>
+<dl class="function">
+<dt id="FuXi.Rete.RuleStore.SetupRuleStore">
+<tt class="descclassname">FuXi.Rete.RuleStore.</tt><tt class="descname">SetupRuleStore</tt><big>(</big><em>n3Stream=None</em>, <em>additionalBuiltins=None</em>, <em>makeNetwork=False</em><big>)</big><a class="headerlink" href="#FuXi.Rete.RuleStore.SetupRuleStore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up a N3RuleStore, a Graph (that uses it as a store, and )</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Rete.Network.ReteNetwork">
+<em class="property">class </em><tt class="descclassname">FuXi.Rete.Network.</tt><tt class="descname">ReteNetwork</tt><big>(</big><em>ruleStore</em>, <em>name=None</em>, <em>initialWorkingMemory=None</em>, <em>inferredTarget=None</em>, <em>nsMap={}</em>, <em>graphVizOutFile=None</em>, <em>dontFinalize=False</em>, <em>goal=None</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Rete network.  The constructor takes an N3 rule graph, an identifier (a BNode by default), an 
+initial Set of Rete tokens that serve as the &#8216;working memory&#8217;, and an rdflib Graph to 
+add inferred triples to - by forward-chaining via Rete evaluation algorithm),</p>
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.addWME">
+<tt class="descname">addWME</tt><big>(</big><em>wme</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.addWME" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>procedure add-wme (w: WME) exhaustive hash table versiong</dt>
+<dd>let v1, v2, and v3 be the symbols in the three fields of w
+alpha-mem = lookup-in-hash-table (v1,v2,v3)
+if alpha-mem then alpha-memory-activation (alpha-mem, w)
+alpha-mem = lookup-in-hash-table (v1,v2,*)
+if alpha-mem then alpha-memory-activation (alpha-mem, w)
+alpha-mem = lookup-in-hash-table (v1,*,v3)
+if alpha-mem then alpha-memory-activation (alpha-mem, w)
+...
+alpha-mem = lookup-in-hash-table (<em>,</em>,*)
+if alpha-mem then alpha-memory-activation (alpha-mem, w)</dd>
+</dl>
+<p>end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.attachBetaNodes">
+<tt class="descname">attachBetaNodes</tt><big>(</big><em>patternIterator</em>, <em>lastBetaNodePattern=None</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.attachBetaNodes" title="Permalink to this definition">¶</a></dt>
+<dd><p>The second &#8216;pass&#8217; in the Rete network compilation algorithm:
+Attaches Beta nodes to the alpha nodes associated with all the patterns
+in a rule&#8217;s LHS recursively towards a &#8216;root&#8217; Beta node - the terminal node
+for the rule.  This root / terminal node is returned</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.buildFilterNetworkFromClause">
+<tt class="descname">buildFilterNetworkFromClause</tt><big>(</big><em>rule</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.buildFilterNetworkFromClause" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.buildNetwork">
+<tt class="descname">buildNetwork</tt><big>(</big><em>lhsIterator</em>, <em>rhsIterator</em>, <em>rule</em>, <em>aFilter=False</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.buildNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes an iterator of triples in the LHS of an N3 rule and an iterator of the RHS and extends
+the Rete network, building / reusing Alpha 
+and Beta nodes along the way (via a dictionary mapping of patterns to the built nodes)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.buildNetworkFromClause">
+<tt class="descname">buildNetworkFromClause</tt><big>(</big><em>rule</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.buildNetworkFromClause" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.calculateStratifiedModel">
+<tt class="descname">calculateStratifiedModel</tt><big>(</big><em>database</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.calculateStratifiedModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stratified Negation Semantics for DLP using SPARQL to handle the negation</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.checkDuplicateRules">
+<tt class="descname">checkDuplicateRules</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.checkDuplicateRules" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.clear">
+<tt class="descname">clear</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.clear" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.closureGraph">
+<tt class="descname">closureGraph</tt><big>(</big><em>sourceGraph</em>, <em>readOnly=True</em>, <em>store=None</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.closureGraph" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.createAlphaNode">
+<tt class="descname">createAlphaNode</tt><big>(</big><em>currentPattern</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.createAlphaNode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.feedFactsToAdd">
+<tt class="descname">feedFactsToAdd</tt><big>(</big><em>tokenIterator</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.feedFactsToAdd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Feeds the network an iterator of facts / tokens which are fed to the alpha nodes 
+which propagate the matching process through the network</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.fireConsequent">
+<tt class="descname">fireConsequent</tt><big>(</big><em>tokens</em>, <em>termNode</em>, <em>debug=False</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.fireConsequent" title="Permalink to this definition">¶</a></dt>
+<dd><p>&#8220;In general, a p-node also contains a specifcation of what production it corresponds to | the
+name of the production, its right-hand-side actions, etc. A p-node may also contain information
+about the names of the variables that occur in the production. Note that variable names
+are not mentioned in any of the Rete node data structures we describe in this chapter. This is
+intentional <a href="#id2"><span class="problematic" id="id3">|</span></a>it enables nodes to be shared when two productions have conditions with the same
+basic form, but with different variable names.&#8221;</p>
+<p>Takes a set of tokens and the terminal Beta node they came from
+and fires the inferred statements using the patterns associated
+with the terminal node.  Statements that have been previously inferred
+or already exist in the working memory are not asserted</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.getNsBindings">
+<tt class="descname">getNsBindings</tt><big>(</big><em>nsMgr</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.getNsBindings" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.parseN3Logic">
+<tt class="descname">parseN3Logic</tt><big>(</big><em>src</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.parseN3Logic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.registerReteAction">
+<tt class="descname">registerReteAction</tt><big>(</big><em>headTriple</em>, <em>override</em>, <em>executeFn</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.registerReteAction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register the given execute function for any rule with the
+given head using the override argument to determine whether or
+not the action completely handles the firing of the rule.</p>
+<p>The signature of the execute action is as follows:</p>
+<dl class="docutils">
+<dt>def someExecuteAction(tNode, inferredTriple, token, binding):</dt>
+<dd></dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.reportConflictSet">
+<tt class="descname">reportConflictSet</tt><big>(</big><em>closureSummary=False</em>, <em>stream=&lt;open file '&lt;stdout&gt;'</em>, <em>mode 'w' at 0x1004160b8&gt;</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.reportConflictSet" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.reportSize">
+<tt class="descname">reportSize</tt><big>(</big><em>tokenSizeThreshold=1200</em>, <em>stream=&lt;open file '&lt;stdout&gt;'</em>, <em>mode 'w' at 0x1004160b8&gt;</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.reportSize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.reset">
+<tt class="descname">reset</tt><big>(</big><em>newinferredFacts=None</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset the network by emptying the memory associated with all Beta Nodes nodes</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Rete.Network.ReteNetwork.setupDescriptionLogicProgramming">
+<tt class="descname">setupDescriptionLogicProgramming</tt><big>(</big><em>owlN3Graph</em>, <em>expanded=</em><span class="optional">[</span><span class="optional">]</span>, <em>addPDSemantics=True</em>, <em>classifyTBox=False</em>, <em>constructNetwork=True</em>, <em>derivedPreds=</em><span class="optional">[</span><span class="optional">]</span>, <em>ignoreNegativeStratus=False</em>, <em>safety=0</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Network.ReteNetwork.setupDescriptionLogicProgramming" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="fuxi-horn">
+<h1>FuXi.Horn<a class="headerlink" href="#fuxi-horn" title="Permalink to this headline">¶</a></h1>
+<p>Originally implemented as a reference implementation of the W3C&#8217;s Rule Interchange Format Basic Logic Dialect but eventually evolved into a
+Pythonic API for managing an abstract Logic Programming syntax. Used for creating rulesets converted from OWL RDF expressions and creating
+a Horn ruleset from a parsed Notation 3 graph.</p>
+<dl class="function">
+<dt id="FuXi.Horn.HornRules.HornFromN3">
+<tt class="descclassname">FuXi.Horn.HornRules.</tt><tt class="descname">HornFromN3</tt><big>(</big><em>n3Source</em>, <em>additionalBuiltins=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.HornRules.HornFromN3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Horn.HornRules.HornFromDL">
+<tt class="descclassname">FuXi.Horn.HornRules.</tt><tt class="descname">HornFromDL</tt><big>(</big><em>owlGraph</em>, <em>safety=0</em>, <em>derivedPreds=</em><span class="optional">[</span><span class="optional">]</span>, <em>complSkip=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#FuXi.Horn.HornRules.HornFromDL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Horn.HornRules.NetworkFromN3">
+<tt class="descclassname">FuXi.Horn.HornRules.</tt><tt class="descname">NetworkFromN3</tt><big>(</big><em>n3Source</em>, <em>additionalBuiltins=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.HornRules.NetworkFromN3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes an N3 / RDF conjunctive graph and returns a ReteNetwork</p>
+</dd></dl>
+
+</div>
+<div class="section" id="fuxi-rete-magic">
+<h1>FuXi.Rete.Magic<a class="headerlink" href="#fuxi-rete-magic" title="Permalink to this headline">¶</a></h1>
+<p>This module is where the <a class="reference external" href="http://code.google.com/p/fuxi/wiki/Overview#Sideways_Information_Passing">Sideways Information Passing</a>
+reasoning capabilities are implemented.</p>
+<dl class="function">
+<dt id="FuXi.Rete.Magic.MagicSetTransformation">
+<tt class="descclassname">FuXi.Rete.Magic.</tt><tt class="descname">MagicSetTransformation</tt><big>(</big><em>factGraph</em>, <em>rules</em>, <em>GOALS</em>, <em>derivedPreds=None</em>, <em>strictCheck=2</em>, <em>noMagic=None</em>, <em>defaultPredicates=None</em><big>)</big><a class="headerlink" href="#FuXi.Rete.Magic.MagicSetTransformation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a goal and a ruleset and returns an iterator
+over the rulest that corresponds to the magic set
+transformation:</p>
+</dd></dl>
+
+</div>
+<div class="section" id="fuxi-sparql">
+<h1>FuXi.SPARQL<a class="headerlink" href="#fuxi-sparql" title="Permalink to this headline">¶</a></h1>
+<p>Backward chaining algorithms for SPARQL RIF-Core and OWL 2 RL entailment. The Backwards Fixpoint Procedure (BFP) implementation uses
+RETE-UL as the RIF PRD implementation of a meta-interpreter of a ruleset that evaluates conjunctive (BGPs) SPARQL queries using a
+SPARQL 1.1 RIF Entailment Regime.</p>
+<p>See: <a class="reference external" href="http://code.google.com/p/fuxi/wiki/Overview#Backward_Chaining_/_Top_Down_Evaluation">Overview</a> and
+<a class="reference external" href="http://code.google.com/p/fuxi/wiki/FuXiUserManual#FuXi_.SPARQL">User Manual</a></p>
+<dl class="class">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore">
+<em class="property">class </em><tt class="descclassname">FuXi.SPARQL.BackwardChainingStore.</tt><tt class="descname">TopDownSPARQLEntailingStore</tt><big>(</big><em>store</em>, <em>edb</em>, <em>derivedPredicates=None</em>, <em>idb=None</em>, <em>DEBUG=False</em>, <em>nsBindings={}</em>, <em>decisionProcedure=0</em>, <em>templateMap=None</em>, <em>identifyHybridPredicates=False</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore" title="Permalink to this definition">¶</a></dt>
+<dd><p>A Store which uses FuXi&#8217;s magic set &#8220;sip strategies&#8221; and the in-memory SPARQL Algebra
+implementation as a store-agnostic, top-down decision procedure for 
+semanic web SPARQL (OWL2-RL/RIF/N3) entailment regimes.  Exposed
+as a rdflib / layercake-python API for SPARQL datasets with entailment regimes
+Queries are mediated over the SPARQL protocol using global schemas captured
+as SW theories which describe and distinguish their predicate symbols</p>
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.batch_unify">
+<tt class="descname">batch_unify</tt><big>(</big><em>patterns</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.batch_unify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform RDF triple store-level unification of a list of triple
+patterns (4-item tuples which correspond to a SPARQL triple pattern
+with an additional constraint for the graph name).</p>
+<p>Uses a SW sip-strategy implementation to solve the conjunctive goal
+and yield unified bindings</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><dl class="first docutils">
+<dt><cite>patterns</cite>: a list of 4-item tuples where any of the items can be</dt>
+<dd><p class="first last">one of: Variable, URIRef, BNode, or Literal.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Returns a generator over dictionaries of solutions to the list of
+triple patterns that are entailed by the regime.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.bind">
+<tt class="descname">bind</tt><big>(</big><em>prefix</em>, <em>namespace</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.bind" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.close">
+<tt class="descname">close</tt><big>(</big><em>commit_pending_transaction=False</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>This closes the database connection. The commit_pending_transaction parameter specifies whether to
+commit all pending transactions before closing (if the store is transactional).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.commit">
+<tt class="descname">commit</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.commit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.conjunctiveSipStrategy">
+<tt class="descname">conjunctiveSipStrategy</tt><big>(</big><em>goalsRemaining</em>, <em>sipCollection</em>, <em>factGraph</em>, <em>bindings={}</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.conjunctiveSipStrategy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a conjunctive set of triples, invoke sip-strategy passing
+on intermediate solutions to facilitate &#8216;join&#8217; behavior</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.contexts">
+<tt class="descname">contexts</tt><big>(</big><em>triple=None</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.contexts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator over all contexts in the graph. If triple is specified, a generator over all
+contexts the triple is in.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.derivedPredicateFromTriple">
+<tt class="descname">derivedPredicateFromTriple</tt><big>(</big><em>(s</em>, <em>p</em>, <em>o)</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.derivedPredicateFromTriple" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a triple, return its predicate (if derived)
+or None otherwise</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.destroy">
+<tt class="descname">destroy</tt><big>(</big><em>configuration</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.destroy" title="Permalink to this definition">¶</a></dt>
+<dd><p>This destroys the instance of the store identified by the configuration string.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.getDerivedPredicates">
+<tt class="descname">getDerivedPredicates</tt><big>(</big><em>expr</em>, <em>prolog</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.getDerivedPredicates" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.invokeDecisionProcedure">
+<tt class="descname">invokeDecisionProcedure</tt><big>(</big><em>tp</em>, <em>factGraph</em>, <em>bindings</em>, <em>debug</em>, <em>sipCollection</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.invokeDecisionProcedure" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.isaBaseQuery">
+<tt class="descname">isaBaseQuery</tt><big>(</big><em>queryString</em>, <em>queryObj=None</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.isaBaseQuery" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the given SPARQL query involves purely base predicates 
+it returns it (as a parsed string), otherwise it returns a SPARQL algebra
+instance for top-down evaluation using this store</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">graph</span><span class="o">=</span><span class="n">Graph</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">topDownStore</span> <span class="o">=</span> <span class="n">TopDownSPARQLEntailingStore</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">store</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">seeAlso</span><span class="p">],</span><span class="n">nsBindings</span><span class="o">=</span><span class="p">{</span><span class="s">u&#39;rdfs&#39;</span><span class="p">:</span><span class="n">RDFS</span><span class="o">.</span><span class="n">RDFSNS</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rt</span><span class="o">=</span><span class="n">topDownStore</span><span class="o">.</span><span class="n">isaBaseQuery</span><span class="p">(</span><span class="s">&quot;SELECT * { [] rdfs:seeAlso [] }&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">rt</span><span class="p">,(</span><span class="n">BasicGraphPattern</span><span class="p">,</span><span class="n">AlgebraExpression</span><span class="p">))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rt</span><span class="o">=</span><span class="n">topDownStore</span><span class="o">.</span><span class="n">isaBaseQuery</span><span class="p">(</span><span class="s">&quot;SELECT * { [] a [] }&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">rt</span><span class="p">,(</span><span class="n">Query</span><span class="p">,</span><span class="nb">basestring</span><span class="p">))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rt</span><span class="o">=</span><span class="n">topDownStore</span><span class="o">.</span><span class="n">isaBaseQuery</span><span class="p">(</span><span class="s">&quot;SELECT * { [] a [] OPTIONAL { [] rdfs:seeAlso [] } }&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">rt</span><span class="p">,(</span><span class="n">BasicGraphPattern</span><span class="p">,</span><span class="n">AlgebraExpression</span><span class="p">))</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.namespace">
+<tt class="descname">namespace</tt><big>(</big><em>prefix</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.namespace" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.namespaces">
+<tt class="descname">namespaces</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.namespaces" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.prefix">
+<tt class="descname">prefix</tt><big>(</big><em>namespace</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.prefix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.rollback">
+<tt class="descname">rollback</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.rollback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.sparql_query">
+<tt class="descname">sparql_query</tt><big>(</big><em>queryString</em>, <em>queryObj</em>, <em>graph</em>, <em>dataSetBase</em>, <em>extensionFunctions</em>, <em>initBindings={}</em>, <em>initNs={}</em>, <em>DEBUG=False</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.sparql_query" title="Permalink to this definition">¶</a></dt>
+<dd><p>The default &#8216;native&#8217; SPARQL implementation is based on sparql-p&#8217;s expansion trees
+layered on top of the read-only RDF APIs of the underlying store</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.triples">
+<tt class="descname">triples</tt><big>(</big><em>(subject</em>, <em>predicate</em>, <em>object)</em>, <em>context=None</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.triples" title="Permalink to this definition">¶</a></dt>
+<dd><p>A generator over all the triples matching the pattern. Pattern can
+include any objects for used for comparing against nodes in the store, for
+example, REGEXTerm, URIRef, Literal, BNode, Variable, Graph, QuotedGraph, Date? DateRange?</p>
+<p>A conjunctive query can be indicated by either providing a value of None
+for the context or the identifier associated with the Conjunctive Graph (if it&#8217;s context aware).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.triples_choices">
+<tt class="descname">triples_choices</tt><big>(</big><em>(subject</em>, <em>predicate</em>, <em>object_)</em>, <em>context=None</em><big>)</big><a class="headerlink" href="#FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore.triples_choices" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variant of triples that can take a list of terms instead of a single
+term in any slot.  Stores can implement this to optimize the response time
+from the default &#8216;fallback&#8217; implementation, which will iterate
+over each term in the list and dispatch to tripless</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="fuxi-syntax">
+<h1>FuXi.Syntax<a class="headerlink" href="#fuxi-syntax" title="Permalink to this headline">¶</a></h1>
+<p>Includes the InfixOwl library (see the linked Wiki for more information).  A Python binding for OWL Abstract Syntax that incorporates the
+Manchester OWL Syntax.  See the <a class="reference external" href="http://code.google.com/p/fuxi/wiki/InfixOwl">Wiki</a> and <a class="reference external" href="http://python-dlp.googlecode.com/files/infixOwl.pdf">OWLED paper</a></p>
+<span class="target" id="module-FuXi.Syntax.InfixOWL"></span><p>RDFLib Python binding for OWL Abstract Syntax</p>
+<dl class="docutils">
+<dt>see: <a class="reference external" href="http://www.w3.org/TR/owl-semantics/syntax.html">http://www.w3.org/TR/owl-semantics/syntax.html</a></dt>
+<dd><a class="reference external" href="http://owl-workshop.man.ac.uk/acceptedLong/submission_9.pdf">http://owl-workshop.man.ac.uk/acceptedLong/submission_9.pdf</a></dd>
+</dl>
+<p>3.2.3 Axioms for complete classes without using owl:equivalentClass</p>
+<blockquote>
+<div>Named class description of type 2 (with owl:oneOf) or type 4-6 (with owl:intersectionOf, owl:unionOf or owl:complementOf</div></blockquote>
+<p>Uses Manchester Syntax for __repr__</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">exNs</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="s">&#39;http://example.com/&#39;</span><span class="p">)</span>        
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">NamespaceManager</span><span class="p">(</span><span class="n">Graph</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ex&#39;</span><span class="p">,</span> <span class="n">exNs</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;owl&#39;</span><span class="p">,</span> <span class="n">OWL_NS</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>    
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span><span class="o">.</span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">namespace_manager</span>
+</pre></div>
+</div>
+<p>Now we have an empty graph, we can construct OWL classes in it
+using the Python classes defined in this module</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Opera</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now we can assert rdfs:subClassOf and owl:equivalentClass relationships 
+(in the underlying graph) with other classes using the &#8216;subClassOf&#8217; 
+and &#8216;equivalentClass&#8217; descriptors which can be set to a list
+of objects for the corresponding predicates.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">subClassOf</span> <span class="o">=</span> <span class="p">[</span><span class="n">exNs</span><span class="o">.</span><span class="n">MusicalWork</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>We can then access the rdfs:subClassOf relationships</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="nb">list</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">subClassOf</span><span class="p">)</span>
+<span class="go">[Class: ex:MusicalWork ]</span>
+</pre></div>
+</div>
+<p>This can also be used against already populated graphs:</p>
+<p>#&gt;&gt;&gt; owlGraph = Graph().parse(OWL_NS)
+#&gt;&gt;&gt; namespace_manager.bind(&#8216;owl&#8217;, OWL_NS, override=False)
+#&gt;&gt;&gt; owlGraph.namespace_manager = namespace_manager
+#&gt;&gt;&gt; list(Class(OWL_NS.Class,graph=owlGraph).subClassOf)
+#[Class: rdfs:Class ]</p>
+<p>Operators are also available.  For instance we can add ex:Opera to the extension
+of the ex:CreativeWork class via the &#8216;+=&#8217; operator</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">Class: ex:Opera SubClassOf: ex:MusicalWork</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">CreativeWork</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">+=</span> <span class="n">a</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">subClassOf</span><span class="p">,</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span><span class="n">c</span><span class="o">.</span><span class="n">identifier</span><span class="p">)</span>
+<span class="go">[Class: ex:CreativeWork , Class: ex:MusicalWork ]</span>
+</pre></div>
+</div>
+<p>And we can then remove it from the extension as well</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">-=</span> <span class="n">a</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">Class: ex:Opera SubClassOf: ex:MusicalWork</span>
+</pre></div>
+</div>
+<p>Boolean class constructions can also  be created with Python operators
+For example, The | operator can be used to construct a class consisting of a owl:unionOf 
+the operands:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span>  <span class="n">a</span> <span class="o">|</span> <span class="n">b</span> <span class="o">|</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Work</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">( ex:Opera or ex:CreativeWork or ex:Work )</span>
+</pre></div>
+</div>
+<p>Boolean class expressions can also be operated as lists (using python list operators)</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">c</span><span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Work</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">))]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">( ex:Opera or ex:CreativeWork )</span>
+</pre></div>
+</div>
+<p>The &#8216;&amp;&#8217; operator can be used to construct class intersection:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">woman</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Female</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Human</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">woman</span><span class="o">.</span><span class="n">identifier</span> <span class="o">=</span> <span class="n">exNs</span><span class="o">.</span><span class="n">Woman</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">woman</span>
+<span class="go">( ex:Female and ex:Human )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">woman</span><span class="p">)</span>
+<span class="go">2</span>
+</pre></div>
+</div>
+<p>Enumerated classes can also be manipulated</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">contList</span> <span class="o">=</span> <span class="p">[</span><span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Africa</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">),</span><span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">NorthAmerica</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">EnumeratedClass</span><span class="p">(</span><span class="n">members</span><span class="o">=</span><span class="n">contList</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">)</span>
+<span class="go">{ ex:Africa ex:NorthAmerica }</span>
+</pre></div>
+</div>
+<p>owl:Restrictions can also be instanciated:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">Restriction</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">hasParent</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">,</span><span class="n">allValuesFrom</span><span class="o">=</span><span class="n">exNs</span><span class="o">.</span><span class="n">Human</span><span class="p">)</span>
+<span class="go">( ex:hasParent only ex:Human )</span>
+</pre></div>
+</div>
+<p>Restrictions can also be created using Manchester OWL syntax in &#8216;colloquial&#8217; Python 
+&gt;&gt;&gt; exNs.hasParent <a href="#id4"><span class="problematic" id="id5">|some|</span></a> Class(exNs.Physician,graph=g)
+( ex:hasParent some ex:Physician )</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">Property</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">hasParent</span><span class="p">,</span><span class="n">graph</span><span class="o">=</span><span class="n">g</span><span class="p">)</span> <span class="o">|</span><span class="nb">max</span><span class="o">|</span> <span class="n">Literal</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">( ex:hasParent max 1 )</span>
+</pre></div>
+</div>
+<p>#&gt;&gt;&gt; print g.serialize(format=&#8217;pretty-xml&#8217;)</p>
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.AllClasses">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">AllClasses</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.AllClasses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.AllDifferent">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">AllDifferent</tt><big>(</big><em>members</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.AllDifferent" title="Permalink to this definition">¶</a></dt>
+<dd><p>DisjointClasses(&#8216; description description { description } &#8216;)&#8217;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.AllProperties">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">AllProperties</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.AllProperties" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.AnnotatibleTerms">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">AnnotatibleTerms</tt><big>(</big><em>identifier</em>, <em>graph=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.AnnotatibleTerms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Terms in an OWL ontology with rdfs:label and rdfs:comment</p>
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.AnnotatibleTerms.comment">
+<tt class="descname">comment</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.AnnotatibleTerms.comment" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.AnnotatibleTerms.label">
+<tt class="descname">label</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.AnnotatibleTerms.label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.AnnotatibleTerms.seeAlso">
+<tt class="descname">seeAlso</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.AnnotatibleTerms.seeAlso" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.BooleanClass">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">BooleanClass</tt><big>(</big><em>identifier=None</em>, <em>operator=rdflib.URIRef('http://www.w3.org/2002/07/owl#intersectionOf')</em>, <em>members=None</em>, <em>graph=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.BooleanClass" title="Permalink to this definition">¶</a></dt>
+<dd><p>See: <a class="reference external" href="http://www.w3.org/TR/owl-ref/#Boolean">http://www.w3.org/TR/owl-ref/#Boolean</a></p>
+<p>owl:complementOf is an attribute of Class, however</p>
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.BooleanClass.changeOperator">
+<tt class="descname">changeOperator</tt><big>(</big><em>newOperator</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.BooleanClass.changeOperator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a unionOf / intersectionOf class expression into one 
+that instead uses the given operator</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">testGraph</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Individual</span><span class="o">.</span><span class="n">factoryGraph</span> <span class="o">=</span> <span class="n">testGraph</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">EX</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="s">&quot;http://example.com/&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">NamespaceManager</span><span class="p">(</span><span class="n">Graph</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ex&#39;</span><span class="p">,</span> <span class="n">EX</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testGraph</span><span class="o">.</span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">namespace_manager</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fire</span>  <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">Fire</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">water</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">Water</span><span class="p">)</span> 
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testClass</span> <span class="o">=</span> <span class="n">BooleanClass</span><span class="p">(</span><span class="n">members</span><span class="o">=</span><span class="p">[</span><span class="n">fire</span><span class="p">,</span><span class="n">water</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testClass</span>
+<span class="go">( ex:Fire and ex:Water )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testClass</span><span class="o">.</span><span class="n">changeOperator</span><span class="p">(</span><span class="n">OWL_NS</span><span class="o">.</span><span class="n">unionOf</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testClass</span>
+<span class="go">( ex:Fire or ex:Water )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">try</span><span class="p">:</span> <span class="n">testClass</span><span class="o">.</span><span class="n">changeOperator</span><span class="p">(</span><span class="n">OWL_NS</span><span class="o">.</span><span class="n">unionOf</span><span class="p">)</span>
+<span class="gp">... </span><span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="k">print</span> <span class="n">e</span>
+<span class="go">The new operator is already being used!</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.BooleanClass.copy">
+<tt class="descname">copy</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.BooleanClass.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a copy of this class</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.BooleanClass.isPrimitive">
+<tt class="descname">isPrimitive</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.BooleanClass.isPrimitive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.BooleanClass.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.BooleanClass.serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.BooleanClassExtentHelper">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">BooleanClassExtentHelper</tt><big>(</big><em>operator</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.BooleanClassExtentHelper" title="Permalink to this definition">¶</a></dt>
+<dd><div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">testGraph</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Individual</span><span class="o">.</span><span class="n">factoryGraph</span> <span class="o">=</span> <span class="n">testGraph</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">EX</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="s">&quot;http://example.com/&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">NamespaceManager</span><span class="p">(</span><span class="n">Graph</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ex&#39;</span><span class="p">,</span> <span class="n">EX</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testGraph</span><span class="o">.</span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">namespace_manager</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fire</span>  <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">Fire</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">water</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">Water</span><span class="p">)</span> 
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testClass</span> <span class="o">=</span> <span class="n">BooleanClass</span><span class="p">(</span><span class="n">members</span><span class="o">=</span><span class="p">[</span><span class="n">fire</span><span class="p">,</span><span class="n">water</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testClass2</span> <span class="o">=</span> <span class="n">BooleanClass</span><span class="p">(</span><span class="n">operator</span><span class="o">=</span><span class="n">OWL_NS</span><span class="o">.</span><span class="n">unionOf</span><span class="p">,</span><span class="n">members</span><span class="o">=</span><span class="p">[</span><span class="n">fire</span><span class="p">,</span><span class="n">water</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">BooleanClass</span><span class="o">.</span><span class="n">getIntersections</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="k">print</span> <span class="n">c</span>
+<span class="go">( ex:Fire and ex:Water )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">BooleanClass</span><span class="o">.</span><span class="n">getUnions</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="k">print</span> <span class="n">c</span>
+<span class="go">( ex:Fire or ex:Water )</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.Callable">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Callable</tt><big>(</big><em>anycallable</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Callable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.CastClass">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">CastClass</tt><big>(</big><em>c</em>, <em>graph=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.CastClass" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.Class">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Class</tt><big>(</big><em>identifier=None</em>, <em>subClassOf=None</em>, <em>equivalentClass=None</em>, <em>disjointWith=None</em>, <em>complementOf=None</em>, <em>graph=None</em>, <em>skipOWLClassMembership=False</em>, <em>comment=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>&#8216;General form&#8217; for classes:</p>
+<p>The Manchester Syntax (supported in Protege) is used as the basis for the form 
+of this class</p>
+<p>See: <a class="reference external" href="http://owl-workshop.man.ac.uk/acceptedLong/submission_9.pdf">http://owl-workshop.man.ac.uk/acceptedLong/submission_9.pdf</a>:</p>
+<dl class="docutils">
+<dt>‚ÄòClass:‚Äô classID {Annotation</dt>
+<dd>( (‚ÄòSubClassOf:‚Äô ClassExpression)
+| (‚ÄòEquivalentTo‚Äô ClassExpression)
+| (‚ÄôDisjointWith‚Äô ClassExpression)) }</dd>
+</dl>
+<p>Appropriate excerpts from OWL Reference:</p>
+<dl class="docutils">
+<dt>&#8221;.. Subclass axioms provide us with partial definitions: they represent </dt>
+<dd>necessary but not sufficient conditions for establishing class 
+membership of an individual.&#8221;</dd>
+</dl>
+</div></blockquote>
+<p>&#8221;.. A class axiom may contain (multiple) owl:equivalentClass statements&#8221;</p>
+<blockquote>
+<div><p>&#8221;..A class axiom may also contain (multiple) owl:disjointWith statements..&#8221;</p>
+<dl class="docutils">
+<dt>&#8221;..An owl:complementOf property links a class to precisely one class </dt>
+<dd>description.&#8221;</dd>
+</dl>
+</div></blockquote>
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Class.annotation">
+<tt class="descname">annotation</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.annotation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Class.complementOf">
+<tt class="descname">complementOf</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.complementOf" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Class.disjointWith">
+<tt class="descname">disjointWith</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.disjointWith" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Class.equivalentClass">
+<tt class="descname">equivalentClass</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.equivalentClass" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Class.extent">
+<tt class="descname">extent</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.extent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Class.extentQuery">
+<tt class="descname">extentQuery</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.extentQuery" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Class.isPrimitive">
+<tt class="descname">isPrimitive</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.isPrimitive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Class.parents">
+<tt class="descname">parents</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.parents" title="Permalink to this definition">¶</a></dt>
+<dd><p>computed attributes that returns a generator over taxonomic &#8216;parents&#8217;
+by disjunction, conjunction, and subsumption</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">exNs</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="s">&#39;http://example.com/&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">NamespaceManager</span><span class="p">(</span><span class="n">Graph</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ex&#39;</span><span class="p">,</span> <span class="n">exNs</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;owl&#39;</span><span class="p">,</span> <span class="n">OWL_NS</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span><span class="o">.</span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">namespace_manager</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Individual</span><span class="o">.</span><span class="n">factoryGraph</span> <span class="o">=</span> <span class="n">g</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">brother</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Brother</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sister</span>  <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Sister</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sibling</span> <span class="o">=</span> <span class="n">brother</span> <span class="o">|</span> <span class="n">sister</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sibling</span><span class="o">.</span><span class="n">identifier</span> <span class="o">=</span> <span class="n">exNs</span><span class="o">.</span><span class="n">Sibling</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sibling</span>
+<span class="go">( ex:Brother or ex:Sister )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">first</span><span class="p">(</span><span class="n">brother</span><span class="o">.</span><span class="n">parents</span><span class="p">)</span>
+<span class="go">Class: ex:Sibling EquivalentTo: ( ex:Brother or ex:Sister )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parent</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Parent</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">male</span>   <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">Male</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">father</span> <span class="o">=</span> <span class="n">parent</span> <span class="o">&amp;</span> <span class="n">male</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">father</span><span class="o">.</span><span class="n">identifier</span> <span class="o">=</span> <span class="n">exNs</span><span class="o">.</span><span class="n">Father</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">father</span><span class="o">.</span><span class="n">parents</span><span class="p">)</span>
+<span class="go">[Class: ex:Parent , Class: ex:Male ]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Class.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Class.subClassOf">
+<tt class="descname">subClassOf</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.subClassOf" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Class.subSumpteeIds">
+<tt class="descname">subSumpteeIds</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Class.subSumpteeIds" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.ClassNamespaceFactory">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">ClassNamespaceFactory</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.ClassNamespaceFactory" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.ClassNamespaceFactory.term">
+<tt class="descname">term</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.ClassNamespaceFactory.term" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.CommonNSBindings">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">CommonNSBindings</tt><big>(</big><em>graph</em>, <em>additionalNS={}</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.CommonNSBindings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a graph and binds the common namespaces (rdf,rdfs, &amp; owl)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.ComponentTerms">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">ComponentTerms</tt><big>(</big><em>cls</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.ComponentTerms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.DeepClassClear">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">DeepClassClear</tt><big>(</big><em>classToPrune</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.DeepClassClear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Recursively clear the given class, continuing
+where any related class is an anonymous class</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">EX</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="s">&#39;http://example.com/&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">NamespaceManager</span><span class="p">(</span><span class="n">Graph</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ex&#39;</span><span class="p">,</span> <span class="n">EX</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;owl&#39;</span><span class="p">,</span> <span class="n">OWL_NS</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>    
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span><span class="o">.</span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">namespace_manager</span>    
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Individual</span><span class="o">.</span><span class="n">factoryGraph</span> <span class="o">=</span> <span class="n">g</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classB</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">B</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classC</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">C</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classD</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">D</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classE</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">E</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classF</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">F</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">anonClass</span> <span class="o">=</span> <span class="n">EX</span><span class="o">.</span><span class="n">someProp</span><span class="o">|</span><span class="n">some</span><span class="o">|</span><span class="n">classD</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classF</span> <span class="o">+=</span> <span class="n">anonClass</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">anonClass</span><span class="o">.</span><span class="n">subClassOf</span><span class="p">)</span>
+<span class="go">[Class: ex:F ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classA</span> <span class="o">=</span> <span class="n">classE</span> <span class="o">|</span> <span class="n">classF</span> <span class="o">|</span> <span class="n">anonClass</span>    
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classB</span> <span class="o">+=</span> <span class="n">classA</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classA</span><span class="o">.</span><span class="n">equivalentClass</span> <span class="o">=</span> <span class="p">[</span><span class="n">Class</span><span class="p">()]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classB</span><span class="o">.</span><span class="n">subClassOf</span> <span class="o">=</span> <span class="p">[</span><span class="n">EX</span><span class="o">.</span><span class="n">someProp</span><span class="o">|</span><span class="n">some</span><span class="o">|</span><span class="n">classC</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classA</span>
+<span class="go">( ex:E or ex:F or ( ex:someProp some ex:D ) )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">DeepClassClear</span><span class="p">(</span><span class="n">classA</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classA</span>
+<span class="go">(  )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">anonClass</span><span class="o">.</span><span class="n">subClassOf</span><span class="p">)</span>
+<span class="go">[]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">classB</span>
+<span class="go">Class: ex:B SubClassOf: ( ex:someProp some ex:C )</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">otherClass</span> <span class="o">=</span> <span class="n">classD</span> <span class="o">|</span> <span class="n">anonClass</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">otherClass</span>
+<span class="go">( ex:D or ( ex:someProp some ex:D ) )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">DeepClassClear</span><span class="p">(</span><span class="n">otherClass</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">otherClass</span>
+<span class="go">(  )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">otherClass</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">triples</span><span class="p">((</span><span class="n">otherClass</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">)))</span>
+<span class="go">[]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.EnumeratedClass">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">EnumeratedClass</tt><big>(</big><em>identifier=None</em>, <em>members=None</em>, <em>graph=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.EnumeratedClass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for owl:oneOf forms:</p>
+<p>OWL Abstract Syntax is used</p>
+<p>axiom ::= &#8216;EnumeratedClass(&#8216; classID [&#8216;Deprecated&#8217;] { annotation } { individualID } &#8216;)&#8217;</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">exNs</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="s">&#39;http://example.com/&#39;</span><span class="p">)</span>        
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">NamespaceManager</span><span class="p">(</span><span class="n">Graph</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ex&#39;</span><span class="p">,</span> <span class="n">exNs</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;owl&#39;</span><span class="p">,</span> <span class="n">OWL_NS</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>    
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span><span class="o">.</span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">namespace_manager</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Individual</span><span class="o">.</span><span class="n">factoryGraph</span> <span class="o">=</span> <span class="n">g</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ogbujiBros</span> <span class="o">=</span> <span class="n">EnumeratedClass</span><span class="p">(</span><span class="n">exNs</span><span class="o">.</span><span class="n">ogbujicBros</span><span class="p">,</span>
+<span class="gp">... </span>                             <span class="n">members</span><span class="o">=</span><span class="p">[</span><span class="n">exNs</span><span class="o">.</span><span class="n">chime</span><span class="p">,</span>
+<span class="gp">... </span>                                      <span class="n">exNs</span><span class="o">.</span><span class="n">uche</span><span class="p">,</span>
+<span class="gp">... </span>                                      <span class="n">exNs</span><span class="o">.</span><span class="n">ejike</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ogbujiBros</span>
+<span class="go">{ ex:chime ex:uche ex:ejike }</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">col</span> <span class="o">=</span> <span class="n">Collection</span><span class="p">(</span><span class="n">g</span><span class="p">,</span><span class="n">first</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">predicate</span><span class="o">=</span><span class="n">OWL_NS</span><span class="o">.</span><span class="n">oneOf</span><span class="p">,</span><span class="n">subject</span><span class="o">=</span><span class="n">ogbujiBros</span><span class="o">.</span><span class="n">identifier</span><span class="p">)))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">g</span><span class="o">.</span><span class="n">qname</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">col</span><span class="p">]</span>
+<span class="go">[u&#39;ex:chime&#39;, u&#39;ex:uche&#39;, u&#39;ex:ejike&#39;]</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.EnumeratedClass.isPrimitive">
+<tt class="descname">isPrimitive</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.EnumeratedClass.isPrimitive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.EnumeratedClass.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.EnumeratedClass.serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.GetIdentifiedClasses">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">GetIdentifiedClasses</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.GetIdentifiedClasses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.Individual">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Individual</tt><big>(</big><em>identifier=None</em>, <em>graph=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual" title="Permalink to this definition">¶</a></dt>
+<dd><p>A typed individual</p>
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Individual.clearInDegree">
+<tt class="descname">clearInDegree</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual.clearInDegree" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Individual.clearOutDegree">
+<tt class="descname">clearOutDegree</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual.clearOutDegree" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Individual.delete">
+<tt class="descname">delete</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual.delete" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Individual.identifier">
+<tt class="descname">identifier</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual.identifier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Individual.replace">
+<tt class="descname">replace</tt><big>(</big><em>other</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual.replace" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Individual.sameAs">
+<tt class="descname">sameAs</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual.sameAs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Individual.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual.serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Individual.type">
+<tt class="descname">type</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Individual.type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.Infix">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Infix</tt><big>(</big><em>function</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Infix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="exception">
+<dt id="FuXi.Syntax.InfixOWL.MalformedClass">
+<em class="property">exception </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">MalformedClass</tt><big>(</big><em>msg</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.MalformedClass" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.OWLRDFListProxy">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">OWLRDFListProxy</tt><big>(</big><em>rdfList</em>, <em>members=None</em>, <em>graph=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.OWLRDFListProxy" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.OWLRDFListProxy.append">
+<tt class="descname">append</tt><big>(</big><em>item</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.OWLRDFListProxy.append" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.OWLRDFListProxy.clear">
+<tt class="descname">clear</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.OWLRDFListProxy.clear" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.OWLRDFListProxy.index">
+<tt class="descname">index</tt><big>(</big><em>item</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.OWLRDFListProxy.index" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.Ontology">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Ontology</tt><big>(</big><em>identifier=None</em>, <em>imports=None</em>, <em>comment=None</em>, <em>graph=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Ontology" title="Permalink to this definition">¶</a></dt>
+<dd><p>The owl ontology metadata</p>
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Ontology.imports">
+<tt class="descname">imports</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Ontology.imports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Ontology.setVersion">
+<tt class="descname">setVersion</tt><big>(</big><em>version</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Ontology.setVersion" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.Property">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Property</tt><big>(</big><em>identifier=None</em>, <em>graph=None</em>, <em>baseType=rdflib.URIRef('http://www.w3.org/2002/07/owl#ObjectProperty')</em>, <em>subPropertyOf=None</em>, <em>domain=None</em>, <em>range=None</em>, <em>inverseOf=None</em>, <em>otherType=None</em>, <em>equivalentProperty=None</em>, <em>comment=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Property" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>axiom ::= &#8216;DatatypeProperty(&#8216; datavaluedPropertyID [&#8216;Deprecated&#8217;] { annotation } </dt>
+<dd><blockquote class="first">
+<div>{ &#8216;super(&#8216; datavaluedPropertyID &#8216;)&#8217;} [&#8216;Functional&#8217;]
+{ &#8216;domain(&#8216; description &#8216;)&#8217; } { &#8216;range(&#8216; dataRange &#8216;)&#8217; } &#8216;)&#8217;</div></blockquote>
+<div class="last line-block">
+<div class="line">&#8216;ObjectProperty(&#8216; individualvaluedPropertyID [&#8216;Deprecated&#8217;] { annotation } 
+{ &#8216;super(&#8216; individualvaluedPropertyID &#8216;)&#8217; }
+[ &#8216;inverseOf(&#8216; individualvaluedPropertyID &#8216;)&#8217; ] [ &#8216;Symmetric&#8217; ] 
+[ &#8216;Functional&#8217; | &#8216;InverseFunctional&#8217; | &#8216;Functional&#8217; &#8216;InverseFunctional&#8217; |
+  &#8216;Transitive&#8217; ]
+{ &#8216;domain(&#8216; description &#8216;)&#8217; } { &#8216;range(&#8216; description &#8216;)&#8217; } &#8216;)    </div>
+</div>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Property.domain">
+<tt class="descname">domain</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Property.domain" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Property.extent">
+<tt class="descname">extent</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Property.extent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Property.inverseOf">
+<tt class="descname">inverseOf</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Property.inverseOf" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Property.range">
+<tt class="descname">range</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Property.range" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Property.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Property.serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Property.subPropertyOf">
+<tt class="descname">subPropertyOf</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Property.subPropertyOf" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.Restriction">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Restriction</tt><big>(</big><em>onProperty</em>, <em>graph=&lt;Graph identifier=BXSSvOLx2 (&lt;class 'rdflib.Graph.Graph'&gt;)&gt;</em>, <em>allValuesFrom=None</em>, <em>someValuesFrom=None</em>, <em>value=None</em>, <em>cardinality=None</em>, <em>maxCardinality=None</em>, <em>minCardinality=None</em>, <em>identifier=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>restriction ::= &#8216;restriction(&#8216; datavaluedPropertyID dataRestrictionComponent </dt>
+<dd><blockquote class="first">
+<div>{ dataRestrictionComponent } &#8216;)&#8217;</div></blockquote>
+<div class="last line-block">
+<div class="line">&#8216;restriction(&#8216; individualvaluedPropertyID 
+individualRestrictionComponent 
+{ individualRestrictionComponent } &#8216;)&#8217;    </div>
+</div>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.allValuesFrom">
+<tt class="descname">allValuesFrom</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.allValuesFrom" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.cardinality">
+<tt class="descname">cardinality</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.cardinality" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.hasValue">
+<tt class="descname">hasValue</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.hasValue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.isPrimitive">
+<tt class="descname">isPrimitive</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.isPrimitive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.maxCardinality">
+<tt class="descname">maxCardinality</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.maxCardinality" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.minCardinality">
+<tt class="descname">minCardinality</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.minCardinality" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.onProperty">
+<tt class="descname">onProperty</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.onProperty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.restrictionKind">
+<tt class="descname">restrictionKind</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.restrictionKind" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>graph</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.serialize" title="Permalink to this definition">¶</a></dt>
+<dd><div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">g1</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g2</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">EX</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="s">&quot;http://example.com/&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">NamespaceManager</span><span class="p">(</span><span class="n">g1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ex&#39;</span><span class="p">,</span> <span class="n">EX</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span> <span class="o">=</span> <span class="n">NamespaceManager</span><span class="p">(</span><span class="n">g2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">namespace_manager</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ex&#39;</span><span class="p">,</span> <span class="n">EX</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Individual</span><span class="o">.</span><span class="n">factoryGraph</span> <span class="o">=</span> <span class="n">g1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prop</span> <span class="o">=</span> <span class="n">Property</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">someProp</span><span class="p">,</span><span class="n">baseType</span><span class="o">=</span><span class="n">OWL_NS</span><span class="o">.</span><span class="n">DatatypeProperty</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">restr1</span> <span class="o">=</span> <span class="p">(</span><span class="n">Property</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">someProp</span><span class="p">,</span><span class="n">baseType</span><span class="o">=</span><span class="n">OWL_NS</span><span class="o">.</span><span class="n">DatatypeProperty</span><span class="p">))</span><span class="o">|</span><span class="n">some</span><span class="o">|</span><span class="p">(</span><span class="n">Class</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">Foo</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">restr1</span>
+<span class="go">( ex:someProp some ex:Foo )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">restr1</span><span class="o">.</span><span class="n">serialize</span><span class="p">(</span><span class="n">g2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Individual</span><span class="o">.</span><span class="n">factoryGraph</span> <span class="o">=</span> <span class="n">g2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">Property</span><span class="p">(</span><span class="n">EX</span><span class="o">.</span><span class="n">someProp</span><span class="p">,</span><span class="n">baseType</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+<span class="go">[rdflib.URIRef(&#39;http://www.w3.org/2002/07/owl#DatatypeProperty&#39;)]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Syntax.InfixOWL.Restriction.someValuesFrom">
+<tt class="descname">someValuesFrom</tt><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction.someValuesFrom" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Syntax.InfixOWL.TermDeletionHelper">
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">TermDeletionHelper</tt><big>(</big><em>prop</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.TermDeletionHelper" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.classOrIdentifier">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">classOrIdentifier</tt><big>(</big><em>thing</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.classOrIdentifier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.classOrTerm">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">classOrTerm</tt><big>(</big><em>thing</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.classOrTerm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.generateQName">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">generateQName</tt><big>(</big><em>graph</em>, <em>uri</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.generateQName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.manchesterSyntax">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">manchesterSyntax</tt><big>(</big><em>thing</em>, <em>store</em>, <em>boolean=None</em>, <em>transientList=False</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.manchesterSyntax" title="Permalink to this definition">¶</a></dt>
+<dd><p>Core serialization</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.propertyOrIdentifier">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">propertyOrIdentifier</tt><big>(</big><em>thing</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.propertyOrIdentifier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.termDeletionDecorator">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">termDeletionDecorator</tt><big>(</big><em>prop</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.termDeletionDecorator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Syntax.InfixOWL.test">
+<tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">test</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">FuXi&#8217;s Documentation</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#fuxi-rete">FuXi.Rete</a></li>
+<li><a class="reference internal" href="#fuxi-horn">FuXi.Horn</a></li>
+<li><a class="reference internal" href="#fuxi-rete-magic">FuXi.Rete.Magic</a></li>
+<li><a class="reference internal" href="#fuxi-sparql">FuXi.SPARQL</a></li>
+<li><a class="reference internal" href="#fuxi-syntax">FuXi.Syntax</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="#">FuXi v1.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Chimezie Ogbuji.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

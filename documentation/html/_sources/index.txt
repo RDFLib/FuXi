@@ -1,0 +1,82 @@
+.. FuXi documentation master file, created by
+   sphinx-quickstart on Thu Feb  3 13:37:54 2011.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+FuXi's Documentation
+====================
+
+FuXi is a Python-based, bi-directional logical reasoning system for the semantic web.  FuXi aims to be the engine for contemporary expert 
+systems based on the Semantic Web technologies.  It is named after the `first <http://en.wikipedia.org/wiki/Fu_Hsi>`_ of the Three Sovereigns of ancient China.  It originally formed from 
+an idea to express the underlying symbols (and their relationships) in the Yi Jing or Zhou Yi ("The Book of Changes") in 
+OWL and RDF in order to reason over their structural relationships.
+
+For an overview of the architecture, please read `FuXi Overview <http://code.google.com/p/fuxi/wiki/Overview>`_ and 
+`FuXi User Manual <http://code.google.com/p/fuxi/wiki/FuXiUserManual>`_ for more information.
+
+Documentation of key classes and methods (referenced in above Wikis)
+
+.. toctree::
+   :maxdepth: 2
+
+FuXi.Rete
+=========
+
+An implementation of most of the RETE-UL algorithms outlined in the PhD thesis (1995) of Robert Doorenbos: *Production Matching for Large Learning Systems*.  See
+`FuXi.Rete <http://code.google.com/p/fuxi/wiki/FuXiUserManual#FuXi_.Rete>`_ in manual for how to use SetupRuleStore to create an ReteNetwork.
+
+.. autofunction:: FuXi.Rete.RuleStore.SetupRuleStore
+.. autoclass:: FuXi.Rete.Network.ReteNetwork
+    :members:
+    :undoc-members:
+
+FuXi.Horn
+=========
+
+Originally implemented as a reference implementation of the W3C's Rule Interchange Format Basic Logic Dialect but eventually evolved into a 
+Pythonic API for managing an abstract Logic Programming syntax. Used for creating rulesets converted from OWL RDF expressions and creating 
+a Horn ruleset from a parsed Notation 3 graph.
+
+.. autofunction:: FuXi.Horn.HornRules.HornFromN3
+.. autofunction:: FuXi.Horn.HornRules.HornFromDL
+.. autofunction:: FuXi.Horn.HornRules.NetworkFromN3
+
+FuXi.Rete.Magic
+===============
+
+This module is where the `Sideways Information Passing <http://code.google.com/p/fuxi/wiki/Overview#Sideways_Information_Passing>`_ 
+reasoning capabilities are implemented. 
+
+.. autofunction:: FuXi.Rete.Magic.MagicSetTransformation
+
+FuXi.SPARQL
+===========
+
+Backward chaining algorithms for SPARQL RIF-Core and OWL 2 RL entailment. The Backwards Fixpoint Procedure (BFP) implementation uses 
+RETE-UL as the RIF PRD implementation of a meta-interpreter of a ruleset that evaluates conjunctive (BGPs) SPARQL queries using a 
+SPARQL 1.1 RIF Entailment Regime. 
+
+See: `Overview <http://code.google.com/p/fuxi/wiki/Overview#Backward_Chaining_/_Top_Down_Evaluation>`_ and 
+`User Manual <http://code.google.com/p/fuxi/wiki/FuXiUserManual#FuXi_.SPARQL>`_
+
+.. autoclass:: FuXi.SPARQL.BackwardChainingStore.TopDownSPARQLEntailingStore
+    :members:
+    :undoc-members:
+
+FuXi.Syntax
+===========
+
+Includes the InfixOwl library (see the linked Wiki for more information).  A Python binding for OWL Abstract Syntax that incorporates the 
+Manchester OWL Syntax.  See the `Wiki <http://code.google.com/p/fuxi/wiki/InfixOwl>`_ and `OWLED paper <http://python-dlp.googlecode.com/files/infixOwl.pdf>`_
+
+.. automodule:: FuXi.Syntax.InfixOWL
+   :members:
+   :undoc-members:
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
