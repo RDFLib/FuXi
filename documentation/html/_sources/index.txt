@@ -17,7 +17,7 @@ For an overview of the architecture, please read `FuXi Overview <http://code.goo
 Documentation of key classes and methods (referenced in above Wikis)
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
 FuXi.Rete
 =========
@@ -33,13 +33,20 @@ An implementation of most of the RETE-UL algorithms outlined in the PhD thesis (
 FuXi.Horn
 =========
 
-Originally implemented as a reference implementation of the W3C's Rule Interchange Format Basic Logic Dialect but eventually evolved into a 
-Pythonic API for managing an abstract Logic Programming syntax. Used for creating rulesets converted from OWL RDF expressions and creating 
-a Horn ruleset from a parsed Notation 3 graph.
+FuXi includes an API that was originally implemented as a reference implementation of the W3C's Rule Interchange Format Basic Logic Dialect but eventually evolved into a
+Pythonic API for managing an abstract Logic Programming syntax. It includes functions used for creating rulesets converted from OWL RDF expressions and creating
+a Horn ruleset from a parsed Notation 3 graph:
 
 .. autofunction:: FuXi.Horn.HornRules.HornFromN3
 .. autofunction:: FuXi.Horn.HornRules.HornFromDL
 .. autofunction:: FuXi.Horn.HornRules.NetworkFromN3
+
+Below are the various classes and functions that comprise this API
+
+.. automodule:: FuXi.Horn.PositiveConditions
+  :members:
+  :undoc-members:
+
 
 FuXi.Rete.Magic
 ===============

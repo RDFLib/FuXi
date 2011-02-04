@@ -216,9 +216,9 @@ not the action completely handles the firing of the rule.</p>
 </div>
 <div class="section" id="fuxi-horn">
 <h1>FuXi.Horn<a class="headerlink" href="#fuxi-horn" title="Permalink to this headline">¶</a></h1>
-<p>Originally implemented as a reference implementation of the W3C&#8217;s Rule Interchange Format Basic Logic Dialect but eventually evolved into a
-Pythonic API for managing an abstract Logic Programming syntax. Used for creating rulesets converted from OWL RDF expressions and creating
-a Horn ruleset from a parsed Notation 3 graph.</p>
+<p>FuXi includes an API that was originally implemented as a reference implementation of the W3C&#8217;s Rule Interchange Format Basic Logic Dialect but eventually evolved into a
+Pythonic API for managing an abstract Logic Programming syntax. It includes functions used for creating rulesets converted from OWL RDF expressions and creating
+a Horn ruleset from a parsed Notation 3 graph:</p>
 <dl class="function">
 <dt id="FuXi.Horn.HornRules.HornFromN3">
 <tt class="descclassname">FuXi.Horn.HornRules.</tt><tt class="descname">HornFromN3</tt><big>(</big><em>n3Source</em>, <em>additionalBuiltins=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.HornRules.HornFromN3" title="Permalink to this definition">¶</a></dt>
@@ -241,6 +241,414 @@ the rules extracted from the OWL RDF graph (using a variation of the OWL 2 RL tr
 <dd><p>Takes an N3 / RDF conjunctive graph and returns a ReteNetwork built from
 the rules in the N3 graph</p>
 </dd></dl>
+
+<p>Below are the various classes and functions that comprise this API</p>
+<span class="target" id="module-FuXi.Horn.PositiveConditions"></span><dl class="docutils">
+<dt>The language of positive RIF conditions determines what can appear as a body (the</dt>
+<dd><p class="first">if-part) of a rule supported by the basic RIF logic. As explained in Section 
+Overview, RIF&#8217;s Basic Logic Dialect corresponds to definite Horn rules, and the</p>
+<blockquote class="last">
+<div>bodies of such rules are conjunctions of atomic formulas without negation.</div></blockquote>
+</dd>
+</dl>
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.And">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">And</tt><big>(</big><em>formulae=None</em>, <em>naf=False</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.And" title="Permalink to this definition">¶</a></dt>
+<dd><p>CONJUNCTION ::= &#8216;And&#8217; &#8216;(&#8216; CONDITION* &#8216;)&#8217;</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">And</span><span class="p">([</span><span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">]),</span>
+<span class="gp">... </span>     <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">OWL</span><span class="o">.</span><span class="n">Class</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])])</span>
+<span class="go">And( rdf:Property(rdfs:comment) rdfs:Class(owl:Class) )</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.And.binds">
+<tt class="descname">binds</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.And.binds" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v, is bound in a conjunction formula, f = And(c1...cn), n ≥ 1, 
+if and only if, either</p>
+<ul class="simple">
+<li>v is bound in at least one of the conjuncts;</li>
+</ul>
+<p>For now we don&#8217;t support equality predicates, so we only check the 
+first condition</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">x</span><span class="o">=</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">y</span><span class="o">=</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;Y&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit1</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">x</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit2</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">,[</span><span class="n">y</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conj</span> <span class="o">=</span> <span class="n">And</span><span class="p">([</span><span class="n">lit1</span><span class="p">,</span><span class="n">lit2</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conj</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;Y&#39;</span><span class="p">))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conj</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;Z&#39;</span><span class="p">))</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.And.isSafeForVariable">
+<tt class="descname">isSafeForVariable</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.And.isSafeForVariable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v is safe in a condition formula if and only if ..</p>
+<p>f is a conjunction, f = And(c1...cn), n ≥ 1, and v is safe in at least 
+one conjunct in f</p>
+<p>Since we currently don&#8217;t support equality predicates, we only check
+the first condition</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">x</span><span class="o">=</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">y</span><span class="o">=</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;Y&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit1</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">x</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit2</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">,[</span><span class="n">y</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conj</span> <span class="o">=</span> <span class="n">And</span><span class="p">([</span><span class="n">lit1</span><span class="p">,</span><span class="n">lit2</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conj</span><span class="o">.</span><span class="n">isSafeForVariable</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.And.n3">
+<tt class="descname">n3</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.And.n3" title="Permalink to this definition">¶</a></dt>
+<dd><div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">And</span><span class="p">([</span><span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">]),</span>
+<span class="gp">... </span>     <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">OWL</span><span class="o">.</span><span class="n">Class</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])])</span><span class="o">.</span><span class="n">n3</span><span class="p">()</span>
+<span class="go">u&#39;rdfs:comment a rdf:Property .\n owl:Class a rdfs:Class&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.Atomic">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">Atomic</tt><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Atomic" title="Permalink to this definition">¶</a></dt>
+<dd><p>ATOMIC ::= Uniterm | Equal | Member | Subclass (| Frame)</p>
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Atomic.binds">
+<tt class="descname">binds</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Atomic.binds" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v, is bound in an atomic formula, a, if and only if</p>
+<ul class="simple">
+<li>a is neither an equality nor an external predicate, and v occurs as an 
+argument in a;</li>
+<li>or v is bound in the conjunction formula f = And(a).</li>
+</ul>
+<p>Default is False</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Horn.PositiveConditions.BuildUnitermFromTuple">
+<tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">BuildUnitermFromTuple</tt><big>(</big><em>(s</em>, <em>p</em>, <em>o)</em>, <em>newNss=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.BuildUnitermFromTuple" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.Condition">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">Condition</tt><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Condition" title="Permalink to this definition">¶</a></dt>
+<dd><p>CONDITION   ::= CONJUNCTION | DISJUNCTION | EXISTENTIAL | ATOMIC</p>
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Condition.isSafeForVariable">
+<tt class="descname">isSafeForVariable</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Condition.isSafeForVariable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v is safe in a condition formula if and only if ..</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.Equal">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">Equal</tt><big>(</big><em>lhs=None</em>, <em>rhs=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Equal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Equal ::= TERM &#8216;=&#8217; TERM
+TERM ::= Const | Var | Uniterm | &#8216;External&#8217; &#8216;(&#8216; Expr &#8216;)&#8217;</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">Equal</span><span class="p">(</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Resource</span><span class="p">,</span><span class="n">OWL</span><span class="o">.</span><span class="n">Thing</span><span class="p">)</span>
+<span class="go">rdfs:Resource =  owl:Thing</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.Exists">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">Exists</tt><big>(</big><em>formula=None</em>, <em>declare=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>EXISTENTIAL ::= &#8216;Exists&#8217; Var+ &#8216;(&#8216; CONDITION &#8216;)&#8217;
+&gt;&gt;&gt; Exists(formula=Or([Uniterm(RDF.type,[RDFS.comment,RDF.Property]),
+...                    Uniterm(RDF.type,[OWL.Class,RDFS.Class])]),
+...        declare=[Variable(&#8216;X&#8217;),Variable(&#8216;Y&#8217;)])
+Exists ?X ?Y ( Or( rdf:Property(rdfs:comment) rdfs:Class(owl:Class) ) )</p>
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Exists.binds">
+<tt class="descname">binds</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Exists.binds" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v, is bound in an existential formula, 
+Exists v1,...,vn (f&#8217;), n ≥ 1, if and only if v is bound in f&#8217;</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">ex</span><span class="o">=</span><span class="n">Exists</span><span class="p">(</span><span class="n">formula</span><span class="o">=</span><span class="n">And</span><span class="p">([</span><span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">]),</span>
+<span class="gp">... </span>                   <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">),</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])]),</span>
+<span class="gp">... </span>       <span class="n">declare</span><span class="o">=</span><span class="p">[</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ex</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">))</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Exists.isSafeForVariable">
+<tt class="descname">isSafeForVariable</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Exists.isSafeForVariable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v is safe in a condition formula if and only if ..</p>
+<p>f is an existential formula, f = Exists v1,...,vn (f&#8217;), n ≥ 1, and 
+v is safe in f&#8217; .</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Exists.n3">
+<tt class="descname">n3</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Exists.n3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.ExternalFunction">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">ExternalFunction</tt><big>(</big><em>builtin</em>, <em>newNss=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.ExternalFunction" title="Permalink to this definition">¶</a></dt>
+<dd><p>An External(ATOMIC) is a call to an externally defined predicate, equality, 
+membership, subclassing, or frame. Likewise, External(Expr) is a call to an 
+externally defined function.
+&gt;&gt;&gt; ExternalFunction(Uniterm(URIRef(&#8216;<a class="reference external" href="http://www.w3.org/2000/10/swap/math#greaterThan'),[Variable('VAL'),Literal(2">http://www.w3.org/2000/10/swap/math#greaterThan&#8217;),[Variable(&#8216;VAL&#8217;),Literal(2</a>)]))
+math:greaterThan(?VAL &#8220;2&#8221;^^&lt;<a class="reference external" href="http://www.w3.org/2001/XMLSchema#integer">http://www.w3.org/2001/XMLSchema#integer</a>&gt;)</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.Or">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">Or</tt><big>(</big><em>formulae=None</em>, <em>naf=False</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Or" title="Permalink to this definition">¶</a></dt>
+<dd><p>DISJUNCTION ::= &#8216;Or&#8217; &#8216;(&#8216; CONDITION* &#8216;)&#8217;</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">Or</span><span class="p">([</span><span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">]),</span>
+<span class="gp">... </span>     <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">OWL</span><span class="o">.</span><span class="n">Class</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])])</span>
+<span class="go">Or( rdf:Property(rdfs:comment) rdfs:Class(owl:Class) )</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Or.binds">
+<tt class="descname">binds</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Or.binds" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v, is bound in a disjunction formula, if and only if v is 
+bound in every disjunct where it occurs</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">x</span><span class="o">=</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">y</span><span class="o">=</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;Y&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit1</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">x</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit2</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">,[</span><span class="n">y</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conj</span> <span class="o">=</span> <span class="n">And</span><span class="p">([</span><span class="n">lit1</span><span class="p">,</span><span class="n">lit2</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">disj</span> <span class="o">=</span> <span class="n">Or</span><span class="p">([</span><span class="n">conj</span><span class="p">,</span><span class="n">lit2</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">disj</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">disj</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;Z&#39;</span><span class="p">))</span>
+<span class="go">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">OWL</span><span class="o">.</span><span class="n">Class</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">disj</span><span class="o">=</span> <span class="n">Or</span><span class="p">([</span><span class="n">lit</span><span class="p">,</span><span class="n">lit</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">disj</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Or.isSafeForVariable">
+<tt class="descname">isSafeForVariable</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Or.isSafeForVariable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v is safe in a condition formula if and only if ..</p>
+<p>f is a disjunction, and v is safe in every disjunct;</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.PredicateExtentFactory">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">PredicateExtentFactory</tt><big>(</big><em>predicateSymbol</em>, <em>binary=True</em>, <em>newNss=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.PredicateExtentFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates an object which when indexed returns
+a Uniterm with the &#8216;registered&#8217; symbol and
+two-tuple argument</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">rdflib</span> <span class="kn">import</span> <span class="n">Namespace</span><span class="p">,</span> <span class="n">URIRef</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">EX_NS</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="s">&#39;http://example.com/&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ns</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;ex&#39;</span><span class="p">:</span><span class="n">EX_NS</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">somePredFactory</span> <span class="o">=</span> <span class="n">PredicateExtentFactory</span><span class="p">(</span><span class="n">EX_NS</span><span class="o">.</span><span class="n">somePredicate</span><span class="p">,</span><span class="n">newNss</span><span class="o">=</span><span class="n">ns</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">somePredFactory</span><span class="p">[(</span><span class="n">EX_NS</span><span class="o">.</span><span class="n">individual1</span><span class="p">,</span><span class="n">EX_NS</span><span class="o">.</span><span class="n">individual2</span><span class="p">)]</span>
+<span class="go">ex:somePredicate(ex:individual1 ex:individual2)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">somePred2Factory</span> <span class="o">=</span> <span class="n">PredicateExtentFactory</span><span class="p">(</span><span class="n">EX_NS</span><span class="o">.</span><span class="n">somePredicate</span><span class="p">,</span><span class="n">binary</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">newNss</span><span class="o">=</span><span class="n">ns</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">somePred2Factory</span><span class="p">[</span><span class="n">EX_NS</span><span class="o">.</span><span class="n">individual1</span><span class="p">]</span>
+<span class="go">ex:somePredicate(ex:individual1)</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.PredicateExtentFactory.term">
+<tt class="descname">term</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.PredicateExtentFactory.term" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.QNameManager">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">QNameManager</tt><big>(</big><em>nsDict=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.QNameManager" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.QNameManager.bind">
+<tt class="descname">bind</tt><big>(</big><em>prefix</em>, <em>namespace</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.QNameManager.bind" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.SetOperator">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">SetOperator</tt><a class="headerlink" href="#FuXi.Horn.PositiveConditions.SetOperator" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.SetOperator.remove">
+<tt class="descname">remove</tt><big>(</big><em>item</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.SetOperator.remove" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.SetOperator.repr">
+<tt class="descname">repr</tt><big>(</big><em>operator</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.SetOperator.repr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm">
+<em class="property">class </em><tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">Uniterm</tt><big>(</big><em>op</em>, <em>arg=None</em>, <em>newNss=None</em>, <em>naf=False</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uniterm ::= Const &#8216;(&#8216; TERM* &#8216;)&#8217;
+TERM ::= Const | Var | Uniterm</p>
+<p>We restrict to binary predicates (RDF triples)</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">])</span>
+<span class="go">rdf:Property(rdfs:comment)</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.applicableMapping">
+<tt class="descname">applicableMapping</tt><big>(</big><em>mapping</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.applicableMapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>Can the given mapping (presumably from variables to terms) be applied?</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.arity">
+<tt class="descname">arity</tt><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.arity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.binds">
+<tt class="descname">binds</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.binds" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v, is bound in an atomic formula, a, if and only if</p>
+<ul class="simple">
+<li>a is neither an equality nor an external predicate, and v occurs as an 
+argument in a;</li>
+<li>or v is bound in the conjunction formula f = And(a).</li>
+</ul>
+<p>Default is False</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">Variable</span><span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">x</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">Variable</span><span class="p">(</span><span class="s">&#39;Z&#39;</span><span class="p">))</span>
+<span class="go">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="go">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">x</span><span class="p">,</span><span class="n">RDFS</span><span class="o">.</span><span class="n">Class</span><span class="p">])</span><span class="o">.</span><span class="n">binds</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.collapseName">
+<tt class="descname">collapseName</tt><big>(</big><em>val</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.collapseName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.getArity">
+<tt class="descname">getArity</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.getArity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.getVarMapping">
+<tt class="descname">getVarMapping</tt><big>(</big><em>otherLit</em>, <em>reverse=False</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.getVarMapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes another Uniterm and in every case where the corresponding term 
+for both literals are different variables, we map from the variable
+for <em>this</em> uniterm to the corresponding variable of the other.
+The mapping will go in the other direction if the reverse
+keyword is True</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">Variable</span><span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">y</span> <span class="o">=</span> <span class="n">Variable</span><span class="p">(</span><span class="s">&#39;Y&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit1</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">x</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit2</span> <span class="o">=</span> <span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">y</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit1</span><span class="o">.</span><span class="n">getVarMapping</span><span class="p">(</span><span class="n">lit2</span><span class="p">)[</span><span class="n">x</span><span class="p">]</span> <span class="o">==</span> <span class="n">y</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lit1</span><span class="o">.</span><span class="n">getVarMapping</span><span class="p">(</span><span class="n">lit2</span><span class="p">,</span><span class="bp">True</span><span class="p">)[</span><span class="n">y</span><span class="p">]</span> <span class="o">==</span> <span class="n">x</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.ground">
+<tt class="descname">ground</tt><big>(</big><em>varMapping</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.ground" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.isGround">
+<tt class="descname">isGround</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.isGround" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.isSafeForVariable">
+<tt class="descname">isSafeForVariable</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.isSafeForVariable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A variable, v is safe in a condition formula if and only if ..</p>
+<p>f is an atomic formula and f is not an equality formula in which both 
+terms are variables, and v occurs in f;</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.isSecondOrder">
+<tt class="descname">isSecondOrder</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.isSecondOrder" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.n3">
+<tt class="descname">n3</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.n3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Serialize as N3 (using available namespace managers)</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">Uniterm</span><span class="p">(</span><span class="n">RDF</span><span class="o">.</span><span class="n">type</span><span class="p">,[</span><span class="n">RDFS</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span><span class="n">RDF</span><span class="o">.</span><span class="n">Property</span><span class="p">])</span><span class="o">.</span><span class="n">n3</span><span class="p">()</span>
+<span class="go">u&#39;rdfs:comment a rdf:Property&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.normalizeTerm">
+<tt class="descname">normalizeTerm</tt><big>(</big><em>term</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.normalizeTerm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.renameVariables">
+<tt class="descname">renameVariables</tt><big>(</big><em>varMapping</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.renameVariables" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.renderTermAsN3">
+<tt class="descname">renderTermAsN3</tt><big>(</big><em>term</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.renderTermAsN3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.setOperator">
+<tt class="descname">setOperator</tt><big>(</big><em>newOp</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.setOperator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.terms">
+<tt class="descname">terms</tt><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class attribute that returns all the terms of the literal as a lists
+&gt;&gt;&gt; x = Variable(&#8216;X&#8217;)
+&gt;&gt;&gt; lit = Uniterm(RDF.type,[RDFS.comment,x])
+&gt;&gt;&gt; lit.terms
+[rdflib.URIRef(&#8216;<a class="reference external" href="http://www.w3.org/1999/02/22-rdf-syntax-ns#type">http://www.w3.org/1999/02/22-rdf-syntax-ns#type</a>&#8216;), rdflib.URIRef(&#8216;<a class="reference external" href="http://www.w3.org/2000/01/rdf-schema#comment">http://www.w3.org/2000/01/rdf-schema#comment</a>&#8216;), ?X]</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FuXi.Horn.PositiveConditions.Uniterm.toRDFTuple">
+<tt class="descname">toRDFTuple</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.Uniterm.toRDFTuple" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Horn.PositiveConditions.buildUniTerm">
+<tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">buildUniTerm</tt><big>(</big><em>(s</em>, <em>p</em>, <em>o)</em>, <em>newNss=None</em><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.buildUniTerm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="FuXi.Horn.PositiveConditions.test">
+<tt class="descclassname">FuXi.Horn.PositiveConditions.</tt><tt class="descname">test</tt><big>(</big><big>)</big><a class="headerlink" href="#FuXi.Horn.PositiveConditions.test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </div>
 <div class="section" id="fuxi-rete-magic">
@@ -1013,7 +1421,7 @@ where any related class is an anonymous class</p>
 
 <dl class="class">
 <dt id="FuXi.Syntax.InfixOWL.Restriction">
-<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Restriction</tt><big>(</big><em>onProperty</em>, <em>graph=&lt;Graph identifier=TQKQyyyD2 (&lt;class 'rdflib.Graph.Graph'&gt;)&gt;</em>, <em>allValuesFrom=None</em>, <em>someValuesFrom=None</em>, <em>value=None</em>, <em>cardinality=None</em>, <em>maxCardinality=None</em>, <em>minCardinality=None</em>, <em>identifier=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">FuXi.Syntax.InfixOWL.</tt><tt class="descname">Restriction</tt><big>(</big><em>onProperty</em>, <em>graph=&lt;Graph identifier=uSmOTjeK2 (&lt;class 'rdflib.Graph.Graph'&gt;)&gt;</em>, <em>allValuesFrom=None</em>, <em>someValuesFrom=None</em>, <em>value=None</em>, <em>cardinality=None</em>, <em>maxCardinality=None</em>, <em>minCardinality=None</em>, <em>identifier=None</em><big>)</big><a class="headerlink" href="#FuXi.Syntax.InfixOWL.Restriction" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
 <dt>restriction ::= &#8216;restriction(&#8216; datavaluedPropertyID dataRestrictionComponent </dt>
 <dd><blockquote class="first">
