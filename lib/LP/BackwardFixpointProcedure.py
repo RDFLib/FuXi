@@ -420,7 +420,6 @@ class BackwardFixpointProcedure(object):
         self.pushDownMDBQ = pushDownMDBQ
         self.pushDownQueries = {}
         self.maxEDBFront2End = {}
-        self.queryCache      = {}
         self.queryPredicates = set()
         self.sipCollection = sipCollection
         self.goal = BuildUnitermFromTuple(goal)
@@ -437,7 +436,7 @@ class BackwardFixpointProcedure(object):
         self.metaInterpNetwork = network
         self.derivedPredicates = set(derivedPredicates) if \
            isinstance(derivedPredicates,list) else derivedPredicates
-        self.hybridPredicates = hybridPredicates
+        self.hybridPredicates = hybridPredicates if hybridPredicates else []
         self.edbQueries = set()
         self.goalSolutions = set()
 
@@ -829,7 +828,7 @@ class BackwardFixpointProcedure(object):
         for idx,rule in enumerate(self.rules):
             label = BFP_RULE[str(idx+1)]
             ruleBodyLen = len(list(iterCondition(rule.formula.body)))
-            
+
             # if rule.isSecondOrder():
             #     if debug:
             #         print "Skipping second order rule (%s): %s"%(idx+1,rule)

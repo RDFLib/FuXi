@@ -52,6 +52,10 @@ def main():
       help = 'Whether or not to serialize the inferred triples'+ 
              ' along with the original triples.  Otherwise '+
               '(the default behavior), serialize only the inferred triples')
+    op.add_option('--imports', 
+                action='store_true',
+                default=False,
+    help = 'Whether or not to follow owl:imports in the fact graph')
     op.add_option('--output', 
                   default='n3',
                   metavar='RDF_FORMAT',
@@ -276,7 +280,11 @@ def main():
     if not options.sparqlEndpoint:
         for fileN in facts:
             factGraph.parse(fileN,format=options.inputFormat)
-        
+            if options.imports:
+                for owlImport in factGraph.objects(predicate=OWL_NS.imports):
+                    factGraph.parse(owlImport)
+                    print >>sys.stderr, "Parsed Semantic Web Graph.. ", owlImport
+                
     if not options.sparqlEndpoint and facts:
         for pref,uri in factGraph.namespaces():
             nsBinds[pref]=uri
@@ -464,7 +472,13 @@ def main():
                                            len(list(ruleSet)),
                                            magicRuleNo)
             start = time.time()
-            network.feedFactsToAdd(generateTokenSet(magicSeeds))           
+            network.feedFactsToAdd(generateTokenSet(magicSeeds))
+            if not [rule for rule in factGraph.adornedProgram if len(rule.sip)]:
+                import warnings
+                warnings.warn("Using GMS sideways information strategy with no "+
+                              "information to pass from query.  Falling back to "+
+                              "naive method over given facts and rules")
+                network.feedFactsToAdd(workingMemory)
             sTime = time.time() - start
             if sTime > 1:
                 sTimeStr = "%s seconds"%sTime
@@ -472,7 +486,7 @@ def main():
                 sTime = sTime * 1000
                 sTimeStr = "%s milli seconds"%sTime
             print >>sys.stderr, "Time to calculate closure on working memory: ",sTimeStr                                 
-                                                 
+
             if options.output == 'rif':
                 print >>sys.stderr,"Rules used for bottom-up evaluation"
                 if network.rules:
@@ -480,7 +494,7 @@ def main():
                         print >>sys.stderr,clause                    
                 else:
                     for clause in factGraph.adornedProgram:
-                        print >>sys.stderr,clause 
+                        print >>sys.stderr,clause
             if options.output == 'conflict':
                 network.reportConflictSet()
                         
