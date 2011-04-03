@@ -209,20 +209,20 @@ def manchesterSyntax(thing,store,boolean=None,transientList=False):
                     return u':'.join([prefix,localName])
                 
                 if len(named) > 1:
-                    prefix = '( '+ ' and '.join(map(castToQName,named)) + ' )'                
+                    prefix = u'( '+ u' AND '.join(map(castToQName,named)) + u' )'
                 else:
                     prefix = manchesterSyntax(named[0],store)
                 if childList:
-                    return prefix+ ' that '+' and '.join(
+                    return prefix+ u' THAT '+u' AND '.join(
                              map(lambda x:manchesterSyntax(x,store),childList))
                 else:
                     return prefix
             else:
-                return '( '+ ' and '.join(children) + ' )'
+                return u'( '+ u' AND '.join(children) + u' )'
         elif boolean == OWL_NS.unionOf:
-            return '( '+ ' or '.join(children) + ' )'
+            return u'( '+ u' OR '.join(children) + u' )'
         elif boolean == OWL_NS.oneOf:
-            return '{ '+ ' '.join(children) +' }'
+            return u'{ '+ u' '.join(children) +u' }'
         else:            
             assert boolean == OWL_NS.complementOf
     elif OWL_NS.Restriction in store.objects(subject=thing, predicate=RDF.type):
@@ -231,19 +231,19 @@ def manchesterSyntax(thing,store,boolean=None,transientList=False):
         propString = u':'.join([prefix,localName])
         label=first(store.objects(subject=prop,predicate=RDFS.label))
         if label:
-            propString = "'%s'"%label
+            propString = u"'%s'"%label
         for onlyClass in store.objects(subject=thing, predicate=OWL_NS.allValuesFrom):
-            return '( %s only %s )'%(propString,manchesterSyntax(onlyClass,store))
+            return u'( %s ONLY %s )'%(propString,manchesterSyntax(onlyClass,store))
         for val in store.objects(subject=thing, predicate=OWL_NS.hasValue):
-            return '( %s value %s )'%(propString,manchesterSyntax(val,store))        
+            return u'( %s VALUE %s )'%(propString,manchesterSyntax(val.encode('utf-8', 'ignore'),store))
         for someClass in store.objects(subject=thing, predicate=OWL_NS.someValuesFrom):    
-            return '( %s some %s )'%(propString,manchesterSyntax(someClass,store))
-        cardLookup = {OWL_NS.maxCardinality:'max',OWL_NS.minCardinality:'min',OWL_NS.cardinality:'equals'}
+            return u'( %s SOME %s )'%(propString,manchesterSyntax(someClass,store))
+        cardLookup = {OWL_NS.maxCardinality:'MAX',OWL_NS.minCardinality:'MIN',OWL_NS.cardinality:'EQUALS'}
         for s,p,o in store.triples_choices((thing,cardLookup.keys(),None)):            
-            return '( %s %s %s )'%(propString,cardLookup[p],o.encode('utf-8'))
+            return u'( %s %s %s )'%(propString,cardLookup[p],o.encode('utf-8','ignore'))
     compl = list(store.objects(subject=thing, predicate=OWL_NS.complementOf)) 
     if compl:
-        return '( not %s )'%(manchesterSyntax(compl[0],store))
+        return u'( NOT %s )'%(manchesterSyntax(compl[0],store))
     else:
         for boolProp,col in store.query("SELECT ?p ?bool WHERE { ?class a owl:Class; ?p ?bool . ?bool rdf:first ?foo }",
                                          initBindings={Variable("?class"):thing},
@@ -256,15 +256,15 @@ def manchesterSyntax(thing,store,boolean=None,transientList=False):
         except Exception,e:
             if isinstance(thing,BNode):
                 return thing.n3()
-            return "<"+thing+">"
+            return u"<"+thing+u">"
             print list(store.objects(subject=thing,predicate=RDF.type))
             raise
             return '[]'#+thing._id.encode('utf-8')+'</em>'            
         label=first(Class(thing,graph=store).label)
         if label:
-            return label.encode('utf-8')
+            return label.encode('utf-8','ignore')
         else:
-            return qname.encode('utf-8')
+            return qname.encode('utf-8','ignore')
 
 def GetIdentifiedClasses(graph):
     for c in graph.subjects(predicate=RDF.type,object=OWL_NS.Class):
