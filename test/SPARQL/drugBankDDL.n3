@@ -1,0 +1,12 @@
+@prefix ddl:      <http://code.google.com/p/fuxi/wiki/DataDescriptionLanguage#>.
+@prefix drugbank: <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/>.
+
+( 
+  drugbank:InfluenzaDrug 
+) a ddl:DerivedClassList .
+
+#drugbank:interactionForDrug is a derived predicate in the Intensional Database (IDB)
+
+( drugbank:interactionForDrug 
+  drugbank:interactionForDrug1 
+  drugbank:interactionForDrug2  ) a ddl:DerivedPropertyList .

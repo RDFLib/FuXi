@@ -1,0 +1,30 @@
+@prefix drugbank:  <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/>.
+@prefix drugtype:  <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugtype/>.
+@prefix owl:    <http://www.w3.org/2002/07/owl#>.
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+
+drugbank:interactionForDrug 
+  a owl:ObjectProperty;
+  owl:inverseOf drugbank:interactionDrug1, 
+                drugbank:interactionDrug2 .
+
+drugbank:InfluenzaDrug a owl:Class .
+
+drugbank:affectedOrganism a owl:DatatypeProperty .
+
+[
+   a owl:Restriction;
+   owl:onProperty drugbank:affectedOrganism;
+   owl:hasValue "Influenza Virus"
+] rdfs:subClassOf drugbank:InfluenzaDrug .
+
+# Equivalent to datalog rule / clauses:
+#
+#$ FuXi --dlp --input=n3 --output=rif drugBankOnt.n3 
+#Forall ?X ?VAR ( drugbank:interactionForDrug(?VAR ?X) :- drugbank:interactionDrug2(?X ?VAR) )
+#Forall ?X ( drugbank:InfluenzaDrug(?X)                :- drugbank:affectedOrganism(?X "Influenza Virus") )
+#Forall ?VAR ?X ( drugbank:interactionDrug2(?X ?VAR)   :- drugbank:interactionForDrug(?VAR ?X) )
+#Forall ?X ?VAR ( drugbank:interactionDrug1(?X ?VAR)   :- drugbank:interactionForDrug(?VAR ?X) )
+#Forall ?X ?VAR ( drugbank:interactionForDrug(?VAR ?X) :- drugbank:interactionDrug1(?X ?VAR) )
+ 
