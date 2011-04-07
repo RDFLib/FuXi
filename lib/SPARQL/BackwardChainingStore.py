@@ -170,11 +170,11 @@ class TopDownSPARQLEntailingStore(Store):
             else:
                 if debug:
                     print >>sys.stderr, bfp.metaInterpNetwork
-                    for queryPred in bfp.queryPredicates:
-                        if queryPred.arity == 1:
-                            bfp.metaInterpNetwork.inferredFacts.remove((None,RDF.type,GetOp(queryPred)))
-                        else:
-                            bfp.metaInterpNetwork.inferredFacts.remove((None,GetOp(queryPred),None))
+#                    for queryPred in bfp.queryPredicates:
+#                        if queryPred.arity == 1:
+#                            bfp.metaInterpNetwork.inferredFacts.remove((None,RDF.type,GetOp(queryPred)))
+#                        else:
+#                            bfp.metaInterpNetwork.inferredFacts.remove((None,GetOp(queryPred),None))
                     bfp.metaInterpNetwork.reportConflictSet(True,sys.stderr)
                 yield True,None
 

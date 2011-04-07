@@ -558,8 +558,11 @@ def main():
         "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(rt,sTimeStr)
             if options.output == 'conflict' and options.method == 'bfp':
                 for _network,_goal in topDownStore.queryNetworks:
-                    print _network, _goal
-                    _network.reportConflictSet()            
+                    print >>sys.stderr, _network, _goal
+                    _network.reportConflictSet(options.debug)
+                for query in topDownStore.edbQueries:
+                    print >>sys.stderr,query.asSPARQL()
+
     elif options.method == 'naive':
         start = time.time()                  
         network.feedFactsToAdd(workingMemory)
