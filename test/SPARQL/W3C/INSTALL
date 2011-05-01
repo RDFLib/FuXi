@@ -1,0 +1,7 @@
+The Test Suite is here:
+
+http://www.w3.org/2009/sparql/docs/tests/
+
+The "entailment" directory needs to be checked out or copied into this directory
+
+http://www.w3.org/2009/sparql/docs/tests/data-sparql11/entailment/
