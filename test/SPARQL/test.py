@@ -33,7 +33,9 @@ SUPPORTED_ENTAILMENT=[
 
 SKIP={
     "rdf01" : "Quantification over predicates",
+    "rdfs01": "Quantification over predicates",
     "rdf02" : "Reification",
+    "rdfs05": "Quantification over predicates (unary)"
 }
 
 nsMap = {
