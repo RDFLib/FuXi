@@ -183,16 +183,22 @@ def RunQuery(subQueryJoin,
 def EDBQueryFromBodyIterator(factGraph,remainingBodyList,derivedPreds,hybridPredicates=None):
     hybridPredicates = hybridPredicates if hybridPredicates is not None else []
     def sparqlResolvable(literal):
+        predTerm = GetOp(literal)
         if isinstance(literal,Uniterm):
-            return not literal.naf and (GetOp(literal) not in derivedPreds
-                or GetOp(literal) in hybridPredicates)
+            return not literal.naf and (
+                predTerm not in derivedPreds or
+                ( predTerm in hybridPredicates and
+                  not predTerm.find('_derived') + 1 ))
         else:
             return isinstance(literal,N3Builtin) and \
                    literal.uri in factGraph.templateMap
     def sparqlResolvableNoTemplates(literal):
+        predTerm = GetOp(literal)
         if isinstance(literal,Uniterm):
-            return not literal.naf and (GetOp(literal) not in derivedPreds
-                or GetOp(literal) in hybridPredicates)
+            return not literal.naf and (
+                predTerm not in derivedPreds or 
+                ( predTerm in hybridPredicates and
+                  not predTerm.find('_derived') + 1 ))
         else:
             return False
     return list(

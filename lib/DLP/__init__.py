@@ -649,6 +649,10 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
         #    T(owl:inverseOf(P,Q))          -> { Q(x,y) :- P(y,x)
         #                                        P(y,x) :- Q(x,y) }
         newVar = Variable(BNode())
+
+        s = SkolemizeExistentialClasses(s) if isinstance(s,BNode) else s
+        o = SkolemizeExistentialClasses(o) if isinstance(o,BNode) else o
+
         body1 = Uniterm(s,[newVar,Variable("X")],newNss=owlGraph.namespaces())
         head1 = Uniterm(o,[Variable("X"),newVar],newNss=owlGraph.namespaces())
         yield Clause(body1,head1)
@@ -661,6 +665,9 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
         y = Variable(BNode())
         z = Variable(BNode())
         x = Variable("X")
+
+        s = SkolemizeExistentialClasses(s) if isinstance(s,BNode) else s
+
         body = And([Uniterm(s,[x,y],newNss=owlGraph.namespaces()),\
                     Uniterm(s,[y,z],newNss=owlGraph.namespaces())])
         head = Uniterm(s,[x,z],newNss=owlGraph.namespaces())
@@ -669,14 +676,23 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
         # T(rdfs:subPropertyOf(P,Q))     -> Q(x,y) :- P(x,y)        
         x = Variable("X")
         y = Variable("Y")
+
+        s = SkolemizeExistentialClasses(s) if isinstance(s,BNode) else s
+        o = SkolemizeExistentialClasses(o) if isinstance(o,BNode) else o
+
         body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
         head = Uniterm(o,[x,y],newNss=owlGraph.namespaces())
+        
         yield Clause(body,head)
     for s,p,o in owlGraph.triples((None,OWL_NS.equivalentProperty,None)):
         # T(owl:equivalentProperty(P,Q)) -> { Q(x,y) :- P(x,y)
         #                                     P(x,y) :- Q(x,y) }
         x = Variable("X")
         y = Variable("Y")
+
+        s = SkolemizeExistentialClasses(s) if isinstance(s,BNode) else s
+        o = SkolemizeExistentialClasses(o) if isinstance(o,BNode) else o
+
         body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
         head = Uniterm(o,[x,y],newNss=owlGraph.namespaces())
         yield Clause(body,head)
@@ -687,6 +703,9 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
         #T(owl:SymmetricProperty(P))   -> P(y,x) :- P(x,y)
         y = Variable("Y")
         x = Variable("X")
+
+        s = SkolemizeExistentialClasses(s) if isinstance(s,BNode) else s
+
         body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
         head = Uniterm(s,[y,x],newNss=owlGraph.namespaces())
         yield Clause(body,head)
@@ -694,6 +713,9 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
     for s,p,o in owlGraph.triples_choices((None,
                                            [RDFS.range,RDFS.domain],
                                            None)):
+
+        s = SkolemizeExistentialClasses(s) if isinstance(s,BNode) else s
+
         if p == RDFS.range:
             #T(rdfs:range(P,D))  -> D(y) := P(x,y)        
             x = Variable("X")

@@ -207,7 +207,6 @@ class ReteNetwork:
         self.alphaNodes = [node for node in self.nodes.values() if isinstance(node,AlphaNode)]
         self.alphaBuiltInNodes = [node for node in self.nodes.values() if isinstance(node,BuiltInAlphaNode)]
         self._setupDefaultRules()
-        print >>sys.stderr,"Time to build production rule (RDFLib): %s seconds"%(time.time() - start)
         if initialWorkingMemory:            
             start = time.time()          
             self.feedFactsToAdd(initialWorkingMemory)

@@ -234,7 +234,11 @@ class InvalidSIPException(Exception):
     def __init__(self,msg=None): 
         super(InvalidSIPException, self).__init__(msg)
         
-def BuildNaturalSIP(clause,derivedPreds,adornedHead, ignoreUnboundDPreds = False):
+def BuildNaturalSIP(clause,
+                    derivedPreds,
+                    adornedHead, 
+                    hybridPreds2Replace = None,
+                    ignoreUnboundDPreds = False):
     """
     Natural SIP:
     
@@ -323,7 +327,6 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead, ignoreUnboundDPreds = False
             reduce(collectSip,itertools.chain(iterCondition(clause.head),
                                               iterCondition(clause.body)))
         sipGraph.sipOrder = clause.body
-    
     if derivedPreds:
         # We therefore generalize our notation to allow
         # more succint representation of sips, in which only arcs entering 
@@ -333,7 +336,9 @@ def BuildNaturalSIP(clause,derivedPreds,adornedHead, ignoreUnboundDPreds = False
         for N,prop,q in sipGraph.query(
             'SELECT ?N ?prop ?q {  ?prop a magic:SipArc . ?N ?prop ?q . }',
             initNs={u'magic':MAGIC}):
-            if occurLookup[q] not in derivedPreds:
+            if occurLookup[q] not in derivedPreds and (
+                    occurLookup[q] not in hybridPreds2Replace if hybridPreds2Replace else False
+                ):
                 arcsToRemove.extend([(N,prop,q),(prop,None,None)])
                 collectionsToClear.append(Collection(sipGraph,N))
                 #clear bindings collection as well

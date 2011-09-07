@@ -28,7 +28,12 @@ def LogEqualTo(subject,object_):
     return func
 
 def StringContains(subject,object_):
-    return subject[-1].contains(object_[-1])
+    for term in [subject,object_]:
+        if not isinstance(term,Variable):
+            assert isinstance(term,Literal),"str:greaterThan can only be used with Literals! (%s)"%term
+    def containsF(s,o):
+        return s[-1].contains(o[-1])
+    return containsF
 
 def StringGreaterThan(subject,object_):
     for term in [subject,object_]:

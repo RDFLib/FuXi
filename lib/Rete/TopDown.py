@@ -50,7 +50,8 @@ def PrepareSipCollection(adornedRuleset):
             #predicate occurrence whose predicate symbol is a variable) aside
             secondOrderRules.add(rule)
         headToRule.setdefault(ruleHead,set()).add(rule)
-        graphs.append(rule.sip)
+        if hasattr(rule,'sip'):
+            graphs.append(rule.sip)
     #Second order rules are mapped from a None key (in order to indicate they are wildcards)
     headToRule[None]=secondOrderRules
     if not graphs:

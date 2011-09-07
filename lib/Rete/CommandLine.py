@@ -182,6 +182,13 @@ def main():
                   metavar='INTENSIONAL_DB_PREDICATE_QNAME',                  
       help = 'Used with --why/--strictness=defaultBase to specify which clashing '+
       'predicate will be designated as a derived predicate')                    
+    op.add_option('--hybridPredicate',
+                default=[],
+                action='append',
+                metavar='PREDICATE_QNAME',                  
+    help = 'Used with --why to explicitely specify a hybrid predicate (in both '+
+           ' IDB and EDB) ')
+      
     op.add_option('--noMagic',
                   default=[],
                   action='append',
@@ -425,7 +432,8 @@ def main():
         bottomUpDerivedPreds = []
         topDownDerivedPreds  = []
         defaultBasePreds     = []
-        defaultDerivedPreds  = []
+        defaultDerivedPreds  = set()
+        hybridPredicates     = []
         mapping = dict(newNsMgr.namespaces())
         for edb in options.edb: 
             pref,uri=edb.split(':')
@@ -436,6 +444,7 @@ def main():
             noMagic.append(URIRef(mapping[pref]+uri))
         if options.ddlGraph:
             ddlGraph = Graph().parse(options.ddlGraph,format='n3')
+            # @TODO: should also get hybrid predicates from DDL graph
             defaultDerivedPreds=IdentifyDerivedPredicates(
                                     ddlGraph,
                                     Graph(),
@@ -443,8 +452,11 @@ def main():
         else:
             for idb in options.idb: 
                 pref,uri=idb.split(':')
-                defaultDerivedPreds.append(URIRef(mapping[pref]+uri))
-            defaultDerivedPreds.extend(set([p == RDF.type and o or p for s,p,o in goals]))
+                defaultDerivedPreds.add(URIRef(mapping[pref]+uri))
+            defaultDerivedPreds.update(set([p == RDF.type and o or p for s,p,o in goals]))
+            for hybrid in options.hybridPredicate:
+                pref,uri=hybrid.split(':')
+                hybridPredicates.append(URIRef(mapping[pref]+uri))
         
         if options.method == 'gms':
             for goal in goals:
@@ -498,10 +510,8 @@ def main():
             if options.output == 'conflict':
                 network.reportConflictSet()
                         
-        elif options.method in ['sld','bfp']:
-            reasoningAlg = TOP_DOWN_METHOD if options.method == 'sld' \
-                           else BFP_METHOD
-            topDownDPreds = defaultDerivedPreds  if options.ddlGraph else None
+        elif options.method == 'bfp':
+            topDownDPreds = defaultDerivedPreds
             if options.builtinTemplates:
                 builtinTemplateGraph = Graph().parse(options.builtinTemplates,
                                                     format='n3')
@@ -513,7 +523,6 @@ def main():
                                          None))])
             else:
                 builtinDict = None
-            
             topDownStore=TopDownSPARQLEntailingStore(
                             factGraph.store,
                             factGraph,
@@ -522,9 +531,9 @@ def main():
                             derivedPredicates = topDownDPreds,
                             templateMap = builtinDict,
                             nsBindings=network.nsMap,
-                            decisionProcedure = reasoningAlg,
                             identifyHybridPredicates = 
-                            options.hybrid if options.method == 'bfp' else False)
+                            options.hybrid if options.method == 'bfp' else False,
+                            hybridPredicates = hybridPredicates)
             targetGraph = Graph(topDownStore)
             for pref,nsUri in network.nsMap.items():
                 targetGraph.bind(pref,nsUri)      

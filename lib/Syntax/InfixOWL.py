@@ -394,12 +394,57 @@ class Individual(object):
     sameAs = property(_get_sameAs, _set_sameAs, _delete_sameAs)
     
 
+ACE_NS = Namespace('http://attempto.ifi.uzh.ch/ace_lexicon#')
+
 class AnnotatibleTerms(Individual):
     """
     Terms in an OWL ontology with rdfs:label and rdfs:comment
     """
-    def __init__(self,identifier,graph=None):
+    def __init__(self,identifier,graph=None,nameAnnotation=None,nameIsLabel = False):
         super(AnnotatibleTerms, self).__init__(identifier,graph)
+        if nameAnnotation:
+            self.setupACEAnnotations()
+            self.PN_sgProp.extent = [(self.identifier,
+                                      self.handleAnnotation(nameAnnotation))]
+            if nameIsLabel:
+                self.label = [nameAnnotation]
+
+    def handleAnnotation(self, val):
+        return val if isinstance(val,Literal) else Literal(val)
+
+    def setupACEAnnotations(self):
+        self.graph.bind('ace', ACE_NS, override=False)
+
+        # PN_sg singular form of a proper name ()
+        self.PN_sgProp = Property(ACE_NS.PN_sg,
+                                  baseType=OWL_NS.AnnotationProperty,
+                                  graph=self.graph)
+
+        # CN_sg singular form of a common noun
+        self.CN_sgProp  = Property(ACE_NS.CN_sg,
+                                   baseType=OWL_NS.AnnotationProperty,
+                                   graph=self.graph)
+
+        # CN_pl plural form of a common noun
+        self.CN_plProp  = Property(ACE_NS.CN_pl,
+                                   baseType=OWL_NS.AnnotationProperty,
+                                   graph=self.graph)
+
+        # singular form of a transitive verb
+        self.TV_sgProp  = Property(ACE_NS.TV_sg,
+                                   baseType=OWL_NS.AnnotationProperty,
+                                   graph=self.graph)
+
+        # plural form of a transitive verb
+        self.TV_plProp  = Property(ACE_NS.TV_pl,
+                                   baseType=OWL_NS.AnnotationProperty,
+                                   graph=self.graph)
+
+        # past participle form a transitive verb
+        self.TV_vbgProp = Property(ACE_NS.TV_vbg,
+                                   baseType=OWL_NS.AnnotationProperty,
+                                   graph=self.graph)
+
     def _get_comment(self):
         for comment in self.graph.objects(subject=self.identifier,predicate=RDFS.comment):
             yield comment
@@ -740,11 +785,32 @@ class Class(AnnotatibleTerms):
         for fact in self.graph.triples((self.identifier,None,None)):
             graph.add(fact)
         self._serialize(graph)
-    
+
+    def setupNounAnnotations(self,nounAnnotations):
+        if isinstance(nounAnnotations,tuple):
+            CN_sgProp, CN_plProp = nounAnnotations
+        else:
+            CN_sgProp = nounAnnotations
+            CN_plProp = nounAnnotations
+
+        if CN_sgProp:
+            self.CN_sgProp.extent = [(self.identifier,
+                                      self.handleAnnotation(CN_sgProp))]
+        if CN_plProp:
+            self.CN_plProp.extent = [(self.identifier,
+                                      self.handleAnnotation(CN_plProp))]
+
     def __init__(self, identifier=None,subClassOf=None,equivalentClass=None,
                        disjointWith=None,complementOf=None,graph=None,
-                       skipOWLClassMembership = False,comment=None):
-        super(Class, self).__init__(identifier,graph)
+                       skipOWLClassMembership = False,comment=None,
+                       nounAnnotations = None,
+                       nameAnnotation = None,
+                       nameIsLabel = False):
+        super(Class, self).__init__(identifier,graph,nameAnnotation,nameIsLabel)
+
+        if nounAnnotations:
+            self.setupNounAnnotations(nounAnnotations)
+
         if not skipOWLClassMembership and (self.identifier,RDF.type,OWL_NS.Class) not in self.graph and \
            (self.identifier,RDF.type,OWL_NS.Restriction) not in self.graph:
             self.graph.add((self.identifier,RDF.type,OWL_NS.Class))
@@ -1586,10 +1652,35 @@ class Property(AnnotatibleTerms):
                   'Transitive' ]
                 { 'domain(' description ')' } { 'range(' description ')' } ')    
     """
+
+    def setupVerbAnnotations(self,verbAnnotations):
+        if isinstance(verbAnnotations,tuple):
+            TV_sgProp,TV_plProp,TV_vbg = verbAnnotations
+        else:
+            TV_sgProp = verbAnnotations
+            TV_plProp = verbAnnotations
+            TV_vbg    = verbAnnotations
+        if TV_sgProp:
+            self.TV_sgProp.extent = [(self.identifier,
+                                      self.handleAnnotation(TV_sgProp))]
+        if TV_plProp:
+            self.TV_plProp.extent = [(self.identifier,
+                                      self.handleAnnotation(TV_plProp))]
+        if TV_vbg:
+            self.TV_vbgProp.extent = [(self.identifier,
+                                       self.handleAnnotation(TV_vbg))]
+
     def __init__(self,identifier=None,graph = None,baseType=OWL_NS.ObjectProperty,
                       subPropertyOf=None,domain=None,range=None,inverseOf=None,
-                      otherType=None,equivalentProperty=None,comment=None):
-        super(Property, self).__init__(identifier,graph)
+                      otherType=None,equivalentProperty=None,
+                      comment=None,
+                      verbAnnotations = None,
+                      nameAnnotation = None,
+                      nameIsLabel = False):
+        super(Property, self).__init__(identifier,graph,nameAnnotation,nameIsLabel)
+        if verbAnnotations:
+            self.setupVerbAnnotations(verbAnnotations)
+
         assert not isinstance(self.identifier,BNode)
         if baseType is None:
             #None give, determine via introspection

@@ -300,7 +300,7 @@ class QueryExecution(object):
                 fact.ground(tokenBindings)
                 fact.ground(queryBindings)
                 assert fact.isGround()
-                wme = ReteToken(tuple([ term for term in fact.toRDFTuple() ]))
+                wme = ReteToken(tuple([ term for term in fact.toRDFTuple() ]),debug=debug)
                 wmeCopy = copy.deepcopy(wme)
                 for termComb,termDict in iteritems(self.bfp.metaInterpNetwork.alphaPatternHash):
                     for alphaNode in termDict.get(wmeCopy.alphaNetworkHash(termComb),[]):
@@ -544,10 +544,6 @@ class BackwardFixpointProcedure(object):
             
             isBase = bodyLiteral.adornment is None if \
                         isinstance(bodyLiteral,AdornedUniTerm) else True
-            if self.hybridPredicates is not None and \
-               GetOp(bodyLiteral) in self.hybridPredicates:
-               #A hybrid predicate
-               isBase = True
             if isinstance(bodyLiteral,N3Builtin):
                 if aNodeDk in self.metaInterpNetwork.alphaNodes:
                     self.metaInterpNetwork.alphaNodes.remove(aNodeDk)
@@ -584,8 +580,7 @@ class BackwardFixpointProcedure(object):
             else:
                 self.evalHash.setdefault((idx+1,bodyIdx),[]).append(newEvalMemory)
             if (GetOp(bodyLiteral) in self.derivedPredicates) and \
-                not (isBase and len(conjunct)>1) and \
-                GetOp(bodyLiteral) not in self.hybridPredicates:
+                not (isBase and len(conjunct)>1):
                 assert pattern2 in self.metaInterpNetwork.nodes
                 termNodeCk = self.metaInterpNetwork.nodes[pattern2]
                 #Rule c^k
@@ -891,8 +886,8 @@ class BackwardFixpointProcedure(object):
                         self.maxEDBFront2End[mDBConjFront] = (idx+1,len(rule.formula.body))
                 if (not self.pushDownMDBQ or (
                         (bodyPredSymbol in FILTERS and len(conj) == 1) or
-                        (bodyPredSymbol in self.derivedPredicates and
-                         bodyPredSymbol not in self.hybridPredicates) #or (
+                        (bodyPredSymbol in self.derivedPredicates)# and
+#                         bodyPredSymbol not in self.hybridPredicates) or (
                          #bodyPredSymbol not in FILTERS and bodyIdx+1 == _len)
                     )) and skipMDBQCount in (1,-1):
                     #Either not pushing down or:
@@ -1022,7 +1017,7 @@ class BFPQueryTerm(Uniterm):
                 else:
                     #remove unbound argument, and reduce arity
                     singleArg = first(self.getDistinguishedVariables())
-                    self.arg[-1] = URIRef(GetOp(self)+'_query_b')
+                    self.arg[-1] = URIRef(GetOp(self)+'_query_'+''.join(self.adornment))
                     self.arg[0]  = singleArg 
                     self.op = RDF.type
                     

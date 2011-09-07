@@ -31,7 +31,7 @@ FUNCTIONAL_SEMANTCS=\
 {?P a owl:FunctionalProperty. ?S ?P ?O. ?S ?P ?Y. ?O log:notEqualTo ?Y } => {?O = ?Y}.
 {?P a owl:InverseFunctionalProperty. ?S ?P ?O. ?Y ?P ?O. ?S log:notEqualTo ?Y } => {?S = ?Y}.
 
-#owl:sameAs is symmetric, transitive, (and irreflexive?) and supports "smushing."
+#owl:sameAs is symmetric, transitive and supports "smushing."
 {?T1 = ?T2} => {?T2 = ?T1}.
 {?T1 = ?T2. ?S = ?T1} => {?S = ?T2}.
 {?T1 ?P ?O. ?T1 = ?T2.} => {?T2 ?P ?O}.
