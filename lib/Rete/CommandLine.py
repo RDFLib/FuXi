@@ -162,7 +162,7 @@ def main():
     op.add_option('--method',
                   default='naive',
                   metavar='reasoning algorithm',
-                  choices = ['gms','sld','bfp','naive'],
+                  choices = ['gms','bfp','naive'],
       help = 'Used with --why to specify how to evaluate answers for query.  '+
       'One of: gms,sld,bfp,naive')
     op.add_option('--firstAnswer',
