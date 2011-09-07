@@ -320,7 +320,7 @@ def AdornRule(derivedPreds,
     for literal in iterCondition(sip.sipOrder):
         op   = GetOp(literal)
         args = GetArgs(literal)
-        if op in derivedPreds or op in hybridPreds2Replace if hybridPreds2Replace else False:
+        if op in derivedPreds or (op in hybridPreds2Replace if hybridPreds2Replace else False):
             for N,x in IncomingSIPArcs(sip,getOccurrenceId(literal)): 
                 headArc = len(N)==1 and N[0] == GetOp(newHead)                
                 if not set(x).difference(args):
@@ -433,10 +433,10 @@ def AdornProgram(factGraph,
                             aPred = not isinstance(pred,AdornedUniTerm) and \
                                         AdornLiteral(pred.toRDFTuple(),
                                                      nsBindings,
-                                                     pred.naf) or pred 
+                                                     pred.naf) or pred
                         if (GetOp(pred) in derivedPreds or
-                            GetOp(pred) in hybridPreds2Replace if hybridPreds2Replace 
-                            else False) and aPred not in adornedPredicateCollection:
+                            (GetOp(pred) in hybridPreds2Replace if hybridPreds2Replace
+                            else False)) and aPred not in adornedPredicateCollection:
                             adornedPredicateCollection.add(aPred)
         term.marked=True
         toDo.extendleft(unprocessedPreds(adornedPredicateCollection))

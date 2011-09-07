@@ -318,7 +318,6 @@ class TopDownSPARQLEntailingStore(Store):
             else:
                 askResult = True
                 for derivedLiteral in derivedConjunct:
-                    raise NotImplementedError("Still a work in progress")
                     goal = derivedLiteral.toRDFTuple()
                     #Solve ground, derived goal directly 
                     SetupDDLAndAdornProgram(
@@ -326,8 +325,24 @@ class TopDownSPARQLEntailingStore(Store):
                         self.idb,
                         [goal],
                         derivedPreds=self.derivedPredicates,
-                        ignoreUnboundDPreds = True)
+                        ignoreUnboundDPreds = True,
+                        hybridPreds2Replace=self.hybridPredicates)
+
+                    if self.hybridPredicates:
+                        lit = BuildUnitermFromTuple(goal)
+                        op = GetOp(lit)
+                        if op in self.hybridPredicates:
+                            lit.setOperator(URIRef(op+u'_derived'))
+                            goal = lit.toRDFTuple()
+
                     sipCollection=PrepareSipCollection(self.edb.adornedProgram)
+                    if self.DEBUG and sipCollection:
+                        for sip in SIPRepresentation(sipCollection):
+                            print >>sys.stderr,sip
+                        pprint(list(self.edb.adornedProgram),sys.stderr)
+                    elif self.DEBUG:
+                        print >> sys.stderr, "No SIP graph!"
+
                     rt,node = first(self.invokeDecisionProcedure(
                             goal,
                             self.edb,
@@ -335,19 +350,8 @@ class TopDownSPARQLEntailingStore(Store):
                             self.DEBUG,
                             sipCollection))
                     if not rt:
-                        #Failed to solve goal. If derived predicate is a hybrid 
-                        #predicate (or we haven't indicated a distinction), 
-                        #check against EDB, if not a hybrid and/or not in EDB
-                        #entire ground conjunct fails
-                        if (self.hybridPredicates is None or 
-                            derivedPred in self.hybridPredicates):
-                            if goal not in self.edb:
-                                askResult = False
-                                break
-                        elif self.hybridPredicates is not None:
-                            #Purely a IDB predicate, so we fail
-                            askResult = False
-                            break
+                        askResult = False
+                        break
             return plugin.get('SPARQLQueryResult',QueryResult)(askResult)
         else:
             rt =   TopEvaluate(queryObj,

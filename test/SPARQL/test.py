@@ -23,7 +23,7 @@ MANIFEST  = Namespace('http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#
 QUERY     = Namespace('http://www.w3.org/2001/sw/DataAccess/tests/test-query#')
 SD        = Namespace('http://www.w3.org/ns/sparql-service-description#')
 TEST      = Namespace('http://www.w3.org/2009/sparql/docs/tests/data-sparql11/entailment/manifest#')
-
+STRING    = Namespace('http://www.w3.org/2000/10/swap/string#')
 ENT       = Namespace('http://www.w3.org/ns/entailment/')
 
 SUPPORTED_ENTAILMENT=[
@@ -35,7 +35,9 @@ SKIP={
     "rdf01" : "Quantification over predicates",
     "rdfs01": "Quantification over predicates",
     "rdf02" : "Reification",
-    "rdfs05": "Quantification over predicates (unary)"
+    "rdf10" : "Malformed test", #might be fixed
+    "rdfs05": "Quantification over predicates (unary)",
+    "rdfs11": "Reflexivity of rdfs:subClassOf (?x -> rdfs:Container)"
 }
 
 nsMap = {
@@ -126,7 +128,7 @@ def test_generator(testName, label, queryFile, rdfDoc, regime, result, debug):
         print testName, label
         query = urlopen(queryFile).read()
         factGraph = Graph().parse(urlopen(rdfDoc),format='n3')
-
+        factGraph.parse(open('SPARQL/W3C/rdfs-axiomatic-triples.n3'),format='n3')
         self.rules.extend(self.network.setupDescriptionLogicProgramming(
                                                      factGraph,
                                                      addPDSemantics=True,
@@ -140,7 +142,10 @@ def test_generator(testName, label, queryFile, rdfDoc, regime, result, debug):
                         DEBUG=debug,
                         nsBindings=nsMap,
                         decisionProcedure = BFP_METHOD,
-                        identifyHybridPredicates = True)
+                        identifyHybridPredicates = True,
+                        templateMap={
+                            STRING.contains : "REGEX(%s,%s)"
+                        })
         targetGraph = Graph(topDownStore)
         parsedQuery=parse(query)
         for pref,nsUri in (setdict(nsMap) | setdict(
@@ -165,8 +170,6 @@ def test_generator(testName, label, queryFile, rdfDoc, regime, result, debug):
             for network,goal in topDownStore.queryNetworks:
                 pprint(goal)
                 network.reportConflictSet(True)
-            for query in topDownStore.edbQueries:
-                print query.asSPARQL()
     return test
 
 if __name__ == '__main__':

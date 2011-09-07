@@ -4,4 +4,10 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 
-{?S ?P ?O} => {?P a rdf:Property}.
+{ ?S ?P ?O } => { ?P a rdf:Property }.
+{ ?S rdfs:range   ?R . ?R rdfs:subClassOf ?R2 } => { ?S rdfs:range ?R2 } .
+{ ?S rdfs:domain  ?R . ?R rdfs:subClassOf ?R2 } => { ?S rdfs:domain ?R2 } .
+{ ?C a rdfs:Class } => { ?C rdfs:subClassOf rdfs:Resource } .
+{ ?List ?prop ?obj.
+  ?prop str:contains "http://www.w3.org/1999/02/22\\-rdf\\-syntax\\-ns#_\\d+"  }
+  => { ?prop a rdfs:ContainerMembershipProperty } .
