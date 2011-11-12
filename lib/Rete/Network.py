@@ -22,7 +22,7 @@ from BuiltinPredicates import FILTERS
 from FuXi.Horn import ComplementExpansion, DATALOG_SAFETY_NONE, \
                       DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from FuXi.Syntax.InfixOWL import *
-from FuXi.Horn.PositiveConditions import Uniterm, SetOperator, Exists, Or
+from FuXi.Horn.PositiveConditions import Uniterm, SetOperator, Exists, Or, GetUterm
 from FuXi.DLP import MapDLPtoNetwork,non_DHL_OWL_Semantics,IsaFactFormingConclusion
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from Util import generateTokenSet,renderNetwork
@@ -520,8 +520,9 @@ class ReteNetwork:
                 rhsTriple = tuple([BNodeReplacement.get(term,term) for term in rhsTriple])
             if debug:
                 if not tokens.bindings:
-                    tokens._generateBindings()                    
-            override,executeFn = termNode.executeActions.get(rhsTriple,(None,None))
+                    tokens._generateBindings()
+            key = tuple(map(lambda item: None if isinstance(item,BNode) else item,rhsTriple))
+            override,executeFn = termNode.executeActions.get(key,(None,None))
             
             if override:
                 #There is an execute action associated with this production
@@ -653,9 +654,12 @@ class ReteNetwork:
         """
         for tNode in self.terminalNodes:
             for rule in tNode.rules:
-                if not isinstance(rule.formula.head, Uniterm):
+                if not isinstance(rule.formula.head, (Exists,Uniterm)):
                     continue
-                headTriple = rule.formula.head.toRDFTuple()
+                headTriple = GetUterm(rule.formula.head).toRDFTuple()
+                headTriple = tuple(
+                    map(lambda item: None if isinstance(item,BNode) else item,
+                        headTriple))
                 tNode.executeActions[headTriple] = (override,executeFn)
     
     def buildNetwork(self,lhsIterator,rhsIterator,rule,aFilter=False):

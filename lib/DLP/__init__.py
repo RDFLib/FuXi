@@ -407,6 +407,21 @@ def ExtendN3Rules(network,horn_clause,constructNetwork=False):
                 rt.append(hC)
     return rt
 
+def PrepareHeadExistential(clause):
+    from FuXi.Rete.SidewaysInformationPassing import GetArgs
+    skolemsInHead=[
+                   list(itertools.ifilter(
+                             lambda term:isinstance(term,
+                                                    BNode),
+                                 GetArgs(lit)))
+                                 for lit in iterCondition(clause.head)]
+    skolemsInHead = reduce(lambda x,y:x+y,skolemsInHead,[])
+    if skolemsInHead:
+        newHead = copy.deepcopy(clause.head)
+        _e=Exists(formula=newHead,declare=set(skolemsInHead))
+        clause.head=_e
+    return clause
+
 def PrepareHornClauseForRETE(horn_clause):
     if isinstance(horn_clause,Rule):
         horn_clause=horn_clause.formula
@@ -451,18 +466,7 @@ def PrepareHornClauseForRETE(horn_clause):
         _e=Exists(formula=newBody,declare=set(skolemsInBody))        
         horn_clause.body=_e
 
-    skolemsInHead=[
-                   list(itertools.ifilter(
-                             lambda term:isinstance(term,
-                                                    BNode),
-                                 GetArgs(lit))) 
-                                 for lit in iterCondition(horn_clause.head)]
-    skolemsInHead = reduce(lambda x,y:x+y,skolemsInHead,
-                           [])
-    if skolemsInHead:
-        newHead = copy.deepcopy(horn_clause.head)
-        _e=Exists(formula=newHead,declare=set(skolemsInHead))        
-        horn_clause.head=_e
+    PrepareHeadExistential(horn_clause)
 
 def generatorFlattener(gen):
     assert hasattr(gen,'next')
@@ -749,18 +753,30 @@ def LloydToporTransformation(clause,fullReduction=True):
         for atom in clause.body.formulae:
             if hasattr(atom, 'next'):
                 atom=first(atom)
-            yield NormalizeClause(Clause(atom,clause.head))
+            for clz in LloydToporTransformation(
+                            NormalizeClause(
+                                    Clause(atom,
+                                           clause.head)
+                            ),
+                            fullReduction=fullReduction):
+                yield clz
     elif isinstance(clause.head,OriginalClause):
         yield NormalizeClause(Clause(And([clause.body,clause.head.body]),clause.head.head))
-    elif fullReduction and isinstance(clause.head,And):
-        for i in clause.head:
+    elif fullReduction and (
+        (isinstance(clause.head,Exists) and
+         isinstance(clause.head.formula,And)) or isinstance(clause.head,And)):
+        if isinstance(clause.head,Exists):
+            head = clause.head.formula
+        elif isinstance(clause.head,And):
+            head = clause.head
+        for i in head:
             for j in LloydToporTransformation(Clause(clause.body,i),
                                               fullReduction=fullReduction):
                 if [i for i in breadth_first(j.head) if isinstance(i,And)]:
                     #Ands in the head need to be further flattened
-                    yield NormalizeClause(j) 
+                    yield PrepareHeadExistential(NormalizeClause(j))
                 else:
-                    yield j
+                    yield PrepareHeadExistential(j)
     else:
         yield clause
     
