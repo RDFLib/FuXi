@@ -19,6 +19,14 @@ OWL    = Namespace("http://www.w3.org/2002/07/owl#")
 def buildUniTerm((s,p,o),newNss=None):
     return Uniterm(p,[s,o],newNss=newNss)
 
+def GetUterm(term):
+    if isinstance(term,Uniterm):
+        return term
+    elif isinstance(term,Exists):
+        return term.formula
+    else:
+        raise Exception("Unknown term: %s"%term)
+
 class QNameManager(object):
     def __init__(self,nsDict=None):
         self.nsDict = nsDict and nsDict or {}
