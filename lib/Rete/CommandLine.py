@@ -382,11 +382,10 @@ def main():
                         children = [desc for desc in c.subSumpteeIds()]
                         for child in children:
                             for otherChild in [o for o in children if o is not child]:
-                                if not otherChild in [c.identifier 
+                                if not otherChild in [c.identifier
                                           for c in Class(child).disjointWith]:# and\
-                                    warnings.warn("Primitive children (of %s) "+
+                                    warnings.warn("Primitive children (of %s) "%(c.qname) +
                                           "must be mutually disjoint: %s and %s"%(
-                                      c.qname,
                                       Class(child).qname,
                                       Class(otherChild).qname),UserWarning,1)
 #                if not isinstance(c.identifier,BNode):
@@ -486,7 +485,6 @@ def main():
             start = time.time()
             network.feedFactsToAdd(generateTokenSet(magicSeeds))
             if not [rule for rule in factGraph.adornedProgram if len(rule.sip)]:
-                import warnings
                 warnings.warn("Using GMS sideways information strategy with no "+
                               "information to pass from query.  Falling back to "+
                               "naive method over given facts and rules")
