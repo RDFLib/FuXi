@@ -108,7 +108,6 @@ import os, itertools
 from pprint import pprint
 from rdflib import Namespace
 from rdflib import plugin,RDF,RDFS,URIRef,BNode,Literal,Variable
-from rdflib import OWL
 from rdflib.Literal import _XSD_NS
 from rdflib.Identifier import Identifier
 from rdflib.util import first
@@ -576,19 +575,19 @@ class ClassNamespaceFactory(Namespace):
             return self.term(name)
 
 CLASS_RELATIONS = set(
-        OWL.resourceProperties
-    ).difference([OWL.onProperty,
-                  OWL.allValuesFrom,
-                  OWL.hasValue,
-                  OWL.someValuesFrom,
-                  OWL.inverseOf,
-                  OWL.imports,
-                  OWL.versionInfo,
-                  OWL.backwardCompatibleWith,
-                  OWL.incompatibleWith,
-                  OWL.unionOf,
-                  OWL.intersectionOf,
-                  OWL.oneOf])
+        OWL_NS.resourceProperties
+    ).difference([OWL_NS.onProperty,
+                  OWL_NS.allValuesFrom,
+                  OWL_NS.hasValue,
+                  OWL_NS.someValuesFrom,
+                  OWL_NS.inverseOf,
+                  OWL_NS.imports,
+                  OWL_NS.versionInfo,
+                  OWL_NS.backwardCompatibleWith,
+                  OWL_NS.incompatibleWith,
+                  OWL_NS.unionOf,
+                  OWL_NS.intersectionOf,
+                  OWL_NS.oneOf])
 
 def ComponentTerms(cls):
     """
