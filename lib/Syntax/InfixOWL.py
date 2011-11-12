@@ -1830,6 +1830,12 @@ class Property(AnnotatibleTerms):
         pass            
                                 
     range = property(_get_range, _set_range, _del_range)
+
+    def replace(self,other):
+        extension = []
+        for s,p,o in self.extent:
+            self.graph.add((s,propertyOrIdentifier(other),o))
+        self.graph.remove((None,self.identifier,None))
         
 def CommonNSBindings(graph,additionalNS={}):
     """
@@ -1842,10 +1848,10 @@ def CommonNSBindings(graph,additionalNS={}):
     for prefix,uri in additionalNS.items():
         namespace_manager.bind(prefix, uri, override=False)
     graph.namespace_manager = namespace_manager
-        
-def test():
-    import doctest
-    doctest.testmod()
 
 if __name__ == '__main__':
+
+    def test():
+        import doctest
+        doctest.testmod()
     test()
