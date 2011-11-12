@@ -91,38 +91,45 @@ def SetupDDLAndAdornProgram(factGraph,
                         derivedPreds,
                         ignoreUnboundDPreds,
                         hybridPreds2Replace = hybridPreds2Replace)
-    for hybridPred in hybridPreds2Replace:
+    rt=reduce(lambda l,r: l+r,
+              [list(iterCondition(clause.formula.body))
+                    for clause in adornedProgram])
+    for hybridPred, adornment in [(t,a)
+        for t,a in set(
+            [ (URIRef(GetOp(term).split('_derived')[0]
+                   ) if GetOp(term).find('_derived')+1 else GetOp(term),
+               ''.join(term.adornment)
+               ) for term in rt if isinstance(term,AdornedUniTerm)])
+            if t in hybridPreds2Replace]:
         #If there are hybrid predicates, add rules that derived their IDB counterpart
         #using information from the adorned queries to determine appropriate arity
         #and adornment
-        hybridPredFull = URIRef(hybridPred + u'_derived')
-        for hPred,adornment in set([(GetOp(pred),
-                                     ''.join(pred.adornment))
-            for pred in factGraph.queryAtoms.get(hybridPredFull,[])]): 
-            if len(adornment) == 1:
-                # p_derived^{a}(X) :- p(X)
-                body = BuildUnitermFromTuple(
-                                    (Variable('X'),
-                                     RDF.type,
-                                     hybridPred))
-                head = BuildUnitermFromTuple(
-                                    (Variable('X'),
-                                     RDF.type,
-                                     hPred))
-            else:
-                # p_derived^{a}(X,Y) :- p(X,Y)
-                body = BuildUnitermFromTuple(
-                                    (Variable('X'),
-                                     hybridPred,
-                                     Variable('Y')))
-                head = BuildUnitermFromTuple(
-                                    (Variable('X'),
-                                     hPred,
-                                     Variable('Y')))
-            _head=AdornedUniTerm(head,list(adornment))
-            rule=AdornedRule(Clause(And([body]),_head.clone()))
-            rule.sip = Graph()
-            adornedProgram.add(rule)
+        hybridPred      = URIRef(hybridPred)
+        hPred           = URIRef(hybridPred + u'_derived')
+        if len(adornment) == 1:
+            # p_derived^{a}(X) :- p(X)
+            body = BuildUnitermFromTuple(
+                                (Variable('X'),
+                                 RDF.type,
+                                 hybridPred))
+            head = BuildUnitermFromTuple(
+                                (Variable('X'),
+                                 RDF.type,
+                                 hPred))
+        else:
+            # p_derived^{a}(X,Y) :- p(X,Y)
+            body = BuildUnitermFromTuple(
+                                (Variable('X'),
+                                 hybridPred,
+                                 Variable('Y')))
+            head = BuildUnitermFromTuple(
+                                (Variable('X'),
+                                 hPred,
+                                 Variable('Y')))
+        _head=AdornedUniTerm(head,list(adornment))
+        rule=AdornedRule(Clause(And([body]),_head.clone()))
+        rule.sip = Graph()
+        adornedProgram.add(rule)
 
     if factGraph is not None:
         factGraph.adornedProgram = adornedProgram    
@@ -434,9 +441,11 @@ def AdornProgram(factGraph,
                                         AdornLiteral(pred.toRDFTuple(),
                                                      nsBindings,
                                                      pred.naf) or pred
-                        if (GetOp(pred) in derivedPreds or
-                            (GetOp(pred) in hybridPreds2Replace if hybridPreds2Replace
-                            else False)) and aPred not in adornedPredicateCollection:
+                        op = GetOp(pred)
+                        if (op in derivedPreds or
+                            (op in hybridPreds2Replace if hybridPreds2Replace
+                            else False)
+                            ) and aPred not in adornedPredicateCollection:
                             adornedPredicateCollection.add(aPred)
         term.marked=True
         toDo.extendleft(unprocessedPreds(adornedPredicateCollection))
@@ -448,9 +457,9 @@ class AdornedUniTerm(Uniterm):
     def __init__(self,uterm,adornment=None,naf = False):
         self.marked = False
         self.adornment=adornment
-        self.nsMgr=uterm.nsMgr
-        newArgs=copy.deepcopy(uterm.arg)
-        super(AdornedUniTerm, self).__init__(uterm.op,newArgs,naf=naf)
+        self.nsMgr=GetUterm(uterm).nsMgr
+        newArgs=copy.deepcopy(GetUterm(uterm).arg)
+        super(AdornedUniTerm, self).__init__(GetUterm(uterm).op,newArgs,naf=naf)
         self.isMagic=False
 
     def clone(self):
