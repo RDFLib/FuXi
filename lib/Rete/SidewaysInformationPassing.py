@@ -266,7 +266,7 @@ def BuildNaturalSIP(clause,
     occurLookup={}
     boundHead=isinstance(adornedHead,AdornedUniTerm) and 'b' in adornedHead.adornment
     phBoundVars = list(adornedHead.getDistinguishedVariables(varsOnly=True))
-    assert isinstance(clause.head,Uniterm),"Only one literal in the head!"
+#    assert isinstance(clause.head,Uniterm),"Only one literal in the head!"
     def collectSip(left,right):
         if isinstance(left,list):
             vars=CollectSIPArcVars(left,right,phBoundVars)
