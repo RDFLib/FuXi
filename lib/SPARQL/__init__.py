@@ -5,6 +5,7 @@ from FuXi.Rete.RuleStore import N3Builtin
 from FuXi.Rete.Util import selective_memoize
 from FuXi.Rete.RuleStore import *
 from FuXi.Rete.Proof import ImmutableDict
+from FuXi.Rete.Magic import AdornedUniTerm
 from rdflib import URIRef, RDF, Namespace, Variable, Literal
 from rdflib.util import first
 from FuXi.Rete.BetaNode import project
@@ -184,7 +185,9 @@ def EDBQueryFromBodyIterator(factGraph,remainingBodyList,derivedPreds,hybridPred
     hybridPredicates = hybridPredicates if hybridPredicates is not None else []
     def sparqlResolvable(literal):
         predTerm = GetOp(literal)
-        if isinstance(literal,Uniterm):
+        if not isinstance(literal,
+                          AdornedUniTerm) and isinstance(literal,
+                                                         Uniterm):
             return not literal.naf and (
                 predTerm not in derivedPreds or
                 ( predTerm in hybridPredicates and

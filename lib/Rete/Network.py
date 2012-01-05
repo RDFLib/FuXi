@@ -540,12 +540,15 @@ class ReteNetwork:
                             #(even if it is not ground)
                             executeFn(termNode,inferredTriple,tokens,binding,debug)                                        
                         continue
+                    # if rhsTriple[1].find('subClassOf_derived')+1:import pdb;pdb.set_trace()
                     inferredToken=ReteToken(inferredTriple)
                     self.proofTracers.setdefault(inferredTriple,[]).append(binding)
                     self.justifications.setdefault(inferredTriple,set()).add(termNode)
                     if termNode.filter and inferredTriple not in self.filteredFacts:
                         self.filteredFacts.add(inferredTriple)
                     if inferredTriple not in self.inferredFacts and inferredToken not in self.workingMemory:                    
+                        # if (rhsTriple == (Variable('A'), RDFS.RDFSNS['subClassOf_derived'], Variable('B'))):
+                        #     import pdb;pdb.set_trace()                        
                         if debug:
                             print "Inferred triple: ", inferredTriple, " from ",termNode.clauseRepresentation()
                             inferredToken.debug = True
@@ -560,7 +563,7 @@ class ReteNetwork:
                             #first time
                             executeFn(termNode,inferredTriple,tokens,binding,debug)
                         if self.goal is not None and self.goal in self.inferredFacts:
-                           raise InferredGoal("Proved goal " + repr(self.goal))                    
+                            raise InferredGoal("Proved goal " + repr(self.goal))                    
                     else:
                         if debug:
                             print "Inferred triple skipped: ", inferredTriple

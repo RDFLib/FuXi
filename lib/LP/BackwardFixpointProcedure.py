@@ -36,7 +36,7 @@ from FuXi.Rete.AlphaNode import AlphaNode, ReteToken, BuiltInAlphaNode
 from FuXi.Rete.Network import ReteNetwork, HashablePatternList, InferredGoal, iteritems
 from FuXi.Rete.Proof import MakeImmutableDict
 from FuXi.DLP import breadth_first
-from FuXi.Rete.Magic import AdornedRule, AdornedUniTerm
+from FuXi.Rete.Magic import AdornedRule, AdornedUniTerm, IsHybridPredicate
 from FuXi.Rete.Util import generateTokenSet, selective_memoize
 from FuXi.Horn.HornRules import extractVariables, Clause
 from FuXi.Rete.RuleStore import N3Builtin, FILTERS
@@ -115,7 +115,6 @@ class GoalSolutionAction(object):
     
     def __repr__(self):
         stream = StringIO()
-        pprint(list(self.solutionSet),stream)
         return stream.getvalue()
         
     def __call__(self, tNode, inferredTriple, token, binding, debug):
@@ -205,14 +204,16 @@ class QueryExecution(object):
                         _vars.update(list(GetVariables(lit,secondOrder=True)))
                     _qLit =EDBQuery([copy.deepcopy(lit) for lit in self.edbConj],
                                     self.factGraph,#closure,
-                                    _vars)
+                                    _vars,
+                                    specialBNodeHandling=self.bfp.specialBNodeHandling)
                 else:
                     _qLit = copy.deepcopy(self.queryLiteral)
                     _qLit =EDBQuery([_qLit],
                                     self.factGraph,#closure,
                                     list(
                                         GetVariables(_qLit,
-                                                     secondOrder=True)))
+                                                     secondOrder=True)),
+                                    specialBNodeHandling=self.bfp.specialBNodeHandling)
                 origQuery = _qLit.copy()
                 _qLit.ground(_bindings)
                 if self.bfp.debug:
@@ -414,7 +415,9 @@ class BackwardFixpointProcedure(object):
                 sipCollection = [],
                 hybridPredicates = None,
                 debug = False,
-                pushDownMDBQ = True):
+                pushDownMDBQ = True,
+                specialBNodeHandling = None):
+        self.specialBNodeHandling = specialBNodeHandling
         self.debug = debug
         self.metaRule2Network = {}
         self.pushDownMDBQ = pushDownMDBQ
@@ -522,6 +525,7 @@ class BackwardFixpointProcedure(object):
                         rule.formula.body.formulae[bodyIdx:],
                         self.derivedPredicates,
                         self.hybridPredicates)
+            
             lazyBaseConjunct = self.pushDownMDBQ and conjunct
             pattern = HashablePatternList(
                                     [(BFP_RULE[str(idx+1)],
@@ -579,8 +583,9 @@ class BackwardFixpointProcedure(object):
                 tNode.executeActions[matchingTriple] = (True,newAction)
             else:
                 self.evalHash.setdefault((idx+1,bodyIdx),[]).append(newEvalMemory)
-            if (GetOp(bodyLiteral) in self.derivedPredicates) and \
-                not (isBase and len(conjunct)>1):
+            if IsHybridPredicate(bodyLiteral,self.hybridPredicates) or ((GetOp(bodyLiteral) in self.derivedPredicates) and \
+                not (isBase and len(conjunct)>1)):
+                # if pattern2 not in self.metaInterpNetwork.nodes: import pdb;pdb.set_trace()
                 assert pattern2 in self.metaInterpNetwork.nodes
                 termNodeCk = self.metaInterpNetwork.nodes[pattern2]
                 #Rule c^k
@@ -832,7 +837,6 @@ class BackwardFixpointProcedure(object):
                 print "\t%s. %s"%(idx+1,rule)
                 for _sip in SIPRepresentation(rule.sip):
                     print "\t\t",_sip
-                
             newRule1 =self.rule1(rule,label,ruleBodyLen)
             self.bfpLookup[('a',idx+1)] = newRule1
             rules.add(newRule1)
@@ -886,7 +890,9 @@ class BackwardFixpointProcedure(object):
                         self.maxEDBFront2End[mDBConjFront] = (idx+1,len(rule.formula.body))
                 if (not self.pushDownMDBQ or (
                         (bodyPredSymbol in FILTERS and len(conj) == 1) or
-                        (bodyPredSymbol in self.derivedPredicates)# and
+                        (bodyPredSymbol in self.derivedPredicates or 
+                         IsHybridPredicate(bodyLiteral,
+                                           self.hybridPredicates))# and
 #                         bodyPredSymbol not in self.hybridPredicates) or (
                          #bodyPredSymbol not in FILTERS and bodyIdx+1 == _len)
                     )) and skipMDBQCount in (1,-1):
