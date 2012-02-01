@@ -7,6 +7,9 @@ from FuXi.Rete.BetaNode import PartialInstantiation, LEFT_MEMORY, RIGHT_MEMORY
 from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore
 from FuXi.Rete.Util import renderNetwork,generateTokenSet, xcombine
 from FuXi.DLP.DLNormalization import NormalFormReduction
+from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
+from FuXi.LP import IdentifyHybridPredicates
+from FuXi.SPARQL.BackwardChainingStore import * 
 from FuXi.DLP import MapDLPtoNetwork, DisjunctiveNormalForm
 from FuXi.Horn import *
 from FuXi.Horn.HornRules import HornFromN3, Ruleset

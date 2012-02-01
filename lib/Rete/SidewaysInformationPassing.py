@@ -5,7 +5,10 @@ Implementation of Sideways Information Passing graph (builds it from a given rul
 """
 
 import unittest, os, sys, itertools
-from hashlib import md5
+try:
+    from hashlib import md5 as createDigest
+except:
+    from md5 import new as createDigest
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Horn.HornRules import Ruleset
 from FuXi.Rete.RuleStore import SetupRuleStore, N3Builtin

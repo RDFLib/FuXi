@@ -41,8 +41,9 @@ from FuXi.Rete.BetaNode import ReteMemory, BetaNode, RIGHT_MEMORY, LEFT_MEMORY
 from FuXi.Rete.AlphaNode import AlphaNode, ReteToken, BuiltInAlphaNode
 from FuXi.Rete.Network import HashablePatternList, InferredGoal, iteritems
 from FuXi.Rete.Proof import MakeImmutableDict
+from FuXi.DLP import breadth_first
 from FuXi.Rete.Magic import AdornedRule, AdornedUniTerm, IsHybridPredicate
-from FuXi.Rete.Util import generateTokenSet
+from FuXi.Rete.Util import generateTokenSet, selective_memoize
 from FuXi.Horn.HornRules import extractVariables, Clause
 from FuXi.Rete.RuleStore import N3Builtin, FILTERS
 from FuXi.Horn.PositiveConditions import *

@@ -28,6 +28,7 @@ except ImportError:
     from rdflib.Graph import ReadOnlyGraphAggregate
     from rdflib.syntax.xml_names import split_uri
 from FuXi.Rete.SidewaysInformationPassing import *
+from FuXi.SPARQL import EDBQuery, normalizeBindingsAndQuery
 
 def makeMD5Digest(value):
     return createDigest(

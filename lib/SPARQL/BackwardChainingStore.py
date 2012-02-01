@@ -17,14 +17,15 @@ except ImportError: # Assume rdflib 2.4.2
     from rdflib.store.REGEXMatching import NATIVE_REGEX
 
 from FuXi.DLP import DisjunctiveNormalForm
-from FuXi.LP import IdentifyHybridPredicates
 from FuXi.Rete.Magic import *
 from FuXi.Rete.TopDown import *
+from FuXi.Rete.Network import ReteNetwork
 from FuXi.Rete.SidewaysInformationPassing import *
+from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
+from FuXi.LP import IdentifyHybridPredicates
 from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
 from FuXi.Rete.Util import lazyGeneratorPeek
 from FuXi.SPARQL import EDBQuery
-from FuXi.LP.BackwardFixpointProcedure import *
 
 TOP_DOWN_METHOD = 0
 BFP_METHOD      = 1
