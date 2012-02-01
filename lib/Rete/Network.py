@@ -16,7 +16,7 @@ import time,sys
 from pprint import pprint
 from cStringIO import StringIO
 from Util import xcombine
-from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstanciation
+from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstantiation
 from AlphaNode import AlphaNode, ReteToken, SUBJECT, PREDICATE, OBJECT, BuiltInAlphaNode
 from BuiltinPredicates import FILTERS
 from FuXi.Horn import ComplementExpansion, DATALOG_SAFETY_NONE, \
@@ -26,13 +26,20 @@ from FuXi.Horn.PositiveConditions import Uniterm, SetOperator, Exists, Or, GetUt
 from FuXi.DLP import MapDLPtoNetwork,non_DHL_OWL_Semantics,IsaFactFormingConclusion
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from Util import generateTokenSet,renderNetwork
-from rdflib import Variable, BNode, URIRef, Literal, Namespace,RDF,RDFS
+try:
+    from rdflib import __version__ as rdf__version__
+    from rdflib.collection import Collection
+    from rdflib.graph import ConjunctiveGraph, QuotedGraph, ReadOnlyGraphAggregate, Graph
+    from rdflib.namespace import NamespaceManager
+except ImportError:
+    from rdflib.Collection import Collection
+    from rdflib.Graph import ConjunctiveGraph,QuotedGraph,ReadOnlyGraphAggregate, Graph
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib import Namespace, RDF, RDFS, BNode, Variable, URIRef, Literal
 from rdflib.util import first
-from rdflib.Collection import Collection
-from rdflib.Graph import ConjunctiveGraph,QuotedGraph,ReadOnlyGraphAggregate, Graph
-from rdflib.syntax.NamespaceManager import NamespaceManager
 from ReteVocabulary import RETE_NS
 from RuleStore import N3RuleStore,N3Builtin, Formula
+
 OWL_NS    = Namespace("http://www.w3.org/2002/07/owl#")
 Any = None
 LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
@@ -123,9 +130,9 @@ def _mulPatternWithSubstitutions(tokens,consequent,termNode):
     >>> token2 = ReteToken((URIRef('urn:uuid:beta'),OWL_NS.differentFrom,URIRef('urn:uuid:alpha')))
     >>> token1 = token1.bindVariables(aNode)
     >>> token2 = token2.bindVariables(aNode)
-    >>> inst = PartialInstanciation([token1,token2])
+    >>> inst = PartialInstantiation([token1,token2])
     """
-    success = False
+    # success = False
     for binding in tokens.bindings:        
         tripleVals = []
         # if any(consequent,
@@ -181,7 +188,7 @@ class ReteNetwork:
         self.workingMemory = initialWorkingMemory and initialWorkingMemory or set()
         self.proofTracers = {}
         self.terminalNodes  = set()
-        self.instanciations = {}        
+        self.instantiations = {}        
         start = time.time()
         self.ruleStore=ruleStore
         self.justifications = {}
@@ -290,7 +297,7 @@ class ReteNetwork:
         if not self.negRules:
             return
         from FuXi.DLP.Negation import StratifiedSPARQL
-        from FuXi.Rete.Magic import PrettyPrintRule
+        # from FuXi.Rete.Magic import PrettyPrintRule
         import copy
         noNegFacts = 0
         for i in self.negRules:
@@ -316,7 +323,7 @@ class ReteNetwork:
                 self.feedFactsToAdd(generateTokenSet([fact]))
                 noNegFacts += 1
         #Now we need to clear assertions that cross the individual, concept, relation divide
-        toRemove=[]
+        # toRemove=[]
         for s,p,o in self.inferredFacts.triples((None,RDF.type,None)):
             if s in unionClosureG.predicates() or\
                s in [_s for _s,_p,_o in 
@@ -370,7 +377,7 @@ class ReteNetwork:
         if constructNetwork:
             rules = self.rules
             
-        noRules=len(rules)
+        # noRules=len(rules)
         if classifyTBox:
             self.feedFactsToAdd(generateTokenSet(owlN3Graph))
 #        print "##### DLP rules fired against OWL/RDF TBOX",self
@@ -390,12 +397,12 @@ class ReteNetwork:
     def reportConflictSet(self,closureSummary=False,stream=sys.stdout):
         tNodeOrder = [tNode 
                         for tNode in self.terminalNodes 
-                            if self.instanciations.get(tNode,0)]
-        tNodeOrder.sort(key=lambda x:self.instanciations[x],reverse=True)
+                            if self.instantiations.get(tNode,0)]
+        tNodeOrder.sort(key=lambda x:self.instantiations[x],reverse=True)
         for termNode in tNodeOrder:
             print >>stream,termNode
             print >>stream,"\t", termNode.clauseRepresentation()
-            print >>stream,"\t\t%s instanciations"%self.instanciations[termNode]
+            print >>stream,"\t\t%s instantiations"%self.instantiations[termNode]
         if closureSummary:        
             print >>stream ,self.inferredFacts.serialize(destination=stream,format='turtle')
                 
@@ -458,7 +465,7 @@ class ReteNetwork:
         self.proofTracers = {}
         self.terminalNodes  = set()
         self.justifications = {}
-        self._resetinstanciationStats()
+        self._resetinstantiationStats()
         self.workingMemory = set()
         self.dischargedBindings = {}
         
@@ -472,7 +479,7 @@ class ReteNetwork:
         self.proofTracers = {}
         self.inferredFacts = newinferredFacts if newinferredFacts is not None else Graph()
         self.workingMemory = set()
-        self._resetinstanciationStats()        
+        self._resetinstantiationStats()        
                                 
     def fireConsequent(self,tokens,termNode,debug=False):
         """
@@ -493,7 +500,7 @@ class ReteNetwork:
         if debug:
             print "%s from %s"%(tokens,termNode)
 
-        newTokens = []
+        # newTokens = []
         termNode.instanciatingTokens.add(tokens)
         def iterCondition(condition):
             if isinstance(condition,Exists):
@@ -554,9 +561,9 @@ class ReteNetwork:
                             inferredToken.debug = True
                         self.inferredFacts.add(inferredTriple)
                         self.addWME(inferredToken)
-                        currIdx = self.instanciations.get(termNode,0)
+                        currIdx = self.instantiations.get(termNode,0)
                         currIdx+=1
-                        self.instanciations[termNode] = currIdx
+                        self.instantiations[termNode] = currIdx
                         if executeFn:
                             #The indicated execute action is supposed to be triggered
                             #when the indicates RHS triple is inferred for the
@@ -633,8 +640,8 @@ class ReteNetwork:
             node = BuiltInAlphaNode(N3Builtin(p,self.ruleStore.filters[p](s,o),s,o))
         return node
     
-    def _resetinstanciationStats(self):
-        self.instanciations = dict([(tNode,0) for tNode in self.terminalNodes])
+    def _resetinstantiationStats(self):
+        self.instantiations = dict([(tNode,0) for tNode in self.terminalNodes])
         
     def checkDuplicateRules(self):
         checkedClauses={}
@@ -673,7 +680,7 @@ class ReteNetwork:
         """
         matchedPatterns   = HashablePatternList()
         attachedPatterns = []
-        hasBuiltin = False
+        # hasBuiltin = False
         LHS = []
         while True:
             try:
@@ -715,7 +722,7 @@ class ReteNetwork:
                     self.terminalNodes.add(terminalNode)                    
                 else:              
                     moveToEnd = []
-                    endIdx = len(attachedPatterns) - 1
+                    # endIdx = len(attachedPatterns) - 1
                     finalPatternList = []
                     for idx,pattern in enumerate(attachedPatterns):
                         assert isinstance(pattern,HashablePatternList),repr(pattern)                    
@@ -733,7 +740,7 @@ class ReteNetwork:
                     terminalNode.headAtoms.update(rule.formula.head)
                     terminalNode.filter = aFilter
                     self.terminalNodes.add(terminalNode)
-                    self._resetinstanciationStats()                        
+                    self._resetinstantiationStats()                        
                 #self.checkDuplicateRules()
                 return terminalNode
             if HashablePatternList([currentPattern]) in self.nodes:
@@ -840,4 +847,3 @@ def test():
 
 if __name__ == '__main__':
     test()
-    

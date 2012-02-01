@@ -1,8 +1,12 @@
 import sys, unittest, copy
-from rdflib.Graph import Graph
-from rdflib.util import first
+try:
+    from rdflib.graph import Graph
+    from rdflib.namespace import NamespaceManager
+except ImportError:
+    from rdflib.Graph import Graph
+    from rdflib.syntax.NamespaceManager import NamespaceManager
 from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
-from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib.util import first
 from FuXi.Rete.RuleStore import N3RuleStore,SetupRuleStore
 from FuXi.Rete import ReteNetwork
 from FuXi.Horn.PositiveConditions import PredicateExtentFactory
@@ -66,7 +70,7 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
         someProp = Property(EX_NS.someProp)
         existential = someProp|some|EX.Omega
         existential += EX.Foo
-        self.assertEqual(repr(Class(EX_NS.Foo)),"Class: ex:Foo SubClassOf: ( ex:someProp some ex:Omega )")
+        self.assertEqual(repr(Class(EX_NS.Foo)),"Class: ex:Foo SubClassOf: ( ex:someProp SOME ex:Omega )")
         ruleStore,ruleGraph,network=SetupRuleStore(makeNetwork=True)
         rules=network.setupDescriptionLogicProgramming(
                               self.ontGraph,
@@ -87,7 +91,7 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
         foo = EX.Foo
         foo+=leftGCI
         self.assertEqual(repr(leftGCI),
-                         "ex:Bar that ( ex:someProp value ex:fish )")
+                         "ex:Bar THAT ( ex:someProp VALUE ex:fish )")
         ruleStore,ruleGraph,network=SetupRuleStore(makeNetwork=True)
         rules=network.setupDescriptionLogicProgramming(
                               self.ontGraph,
@@ -155,7 +159,7 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
         self.assertEquals(repr(Class(first(ITALeft.subSumpteeIds()))),"Some Class SubClassOf: Class: ex:ITALeft ")
         NormalFormReduction(self.ontGraph)
         self.assertEquals(repr(Class(first(ITALeft.subSumpteeIds()))),
-                          "Some Class SubClassOf: Class: ex:ITALeft  . EquivalentTo: ( ( ex:hasCoronaryBypassConduit value ex:CoronaryBypassConduit_internal_thoracic_artery_left_insitu ) or ( ex:hasCoronaryBypassConduit value ex:CoronaryBypassConduit_internal_thoracic_artery_left_free ) )")
+                          "Some Class SubClassOf: Class: ex:ITALeft  . EquivalentTo: ( ( ex:hasCoronaryBypassConduit VALUE ex:CoronaryBypassConduit_internal_thoracic_artery_left_insitu ) OR ( ex:hasCoronaryBypassConduit VALUE ex:CoronaryBypassConduit_internal_thoracic_artery_left_free ) )")
                      
 if __name__ == '__main__':
     unittest.main()

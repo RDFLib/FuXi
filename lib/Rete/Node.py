@@ -10,6 +10,6 @@ class Node(object):
             self.descendentMemory.append(memory)
         
     def connectToBetaNode(self,betaNode,position):
-        from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstanciation
+        # from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstantiation
         self.updateDescendentMemory(betaNode.memories[position])
         self.descendentBetaNodes.add(betaNode)        

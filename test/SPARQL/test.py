@@ -10,13 +10,23 @@ from FuXi.Horn.HornRules import HornFromN3
 from FuXi.Rete.Proof import ImmutableDict
 from FuXi.SPARQL.BackwardChainingStore import *
 from FuXi.Rete.Util import setdict
-from rdflib.Namespace import Namespace
-from rdflib import RDF,RDFS,URIRef,Variable,BNode,Literal
-from cStringIO import StringIO
-from rdflib.Graph import Graph,ReadOnlyGraphAggregate
-from rdflib.syntax.NamespaceManager import NamespaceManager
-from rdflib.sparql.parser import parse
-from rdflib.OWL import OWLNS
+
+from rdflib import Namespace, RDF, RDFS, URIRef
+try:
+    from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, URIRef, Variable
+    from rdfextras.sparql.parser import parse
+    from rdflib import OWL as OWLNS
+except ImportError:
+    from rdflib.Namespace import Namespace
+    from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef, Variable
+    from rdflib.sparql.parser import parse
+    from rdflib import OWL
+    OWLNS = str(OWL.OWLNS)
+    RDF = str(RDF.RDFNS)
+    RDFS = str(RDFS.RDFSNS)
+from rdflib.store import Store
+
+
 from amara.lib import U
 
 MANIFEST  = Namespace('http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#')
@@ -41,8 +51,8 @@ SKIP={
 }
 
 nsMap = {
-  u'rdfs' :RDFS.RDFSNS,
-  u'rdf'  :RDF.RDFNS,
+  u'rdfs' :RDFS,
+  u'rdf'  :RDF,
   u'owl'  :OWLNS,
   u'mf'   :MANIFEST,
   u'sd'   :SD,
@@ -151,7 +161,7 @@ def test_generator(testName, label, queryFile, rdfDoc, regime, result, debug):
         for pref,nsUri in (setdict(nsMap) | setdict(
                 parsedQuery.prolog.prefixBindings)).items():
             targetGraph.bind(pref,nsUri)
-        rt=targetGraph.query('',parsedQuery=parsedQuery)
+        # rt=targetGraph.query('',parsedQuery=parsedQuery)
         actualSolns=[ImmutableDict([(k,v)
                         for k,v in d.items()])
                             for d in parseResults(

@@ -1,11 +1,16 @@
 import unittest
-from rdflib.Graph import Graph, ConjunctiveGraph
-from FuXi.Horn.HornRules import HornFromN3
-from rdflib import plugin, Namespace, RDF, Variable, Literal
 from cStringIO import StringIO
+from rdflib import Graph, Literal, Namespace, Variable
+try:
+    from rdflib.graph import Graph
+except ImportError:
+    from rdflib.Graph import Graph
+from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
+from rdflib.util import first
+from FuXi.Horn.HornRules import HornFromN3
 from FuXi.Rete.Util import generateTokenSet
 from FuXi.Rete.RuleStore import SetupRuleStore
-
+from FuXi.Horn.PositiveConditions import GetUterm
 FOAF = Namespace('http://xmlns.com/foaf/0.1/')
 EX   = Namespace('http://example.com/#')
 
@@ -29,7 +34,7 @@ m:chimezie foaf:mbox <mailto:chimezie@example.com> .
 
 matchingHeadTriple = (Variable('person'),
                       FOAF['mbox_sha1sum'],
-                      RDF.RDFNS.Literal)
+                      Literal)
 resultingTriple = (EX.chimezie,FOAF['mbox_sha1sum'],Literal('8f90d9335f967f58b40d5b6a49f8d9afca64b5ae'))
 
 def encodeAction(tNode, inferredTriple, token, binding, debug = False):

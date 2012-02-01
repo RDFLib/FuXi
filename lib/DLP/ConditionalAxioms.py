@@ -1,7 +1,19 @@
-from FuXi.Syntax.InfixOWL import OWL_NS
 from cStringIO import StringIO
-from FuXi.Horn.HornRules import Clause, Ruleset, Rule, HornFromN3
 from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
+from FuXi.Syntax.InfixOWL import OWL_NS
+from FuXi.Horn.HornRules import HornFromN3
+try:
+    from rdflib import plugin, query
+    rdflib_version = 3
+    plugin.register(
+            'sparql', query.Processor,
+            'rdfextras.sparql.processor', 'Processor')
+
+    plugin.register(
+            'sparql', query.Result,
+            'rdfextras.sparql.query', 'SPARQLQueryResult')
+except ImportError:
+    rdflib_version = 2
 
 LIST_MEMBERSHIP_SEMANTICS=\
 """
@@ -22,7 +34,7 @@ NOMINAL_SEMANTICS=\
 {?C owl:oneOf ?L. ?X list:in ?L} => {?X a ?C}.
 """
 
-FUNCTIONAL_SEMANTCS=\
+FUNCTIONAL_SEMANTICS=\
 """
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 @prefix log: <http://www.w3.org/2000/10/swap/log#>.
@@ -65,9 +77,14 @@ def AdditionalRules(tBox):
     """
     ruleSrc = set()
     addListSemantics = False
-    if tBox.query(FUNCTIONAL_PROPERTIES,
-                  initNs={"owl":OWL_NS}).askAnswer[0]:
-        ruleSrc.add(FUNCTIONAL_SEMANTCS)
+    if rdflib_version == 3:
+        if tBox.query(FUNCTIONAL_PROPERTIES,
+                      initNs={"owl":OWL_NS}).askAnswer:
+            ruleSrc.add(FUNCTIONAL_SEMANTICS)
+    else:
+        if tBox.query(FUNCTIONAL_PROPERTIES,
+                      initNs={"owl":OWL_NS}).askAnswer[0]:
+            ruleSrc.add(FUNCTIONAL_SEMANTICS)
     if (None,OWL_NS.oneOf,None) in tBox:
         ruleSrc.add(NOMINAL_SEMANTICS)
         addListSemantics = True

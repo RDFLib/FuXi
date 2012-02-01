@@ -1,14 +1,17 @@
 import unittest, os, time, sys 
 from cStringIO import StringIO 
-from rdflib import RDF, URIRef 
+try:
+    from rdflib.graph import Graph
+except ImportError:
+    from rdflib.Graph import Graph 
+from rdflib.store import Store 
+from rdflib import plugin, Namespace, RDF, URIRef
 from FuXi.Rete import * 
 from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore 
 from FuXi.Rete.Util import renderNetwork, generateTokenSet 
 from FuXi.Horn.PositiveConditions import Uniterm, BuildUnitermFromTuple 
 from FuXi.Horn.HornRules import HornFromN3 
-from rdflib import plugin, Namespace 
-from rdflib.store import Store 
-from rdflib.Graph import Graph 
+
 N3_PROGRAM=\
 """ 
 @prefix m: <http://example.com/#>. 
@@ -24,15 +27,16 @@ N3_PROGRAM=\
 """ 
 N3_FACTS=\
 """ 
+@prefix : <#> .
 @prefix m: <http://example.com/#>. 
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . 
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . 
-m:Detection a rdfs:Class. 
-m:Inference a rdfs:Class. 
-:det1 a m:Detection. 
-:det1 m:name "Inference1". 
-:det2 a m:Detection. 
-:det2 m:name "Inference2". 
+m:Detection a rdfs:Class . 
+m:Inference a rdfs:Class . 
+:det1 a m:Detection . 
+:det1 m:name "Inference1" . 
+:det2 a m:Detection . 
+:det2 m:name "Inference2" . 
 """ 
 class ExistentialInHeadTest(unittest.TestCase): 
     def testExistentials(self): 
@@ -92,4 +96,4 @@ class SkolemMachine(unittest.TestCase):
 #                          1)
             
 if __name__ == "__main__": 
-    unittest.main() 
+    unittest.main()

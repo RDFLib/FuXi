@@ -1,11 +1,15 @@
 """
 See: http://www.w3.org/2000/10/swap/doc/CwmBuiltins
 """
-import unittest, os, time, sys
+import unittest
 from cStringIO import StringIO
-from rdflib import Namespace, Variable, Literal, URIRef
-from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
+try:
+    from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
+except ImportError:
+    from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
 from rdflib.util import first
+
+from rdflib import Namespace, Variable, Literal, URIRef
 STRING_NS = Namespace("http://www.w3.org/2000/10/swap/string#")
 LOG_NS = Namespace("http://www.w3.org/2000/10/swap/log#")
 MATH_NS = Namespace("http://www.w3.org/2000/10/swap/math#")
@@ -164,7 +168,7 @@ class NonEqualityPredicatesTestSuite(unittest.TestCase):
                                    inferredTarget = self.closureDeltaGraph,
                                    nsMap = {})
     def testParseBuiltIns(self):
-        from FuXi.Rete.RuleStore import N3Builtin
+        # from FuXi.Rete.RuleStore import N3Builtin
         from FuXi.Rete.AlphaNode import BuiltInAlphaNode
         self.failUnless(self.ruleStore.rules>0, "No rules parsed out form N3!")
         for alphaNode in self.network.alphaNodes:
@@ -173,8 +177,8 @@ class NonEqualityPredicatesTestSuite(unittest.TestCase):
                                 "Unable to find math:greaterThan func")
 
     def testEvaluateBuiltIns(self):
-        from FuXi.Rete.RuleStore import N3Builtin
-        from FuXi.Rete.AlphaNode import BuiltInAlphaNode
+        # from FuXi.Rete.RuleStore import N3Builtin
+        # from FuXi.Rete.AlphaNode import BuiltInAlphaNode
         self.failUnless(first(self.closureDeltaGraph.triples((None,URIRef('http://test/pred1'),Literal(3)))),
                             "Missing inferred :pred1 assertions")
     

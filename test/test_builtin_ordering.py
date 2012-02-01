@@ -2,8 +2,11 @@
 import unittest
 from pprint import pprint
 from cStringIO import StringIO
-from rdflib import Namespace, ConjunctiveGraph, Literal, Variable, URIRef
-from rdflib.Graph import QuotedGraph
+try:
+    from rdflib.graph import Graph, ConjunctiveGraph, QuotedGraph
+except ImportError:
+    from rdflib.Graph import Graph, QuotedGraph, ConjunctiveGraph
+from rdflib import Literal, Variable, URIRef, Namespace
 from FuXi.Rete.BuiltinPredicates import FILTERS, STRING_NS
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Rete.Util import generateTokenSet

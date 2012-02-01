@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 import unittest
-from rdflib.Graph import Graph
+try:
+    from rdflib import Graph
+except ImportError:
+    from rdflib.Graph import Graph
 from FuXi.Rete.RuleStore import SetupRuleStore
 
 ## fix for bug in reset method which didn't initialise

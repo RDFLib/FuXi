@@ -1,15 +1,18 @@
 import copy
-from itertools import chain, takewhile
-from FuXi.Horn.PositiveConditions import QNameManager,SetOperator, Condition, Or, And, Uniterm, BuildUnitermFromTuple
-from FuXi.Rete.RuleStore import N3Builtin
-from FuXi.Rete.Util import selective_memoize
-from FuXi.Rete.RuleStore import *
-from FuXi.Rete.Proof import ImmutableDict
-from FuXi.Rete.Magic import AdornedUniTerm
-from rdflib import URIRef, RDF, Namespace, Variable, Literal
+from itertools import takewhile
+from rdflib import Literal, RDF, URIRef, Variable
 from rdflib.util import first
+
+from FuXi.Horn.PositiveConditions import QNameManager,SetOperator, Condition, Or, And, Uniterm
 from FuXi.Rete.BetaNode import project
-from FuXi.Rete.SidewaysInformationPassing import GetArgs, iterCondition, GetOp, GetVariables
+from FuXi.Rete.Magic import AdornedUniTerm
+from FuXi.Rete.Proof import ImmutableDict
+from FuXi.Rete.RuleStore import N3Builtin
+from FuXi.Rete.SidewaysInformationPassing import iterCondition, GetOp, GetVariables
+from FuXi.Rete.Util import selective_memoize
+
+from FuXi.Rete.RuleStore import *
+
 
 def normalizeBindingsAndQuery(vars,bindings,conjunct):
     """
@@ -367,8 +370,8 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                             symmAtomicInclusion = symmAtomicInclusion)
         
     def asSPARQL(self):
-        initialNs = hasattr(self.factGraph,'nsMap') and self.factGraph.nsMap or \
-                    dict([(k,v) for k,v in self.factGraph.namespaces()])
+        # initialNs = hasattr(self.factGraph,'nsMap') and self.factGraph.nsMap or \
+        #             dict([(k,v) for k,v in self.factGraph.namespaces()])
         return RDFTuplesToSPARQL(self.formulae,
                                  self.factGraph,
                                  not self.returnVars,
@@ -383,6 +386,7 @@ class EDBQuery(QNameManager,SetOperator,Condition):
 
     def __hash__(self):
         """
+        >>> from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
         >>> g = Graph()
         >>> lit1 = (Variable('X'),RDF.type,Variable('Y'))
         >>> q1 = EDBQuery([BuildUnitermFromTuple(lit1)],g)

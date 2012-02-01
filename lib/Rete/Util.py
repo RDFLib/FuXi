@@ -3,10 +3,16 @@ Utility functions for a Boost Graph Library (BGL) DiGraph via the BGL Python Bin
 """
 import itertools, pickle
 from FuXi.Rete.AlphaNode import AlphaNode        
-from rdflib.Graph import Graph
-from rdflib.syntax.NamespaceManager import NamespaceManager
-from rdflib import BNode, Namespace, Collection, Variable, URIRef
+from rdflib import BNode, Namespace, Variable, URIRef
 from rdflib.util import first
+try:
+    from rdflib.graph import Graph
+    from rdflib.collection import Collection
+    from rdflib.namespace import NamespaceManager
+except ImportError:
+    from rdflib.Graph import Graph
+    from rdflib.Collection import Collection
+    from rdflib.syntax.NamespaceManager import NamespaceManager
 try:    
     import boost.graph as bgl
     bglGraph = bgl.Digraph()
@@ -15,7 +21,7 @@ except:
         from pydot import Node,Edge,Dot
     except:
         import warnings
-        warnings.warn("Missing pydot library",ImportWarning)        
+        warnings.warn("Missing pydot library",ImportWarning)
 
 LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 
@@ -277,7 +283,7 @@ def generateTokenSet(graph,debugTriples=[],skipImplies=True):
     from FuXi.Rete import ReteToken
     rt = set()    
     def normalizeGraphTerms(term):
-        if isinstance(term,Collection.Collection):
+        if isinstance(term, Collection):
             return term.uri
         else:
             return term
@@ -293,7 +299,7 @@ def generateTokenSet(graph,debugTriples=[],skipImplies=True):
 
 def generateBGLNode(dot,node,namespace_manager,identifier):
     from FuXi.Rete import ReteNetwork,BetaNode,BuiltInAlphaNode,AlphaNode
-    from BetaNode import LEFT_MEMORY, RIGHT_MEMORY, LEFT_UNLINKING
+    from BetaNode import LEFT_MEMORY, RIGHT_MEMORY
     vertex = Node(identifier)
 
     shape = 'circle'
@@ -333,16 +339,16 @@ def generateBGLNode(dot,node,namespace_manager,identifier):
         dot.add_edge(edge)              
         dot.add_node(rhsVertex)      
         if node.commonVariables:
-            inst=node.network.instanciations.get(node,0)
-            label = str("Terminal node\\n(%s)\\n%d instanciations"%(','.join(["?%s"%i for i in node.commonVariables]),inst))
+            inst=node.network.instantiations.get(node,0)
+            label = str("Terminal node\\n(%s)\\n%d instantiations"%(','.join(["?%s"%i for i in node.commonVariables]),inst))
         else:
             label = "Terminal node"
         leftLen = node.memories[LEFT_MEMORY] and len(node.memories[LEFT_MEMORY]) or 0
         rightLen = len(node.memories[RIGHT_MEMORY])
         label+='\\n %s in left, %s in right memories'%(leftLen,rightLen)      
-        inst = node.network.instanciations[node]
+        inst = node.network.instantiations[node]
         if inst:
-            label += "\\n%s instanciations"%inst      
+            label += "\\n%s instantiations"%inst      
         
     elif isinstance(node,BuiltInAlphaNode):
         peripheries = '1'
@@ -374,9 +380,9 @@ def renderNetwork(network,nsMap = {}):
     for rule pattern terms) and returns a BGL Digraph instance representing the Rete network
     #(from which GraphViz diagrams can be generated)
     """
-    from FuXi.Rete import BuiltInAlphaNode
-    from BetaNode import LEFT_MEMORY, RIGHT_MEMORY, LEFT_UNLINKING
-    dot=Dot(graph_type='digraph')
+    # from FuXi.Rete import BuiltInAlphaNode
+    # from BetaNode import LEFT_MEMORY, RIGHT_MEMORY, LEFT_UNLINKING
+    dot = Dot(graph_type='digraph')
     namespace_manager = NamespaceManager(Graph())
     for prefix,uri in nsMap.items():
         namespace_manager.bind(prefix, uri, override=False)
@@ -417,4 +423,4 @@ def test():
     doctest.testmod()
 
 if __name__ == '__main__':
-    test()    
+    test()

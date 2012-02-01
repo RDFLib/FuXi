@@ -1,15 +1,23 @@
 from __future__ import generators
 import sys
-from rdflib import BNode, RDF, Namespace, Variable
+try:
+    from rdflib.graph import QuotedGraph, Graph
+    from rdflib.namespace import NamespaceManager
+    from rdfextras.utils.termutils import *
+    from rdfextras.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
+except ImportError:
+    from rdflib.Graph import QuotedGraph, Graph
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+    from rdflib.term_utils import *
+    from rdflib.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
+from rdflib import Namespace, RDF, BNode, Literal, URIRef, Variable
 from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
-from rdflib.Literal import Literal
+
 from pprint import pprint
-from rdflib.syntax.NamespaceManager import NamespaceManager
-from rdflib.term_utils import *
-from rdflib.Graph import QuotedGraph, Graph
-from rdflib.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
 from cStringIO import StringIO
+
 from BuiltinPredicates import FILTERS
+
 LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 Any = None
 
@@ -121,19 +129,20 @@ class N3RuleStore(Store):
     >>> s=N3RuleStore()
     >>> g=Graph(s)
     >>> src = \"\"\"
+    ... @prefix : <http://metacognition.info/FuXi/test#>.
     ... @prefix str:   <http://www.w3.org/2000/10/swap/string#>.
     ... @prefix math: <http://www.w3.org/2000/10/swap/math#>.
     ... @prefix log:   <http://www.w3.org/2000/10/swap/log#>.
-    ... @prefix : <http://metacognition.info/FuXi/test#>.
+    ... @prefix m: <http://metacognition.info/FuXi/test#>.
     ... @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
     ... @prefix owl: <http://www.w3.org/2002/07/owl#>.    
-    ... :a a rdfs:Class;
-    ...    :prop1 1;
-    ...    :prop2 4.
-    ... :b a owl:Class;
-    ...    :prop1 2;
-    ...    :prop2 4,1,5.
+    ... m:a a rdfs:Class;
+    ...    m:prop1 1;
+    ...    m:prop2 4.
+    ... m:b a owl:Class;
+    ...    m:prop1 2;
+    ...    m:prop2 4,1,5.
     ... (1 2) :relatedTo (3 4).
     ... { ?X a owl:Class. ?X :prop1 ?M. ?X :prop2 ?N. ?N math:equalTo 3 } => { [] :selected (?M ?N) }.\"\"\"    
     >>> g=g.parse(StringIO(src),format='n3')
@@ -402,4 +411,3 @@ if __name__ == '__main__':
 #    pass
     test()
     #test2()
-    

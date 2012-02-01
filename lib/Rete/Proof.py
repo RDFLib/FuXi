@@ -22,13 +22,17 @@ from itertools import izip,ifilter,ifilterfalse
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Horn.HornRules import Clause, Ruleset
 from FuXi.Horn.PositiveConditions import Uniterm, buildUniTerm, SetOperator, Exists
-from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstanciation, project
+from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstantiation, project
 from FuXi.Rete.RuleStore import N3Builtin
 from FuXi.Rete.AlphaNode import AlphaNode, ReteToken
 from FuXi.Rete.Network import _mulPatternWithSubstitutions
-from rdflib.Graph import Graph
-from rdflib.syntax.NamespaceManager import NamespaceManager
-from rdflib import BNode, Namespace, Variable
+try:
+    from rdflib.graph import Graph
+    from rdflib.namespace import NamespaceManager
+except ImportError:
+    from rdflib.Graph import Graph
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib import Namespace, BNode, Variable
 from pprint import pprint,pformat
 
 #From itertools recipes
@@ -206,13 +210,13 @@ class ProofBuilder(object):
                 dot=Dot(graph_type='digraph')
             except:
                 raise NotImplementedError("No graph libraries")
-        namespace_manager = NamespaceManager(Graph())
-        vertexMaps   = {}
-        edgeMaps     = {}
+        # namespace_manager = NamespaceManager(Graph())
+        # vertexMaps   = {}
+        # edgeMaps     = {}
 #        for prefix,uri in nsMap.items():
 #            namespace_manager.bind(prefix, uri, override=False)
         visitedNodes = {}
-        edges = []
+        # edges = []
         idx = 0
         #register the step nodes
         for nodeset in self.goals.values():
@@ -265,7 +269,7 @@ class ProofBuilder(object):
         This iterates over the tokens which caused the terminal node to 'fire'
         and 'prooves' them by first checking if they are inferred or if they were asserted.
         """
-        #iterate over the tokens which caused the instanciation of this terminalNode
+        #iterate over the tokens which caused the instantiation of this terminalNode
         step = InferenceStep(parent,terminalNode.clause)
         bindings={}
         for _dict in self.network.proofTracers[goal]:
@@ -275,7 +279,7 @@ class ProofBuilder(object):
             step.source='some RDF graph'
             self.trace.append("Marking justification from assertion for "+repr(goal))
         for tNode in fetchRETEJustifications(goal,parent,self,step):
-            if self.network.instanciations[tNode]:
+            if self.network.instantiations[tNode]:
                 for bodyTerm in tNode.clause.body:
                     step.rule = tNode.clause
                     for termVar in termIterator(bodyTerm):       
@@ -305,7 +309,7 @@ class ProofBuilder(object):
             #assert goal not in self.network.workingMemory
             self.trace.append("Building %s around%sgoal (justified by a direct assertion): %s"%(proof and 'proof' or 'nodeset',
                                                                                               antecedent and ' antecedent ' or '',str(buildUniTerm(goal,self.network.nsMap))))
-            assertedSteps = [token.asTuple() for token in self.network.workingMemory]
+            # assertedSteps = [token.asTuple() for token in self.network.workingMemory]
             #assert goal in assertedSteps
             if goal in self.goals:
                 ns=self.goals[goal]

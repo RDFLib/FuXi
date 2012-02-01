@@ -66,20 +66,20 @@ the operands:
 
 >>> c =  a | b | Class(exNs.Work,graph=g)
 >>> c
-( ex:Opera or ex:CreativeWork or ex:Work )
+( ex:Opera OR ex:CreativeWork OR ex:Work )
 
 Boolean class expressions can also be operated as lists (using python list operators)
 
 >>> del c[c.index(Class(exNs.Work,graph=g))]
 >>> c
-( ex:Opera or ex:CreativeWork )
+( ex:Opera OR ex:CreativeWork )
 
 The '&' operator can be used to construct class intersection:
       
 >>> woman = Class(exNs.Female,graph=g) & Class(exNs.Human,graph=g)
 >>> woman.identifier = exNs.Woman
 >>> woman
-( ex:Female and ex:Human )
+( ex:Female AND ex:Human )
 >>> len(woman)
 2
 
@@ -92,29 +92,36 @@ Enumerated classes can also be manipulated
 owl:Restrictions can also be instanciated:
 
 >>> Restriction(exNs.hasParent,graph=g,allValuesFrom=exNs.Human)
-( ex:hasParent only ex:Human )
+( ex:hasParent ONLY ex:Human )
 
 Restrictions can also be created using Manchester OWL syntax in 'colloquial' Python 
 >>> exNs.hasParent |some| Class(exNs.Physician,graph=g)
-( ex:hasParent some ex:Physician )
+( ex:hasParent SOME ex:Physician )
 
 >>> Property(exNs.hasParent,graph=g) |max| Literal(1)
-( ex:hasParent max 1 )
+( ex:hasParent MAX 1 )
 
 #>>> print g.serialize(format='pretty-xml')
 
 """
 import os, itertools
 from pprint import pprint
-from rdflib import Namespace
-from rdflib import plugin,RDF,RDFS,URIRef,BNode,Literal,Variable
-from rdflib.Literal import _XSD_NS
-from rdflib.Identifier import Identifier
+from rdflib import plugin
+from rdflib import Namespace, RDF, RDFS, URIRef, BNode, Literal, Variable
 from rdflib.util import first
 from rdflib.store import Store
-from rdflib.Graph import Graph
-from rdflib.Collection import Collection
-from rdflib.syntax.NamespaceManager import NamespaceManager
+try:
+    from rdflib.term import Identifier
+    from rdflib.graph import Graph
+    from rdflib.collection import Collection
+    from rdflib.namespace import NamespaceManager
+    _XSD_NS = Namespace('http://www.w3.org/2001/XMLSchema#')
+except ImportError:
+    from rdflib.Literal import _XSD_NS
+    from rdflib.Identifier import Identifier
+    from rdflib.Graph import Graph
+    from rdflib.Collection import Collection
+    from rdflib.syntax.NamespaceManager import NamespaceManager
 
 """
 From: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/384122
@@ -150,8 +157,8 @@ OWL_NS = Namespace("http://www.w3.org/2002/07/owl#")
 
 nsBinds = {
     'skos': 'http://www.w3.org/2004/02/skos/core#',
-    'rdf' : RDF.RDFNS,
-    'rdfs': RDFS.RDFSNS,
+    'rdf' : RDF,
+    'rdfs': RDFS,
     'owl' : OWL_NS,
     'list' : URIRef('http://www.w3.org/2000/10/swap/list#'),       
     'dc'  : "http://purl.org/dc/elements/1.1/",
@@ -662,18 +669,18 @@ def DeepClassClear(classToPrune):
     >>> classA.equivalentClass = [Class()]
     >>> classB.subClassOf = [EX.someProp|some|classC]
     >>> classA
-    ( ex:E or ex:F or ( ex:someProp some ex:D ) )
+    ( ex:E OR ex:F OR ( ex:someProp SOME ex:D ) )
     >>> DeepClassClear(classA)
     >>> classA
     (  )
     >>> list(anonClass.subClassOf)
     []
     >>> classB
-    Class: ex:B SubClassOf: ( ex:someProp some ex:C )
+    Class: ex:B SubClassOf: ( ex:someProp SOME ex:C )
     
     >>> otherClass = classD | anonClass
     >>> otherClass
-    ( ex:D or ( ex:someProp some ex:D ) )
+    ( ex:D OR ( ex:someProp SOME ex:D ) )
     >>> DeepClassClear(otherClass)
     >>> otherClass
     (  )
@@ -905,7 +912,7 @@ class Class(AnnotatibleTerms):
         >>> youngPerson = Class(exNs.YoungPerson,graph=g)
         >>> youngWoman = female & human & youngPerson
         >>> youngWoman
-        ex:YoungPerson that ( ex:Female and ex:Human )
+        ex:YoungPerson THAT ( ex:Female AND ex:Human )
         >>> isinstance(youngWoman,BooleanClass)
         True
         >>> isinstance(youngWoman.identifier,BNode)
@@ -998,9 +1005,9 @@ class Class(AnnotatibleTerms):
         >>> sibling = brother | sister
         >>> sibling.identifier = exNs.Sibling
         >>> sibling
-        ( ex:Brother or ex:Sister )
+        ( ex:Brother OR ex:Sister )
         >>> first(brother.parents)
-        Class: ex:Sibling EquivalentTo: ( ex:Brother or ex:Sister )
+        Class: ex:Sibling EquivalentTo: ( ex:Brother OR ex:Sister )
         >>> parent = Class(exNs.Parent)
         >>> male   = Class(exNs.Male)
         >>> father = parent & male
@@ -1035,7 +1042,7 @@ class Class(AnnotatibleTerms):
     def isPrimitive(self):
         if (self.identifier,RDF.type,OWL_NS.Restriction) in self.graph:
             return False
-        sc = list(self.subClassOf)
+        # sc = list(self.subClassOf)
         ec = list(self.equivalentClass)
         for boolClass,p,rdfList in self.graph.triples_choices((self.identifier,
                                                                [OWL_NS.intersectionOf,
@@ -1251,10 +1258,10 @@ class BooleanClassExtentHelper:
     >>> testClass2 = BooleanClass(operator=OWL_NS.unionOf,members=[fire,water])
     >>> for c in BooleanClass.getIntersections():
     ...     print c
-    ( ex:Fire and ex:Water )
+    ( ex:Fire AND ex:Water )
     >>> for c in BooleanClass.getUnions():
     ...     print c
-    ( ex:Fire or ex:Water )
+    ( ex:Fire OR ex:Water )
     """    
     def __init__(self, operator):
         self.operator = operator
@@ -1308,6 +1315,7 @@ class BooleanClass(OWLRDFListProxy,Class):
         Create a copy of this class
         """
         copyOfClass = BooleanClass(operator=self._operator,members=list(self),graph=self.graph)
+        return copyOfClass
 
     def serialize(self,graph):
         clonedList = Collection(graph,BNode())
@@ -1341,10 +1349,10 @@ class BooleanClass(OWLRDFListProxy,Class):
         >>> water = Class(EX.Water) 
         >>> testClass = BooleanClass(members=[fire,water])
         >>> testClass
-        ( ex:Fire and ex:Water )
+        ( ex:Fire AND ex:Water )
         >>> testClass.changeOperator(OWL_NS.unionOf)
         >>> testClass
-        ( ex:Fire or ex:Water )
+        ( ex:Fire OR ex:Water )
         >>> try: testClass.changeOperator(OWL_NS.unionOf)
         ... except Exception, e: print e
         The new operator is already being used!
@@ -1449,7 +1457,7 @@ class Restriction(Class):
         >>> prop = Property(EX.someProp,baseType=OWL_NS.DatatypeProperty)
         >>> restr1 = (Property(EX.someProp,baseType=OWL_NS.DatatypeProperty))|some|(Class(EX.Foo))
         >>> restr1
-        ( ex:someProp some ex:Foo )
+        ( ex:someProp SOME ex:Foo )
         >>> restr1.serialize(g2)
         >>> Individual.factoryGraph = g2
         >>> list(Property(EX.someProp,baseType=None).type)
@@ -1831,7 +1839,7 @@ class Property(AnnotatibleTerms):
     range = property(_get_range, _set_range, _del_range)
 
     def replace(self,other):
-        extension = []
+        # extension = []
         for s,p,o in self.extent:
             self.graph.add((s,propertyOrIdentifier(other),o))
         self.graph.remove((None,self.identifier,None))
@@ -1841,8 +1849,8 @@ def CommonNSBindings(graph,additionalNS={}):
     Takes a graph and binds the common namespaces (rdf,rdfs, & owl)
     """
     namespace_manager = NamespaceManager(graph)
-    namespace_manager.bind('rdfs',RDFS.RDFSNS)
-    namespace_manager.bind('rdf',RDF.RDFNS)
+    namespace_manager.bind('rdfs',RDFS)
+    namespace_manager.bind('rdf',RDF)
     namespace_manager.bind('owl',OWL_NS)
     for prefix,uri in additionalNS.items():
         namespace_manager.bind(prefix, uri, override=False)

@@ -5,23 +5,24 @@ Implementation of Sideways Information Passing graph (builds it from a given rul
 """
 
 import unittest, os, sys, itertools
-try:
-    from hashlib import md5 as createDigest
-except:
-    from md5 import new as createDigest
-
+from hashlib import md5
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Horn.HornRules import Ruleset
 from FuXi.Rete.RuleStore import SetupRuleStore, N3Builtin
 from FuXi.DLP import SKOLEMIZED_CLASS_NS
 from FuXi.DLP.Negation import ProperSipOrderWithNegation
+try:
+    from rdflib.collection import Collection
+    from rdflib.graph import Graph
+except ImportError:
+    from rdflib.Graph import Graph
+    from rdflib.Collection import Collection
+from rdflib import Namespace, BNode, Variable
 from rdflib.util import first
-from rdflib.Graph import Graph
-from rdflib.Collection import Collection
+
 from FuXi.Rete.Util import selective_memoize
 from cStringIO import StringIO
 from pprint import pprint;
-from rdflib import Namespace, Variable, BNode
 
 def makeMD5Digest(value):
     return createDigest(
@@ -246,6 +247,7 @@ def BuildNaturalSIP(clause,
     decision about the order in which the predicates of the rule will be evaluated, and how values
     for variables are passed from predicates to other predicates during evaluation
     
+    >>> from FuXi.Rete.RuleStore import SetupRuleStore
     >>> ruleStore,ruleGraph=SetupRuleStore(StringIO(PROGRAM2))
     >>> ruleStore._finalize()
     >>> fg=Graph().parse(StringIO(PROGRAM2),format='n3')
@@ -276,7 +278,7 @@ def BuildNaturalSIP(clause,
             left=list(set(left))            
             [leftList.append(i) for i in [GetOp(ii) for ii in left]]
             left.append(right)   
-            arc=SIPGraphArc(leftList.uri,getOccurrenceId(right,occurLookup),vars,sipGraph)
+            # arc=SIPGraphArc(leftList.uri,getOccurrenceId(right,occurLookup),vars,sipGraph)
             return left
         else:
             left.isHead = True
@@ -284,9 +286,9 @@ def BuildNaturalSIP(clause,
             if not vars and ignoreUnboundDPreds:
                 raise InvalidSIPException("No bound variables for %s"%right)            
             ph=GetOp(left)
-            q=getOccurrenceId(right,occurLookup)
+            # q=getOccurrenceId(right,occurLookup)
             if boundHead:
-                arc=SIPGraphArc(ph,q,vars,sipGraph,headPassing=boundHead)
+                # arc=SIPGraphArc(ph,q,vars,sipGraph,headPassing=boundHead)
                 sipGraph.add((ph,RDF.type,MAGIC.BoundHeadPredicate))
                 rt=[left,right]
             else:

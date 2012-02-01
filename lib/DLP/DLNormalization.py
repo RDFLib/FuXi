@@ -4,10 +4,16 @@
 Helper Functions for reducing DL axioms into a normal forms
 """
 from cStringIO import StringIO
-from rdflib.Graph import Graph
+try:
+    from rdflib.graph import Graph
+    from rdflib import Namespace, RDF, RDFS, URIRef, Variable, Literal, BNode
+    from rdflib.namespace import NamespaceManager
+except ImportError:
+    from rdflib.Graph import Graph
+    from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+
 from rdflib.util import first
-from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
-from rdflib.syntax.NamespaceManager import NamespaceManager
 from FuXi.Rete import ReteNetwork
 from FuXi.Rete.RuleStore import N3RuleStore
 from FuXi.Rete.Util import generateTokenSet
@@ -66,7 +72,7 @@ class UniversalNominalRangeTransformer(object):
         for restriction,intermediateCl,nominal,prop, partition in graph.query(
                                  self.NOMINAL_QUERY,
                                  initNs={u'owl':OWL_NS,
-                                         u'rdfs':RDFS.RDFSNS}):
+                                         u'rdfs':RDFS}):
             exceptions = EnumeratedClass()
             partition = Collection(graph,partition)
             nominalCollection=Collection(graph,nominal)
@@ -113,7 +119,7 @@ class DoubleNegativeTransformer(object):
         for compl1,compl2,compl3 in graph.query(
                                  self.UNIVERSAL_QUERY,
                                  initNs={u'owl':OWL_NS,
-                                         u'rdfs':RDFS.RDFSNS}):
+                                         u'rdfs':RDFS}):
             Individual(compl1).replace(compl3)
             Individual(compl2).delete()
 

@@ -1,11 +1,10 @@
 import unittest
-from pprint import pprint
-from rdflib.Graph import Graph, ConjunctiveGraph
-from FuXi.Horn.HornRules import HornFromN3
-from rdflib import plugin, Namespace, RDF, Variable, Literal, URIRef
 from cStringIO import StringIO
-from FuXi.Rete.Util import generateTokenSet
-from FuXi.DLP import non_DHL_OWL_Semantics
+try:
+    from rdflib.graph import Graph
+except ImportError:
+    from rdflib.Graph import Graph
+from rdflib import RDF, RDFS, Namespace, Variable, URIRef
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.SPARQL.BackwardChainingStore import *
@@ -46,14 +45,15 @@ class QueryCountingGraph(Graph):
                   parsedQuery=None):
         self.queriesDispatched.append(strOrQuery)
         return super(QueryCountingGraph, self).query(strOrQuery,
-                                                     initBindings,
-                                                     initNs,
-                                                     DEBUG,
-                                                     PARSE_DEBUG,
-                                                     dataSetBase,
-                                                     processor,
-                                                     extensionFunctions,
-                                                     parsedQuery)
+                                                     initBindings=initBindings,
+                                                     initNs=initNs,
+                                                     processor=processor,
+                                                     #DEBUG,
+                                                     #PARSE_DEBUG,
+                                                     #dataSetBase,
+                                                     #extensionFunctions,
+                                                     #parsedQuery
+                                                     )
 class QueryMemoizationTest(unittest.TestCase):
     def setUp(self):
         self.owlGraph = QueryCountingGraph().parse(StringIO(EX_ONT),format='n3')
@@ -81,7 +81,7 @@ class QueryMemoizationTest(unittest.TestCase):
                                 self.owlGraph,
                                 [Variable('SUBJECT')])
         query = queryLiteral.asSPARQL()
-        rt=targetGraph.query(query,initNs=nsMap)
+        # rt=targetGraph.query(query,initNs=nsMap)
 #        if len(topDownStore.edbQueries) == len(set(topDownStore.edbQueries)):
 #            pprint(topDownStore.edbQueries)
         print "Queries dispatched against EDB"

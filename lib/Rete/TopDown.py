@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Implements a Sip-Strategy formed from a basic graph pattern and a RIF-Core ruleset
@@ -8,7 +7,7 @@ generating a walk through the proof space in the process.
 Native Prolog-like Python implementation for RIF-Core, OWL 2, and SPARQL.  
 """
 
-import itertools, copy, pickle
+import itertools, copy
 try:
     from hashlib import md5 as createDigest
 except:
@@ -20,12 +19,15 @@ from FuXi.Rete.Magic import AdornLiteral
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Rete.Proof import *
 from FuXi.Rete.Util import selective_memoize, lazyGeneratorPeek
-from rdflib.Graph import ReadOnlyGraphAggregate
 from rdflib import URIRef, RDF, Namespace, Variable
 from rdflib.util import first
-from rdflib.syntax.xml_names import split_uri
+try:
+    from rdflib.graph import ReadOnlyGraphAggregate
+    from rdflib.namespace import split_uri
+except ImportError:
+    from rdflib.Graph import ReadOnlyGraphAggregate
+    from rdflib.syntax.xml_names import split_uri
 from FuXi.Rete.SidewaysInformationPassing import *
-from FuXi.SPARQL import EDBQuery, normalizeBindingsAndQuery
 
 def makeMD5Digest(value):
     return createDigest(
@@ -608,7 +610,7 @@ def SipStrategy(query,
             ns=NodeSet(goalRDFStatement,network=network,identifier=BNode())    
         else:
             ns = None
-        adornedProgram = factGraph.adornedProgram    
+        # adornedProgram = factGraph.adornedProgram    
         queryPred = GetOp(queryLiteral)
         if sipCollection is None:
             rules = []
@@ -630,7 +632,7 @@ def SipStrategy(query,
         #each subquery generated, there is a set of answers.
         answers = []
         
-        variableMapping = {}
+        # variableMapping = {}
         
         #Some TBox queries can be 'joined' together into SPARQL queries against
         #'base' predicates via an RDF dataset
@@ -674,7 +676,7 @@ def SipStrategy(query,
                                               bindings,
                                               axioms)
             if openVars:
-                mappings = {}
+                # mappings = {}
                 #See if we need to do any variable mappings from the query literals
                 #to the literals in the applicable rules
                 query,rt = EDBQuery(axioms,
@@ -709,17 +711,17 @@ def SipStrategy(query,
             #An exception is the special predicate ph; it is treated as a base 
             #predicate and the tuples in it are those supplied for qb by unification.
             headBindings = getBindingsFromLiteral(goalRDFStatement,rule.formula.head)
-            comboBindings = dict([(k,v) for k,v in itertools.chain(
-                                                      bindings.items(),
-                                                      headBindings.items())])
+            # comboBindings = dict([(k,v) for k,v in itertools.chain(
+            #                                           bindings.items(),
+            #                                           headBindings.items())])
             varMap = rule.formula.head.getVarMapping(queryLiteral)
             if headBindings and\
                 [term for term in rule.formula.head.getDistinguishedVariables(True)
                         if varMap.get(term,term) not in headBindings]:
                 continue
-            subQueryAnswers = []
-            dontStop = True
-            projectedBindings = comboBindings.copy()
+            # subQueryAnswers = []
+            # dontStop = True
+            # projectedBindings = comboBindings.copy()
             if debug:
                 print >> sys.stderr, "%sProcessing rule"%\
                 ('\t'*proofLevel), rule.formula

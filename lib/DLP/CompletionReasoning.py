@@ -25,9 +25,16 @@ from FuXi.DLP                          import SkolemizeExistentialClasses, SKOLE
 from FuXi.Horn.HornRules               import HornFromN3
 from FuXi.Rete.RuleStore               import SetupRuleStore
 from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
-from rdflib.Graph                      import Graph
+from rdflib                            import RDF, RDFS, OWL, URIRef, Variable, BNode, Namespace
+try:
+    from rdflib.graph                  import Graph
+except ImportError:
+    from rdflib.Graph                  import Graph
+    RDF = str(RDF.RDFNS)
+    RDFS = str(RDFS.RDFSNS)
+from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
+from rdflib.util import first
 from cStringIO                         import StringIO
-from rdflib                            import plugin,RDF,RDFS,OWL,URIRef,URIRef,Literal,Variable,BNode, Namespace
 from FuXi.Horn.HornRules               import HornFromN3
 
 LIST_NS = Namespace('http://www.w3.org/2000/10/swap/list#')
@@ -146,10 +153,10 @@ def WhichSubsumptionOperand(term,owlGraph):
     targetGraph = Graph(topDownStore)
     appearsLeft  = targetGraph.query(
             "ASK { <%s> rdfs:subClassOf [] } ",
-            initNs={u'rdfs':RDFS.RDFSNS})
+            initNs={u'rdfs':RDFS})
     appearsRight = targetGraph.query(
             "ASK { [] rdfs:subClassOf <%s> } ",
-            initNs={u'rdfs':RDFS.RDFSNS})
+            initNs={u'rdfs':RDFS})
     if appearsLeft and appearsRight:
         return BOTH_SUBSUMPTION_OPERAND
     elif appearsLeft:
@@ -181,7 +188,7 @@ def StructuralTransformation(owlGraph,newOwlGraph):
     >>> locatedInLeg = hasLocation|some|leg
     >>> locatedInLeg += knee
 
-    >>> newGraph,conceptMap = StructuralTransformation(graph)
+    >>> newGraph,conceptMap = StructuralTransformation(graph, Graph())
     >>> revDict = dict([(v,k) for k,v in conceptMap.items()])
     >>> newGraph.bind('ex',EX,True)
     >>> Individual.factoryGraph = newGraph

@@ -1,4 +1,3 @@
-#!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 """
 The language of positive RIF conditions determines what can appear as a body (the
@@ -7,12 +6,18 @@ The language of positive RIF conditions determines what can appear as a body (th
   bodies of such rules are conjunctions of atomic formulas without negation.
 """
 import itertools
-from rdflib import Variable, BNode, URIRef, Literal, Namespace,RDF,RDFS
-from rdflib.Literal import _XSD_NS
+try:
+    from rdflib.collection import Collection
+    from rdflib.graph import ConjunctiveGraph, QuotedGraph, ReadOnlyGraphAggregate, Graph
+    from rdflib.namespace import NamespaceManager
+    _XSD_NS = Namespace("http://www.w3.org/2001/XMLSchema#")
+except ImportError:
+    from rdflib.Collection import Collection
+    from rdflib.Graph import ConjunctiveGraph,QuotedGraph,ReadOnlyGraphAggregate, Graph
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+    from rdflib.Literal import _XSD_NS
+from rdflib import Namespace, RDF, RDFS, Variable, BNode, Literal, URIRef
 from rdflib.util import first
-from rdflib.Collection import Collection
-from rdflib.Graph import ConjunctiveGraph,QuotedGraph,ReadOnlyGraphAggregate, Graph
-from rdflib.syntax.NamespaceManager import NamespaceManager
 
 OWL    = Namespace("http://www.w3.org/2002/07/owl#")
 
@@ -522,6 +527,7 @@ class PredicateExtentFactory(object):
         self.newNss = newNss
         
     def term(self, name):
+        from FuXi.Syntax.infixOWL import Class
         return Class(URIRef(self + name))
 
     def __getitem__(self, args):
@@ -540,7 +546,7 @@ class ExternalFunction(Uniterm):
     math:greaterThan(?VAL "2"^^<http://www.w3.org/2001/XMLSchema#integer>)
     """
     def __init__(self,builtin,newNss=None):
-        from FuXi.Rete.RuleStore import N3RuleStore,N3Builtin
+        from FuXi.Rete.RuleStore import N3Builtin
         self.builtin= builtin
         if isinstance(builtin,N3Builtin):
             Uniterm.__init__(self,builtin.uri,[builtin.argument,builtin.result])

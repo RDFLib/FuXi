@@ -3,20 +3,28 @@ from FuXi.Rete.Proof import *
 from rdflib import RDFS, RDF, Variable
 from rdflib.util import first
 from rdflib.store import Store
-from rdflib.store.REGEXMatching import NATIVE_REGEX
-from rdflib.sparql.Algebra import *
-from rdflib.sparql.graphPattern import BasicGraphPattern
-from rdflib.sparql.bison.Query import Query
-from rdflib.Graph import Graph
+try: # Try the pure Python SPARQL implementation
+    from rdfextras.sparql.algebra import *
+    from rdfextras.sparql.graph import BasicGraphPattern
+    from rdfextras.sparql.query import Query
+    from rdflib.graph import Graph
+    from rdfextras.store.REGEXMatching import NATIVE_REGEX
+except ImportError: # Assume rdflib 2.4.2
+    from rdflib.sparql.Algebra import *
+    from rdflib.sparql.graphPattern import BasicGraphPattern
+    from rdflib.sparql.bison.Query import Query
+    from rdflib.Graph import Graph
+    from rdflib.store.REGEXMatching import NATIVE_REGEX
+
 from FuXi.DLP import DisjunctiveNormalForm
+from FuXi.LP import IdentifyHybridPredicates
 from FuXi.Rete.Magic import *
 from FuXi.Rete.TopDown import *
-from FuXi.Rete.Network import ReteNetwork
 from FuXi.Rete.SidewaysInformationPassing import *
-from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
-from FuXi.LP import IdentifyHybridPredicates
 from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
 from FuXi.Rete.Util import lazyGeneratorPeek
+from FuXi.SPARQL import EDBQuery
+from FuXi.LP.BackwardFixpointProcedure import *
 
 TOP_DOWN_METHOD = 0
 BFP_METHOD      = 1
@@ -59,7 +67,7 @@ class TopDownSPARQLEntailingStore(Store):
         instance for top-down evaluation using this store
         
         >>> graph=Graph()
-        >>> topDownStore = TopDownSPARQLEntailingStore(graph.store,[RDFS.seeAlso],nsBindings={u'rdfs':RDFS.RDFSNS})
+        >>> topDownStore = TopDownSPARQLEntailingStore(graph.store,[RDFS.seeAlso],nsBindings={u'rdfs':RDFS})
         >>> rt=topDownStore.isaBaseQuery("SELECT * { [] rdfs:seeAlso [] }")
         >>> isinstance(rt,(BasicGraphPattern,AlgebraExpression))
         True
@@ -159,7 +167,7 @@ class TopDownSPARQLEntailingStore(Store):
                     hybridPredicates=self.hybridPredicates,
                     debug=self.DEBUG)
         bfp.createTopDownReteNetwork(self.DEBUG)
-        rt=bfp.answers(debug=self.DEBUG)
+        # rt = bfp.answers(debug=self.DEBUG)
         self.queryNetworks.append((bfp.metaInterpNetwork,tp))
         self.edbQueries.update(bfp.edbQueries)
         if self.DEBUG:
@@ -194,7 +202,7 @@ class TopDownSPARQLEntailingStore(Store):
                     print >>sys.stderr,"Evaluating TP against EDB: ",\
                     baseEDBQuery.asSPARQL() 
                 query,rt = baseEDBQuery.evaluate()    
-                _vars = baseEDBQuery.returnVars
+                # _vars = baseEDBQuery.returnVars
                 for item in rt:
                     bindings.update(item)
                 for ansDict in self.conjunctiveSipStrategy(

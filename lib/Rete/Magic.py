@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 [[[
@@ -22,22 +21,32 @@ thus restricting the search space."
  efficiency of evaluation in the presence of recursion
 
 """
+import unittest, itertools, copy
+
 import unittest, os, time, itertools, copy
 from FuXi.Rete.RuleStore import SetupRuleStore, N3RuleStore, N3Builtin, LOG
 from FuXi.Rete.AlphaNode import ReteToken
 from FuXi.Rete.BetaNode import project
 from FuXi.Horn.HornRules import Clause, Ruleset, Rule
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
+from FuXi.Syntax.InfixOWL import OWL_NS
+
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Rete.Proof import *
 from FuXi.Syntax.InfixOWL import OWL_NS
 from cStringIO import StringIO
-from rdflib.Collection import Collection
-from rdflib.Graph import Graph, ReadOnlyGraphAggregate
-from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
-from rdflib.sparql.Algebra import RenderSPARQLAlgebra
-from rdflib.sparql.parser import parse
+from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal
 from rdflib.util import first
+try:
+    from rdflib.collection import Collection
+    from rdflib.graph import Graph, ReadOnlyGraphAggregate
+    from rdfextras.sparql.algebra import RenderSPARQLAlgebra
+    from rdfextras.sparql.parser import parse
+except ImportError:
+    from rdflib.Collection import Collection
+    from rdflib.Graph import Graph, ReadOnlyGraphAggregate
+    from rdflib.sparql.Algebra import RenderSPARQLAlgebra
+    from rdflib.sparql.parser import parse
 from FuXi.Rete.SidewaysInformationPassing import *
 
 EX_ULMAN = Namespace('http://doi.acm.org/10.1145/6012.15399#')
@@ -73,7 +82,7 @@ def SetupDDLAndAdornProgram(factGraph,
                             hybridPreds2Replace=None):
     if not defaultPredicates:
         defaultPredicates = [],[]
-    _dPredsProvided = bool(derivedPreds)
+    # _dPredsProvided = bool(derivedPreds)
     if not derivedPreds:
         _derivedPreds=DerivedPredicateIterator(factGraph,
                                                rules,
@@ -149,7 +158,7 @@ def MagicSetTransformation(factGraph,
     """
     noMagic = noMagic and noMagic or []
     magicPredicates=set()
-    replacement={}
+    # replacement={}
     adornedProgram = SetupDDLAndAdornProgram(
                                    factGraph,
                                    rules,
@@ -168,7 +177,7 @@ def MagicSetTransformation(factGraph,
         magicPositions={}
         #Generate magic rules
         for idx,pred in enumerate(iterCondition(rule.formula.body)):
-            magicBody=[]
+            # magicBody=[]
             if isinstance(pred,AdornedUniTerm):# and pred not in magicPredicates:
                 # For each rule r in Pad, and for each occurrence of an adorned 
                 # predicate p a in its body, we generate a magic rule defining magic_p a
@@ -422,7 +431,7 @@ def AdornProgram(factGraph,
         for rule in rs:
             for clause in LloydToporTransformation(rule.formula):
                 head=isinstance(clause.head,Exists) and clause.head.formula or clause.head
-                headPredicate = GetOp(head)
+                # headPredicate = GetOp(head)
                 if compareAdornedPredToRuleHead(term,head,hybridPreds2Replace):
                     #for each rule that has p in its head, we generate an adorned version for the rule
                     adornedRule=AdornRule(derivedPreds,

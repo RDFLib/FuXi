@@ -43,15 +43,24 @@ T(owl:TransitiveProperty(P))   -> P(x,z) :- P(x,y) ^ P(y,z)
 """
 
 from __future__ import generators
-from rdflib import BNode, RDF, Namespace, Variable, RDFS
+# from sets import Set
+try:
+    from rdflib.collection import Collection
+    from rdflib.graph import QuotedGraph, Graph
+    from rdflib.namespace import Namespace, RDF, RDFS
+    from rdflib import BNode, Variable, Literal, URIRef
+    from rdfextras.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
+except ImportError:
+    from rdflib import BNode, RDF, Namespace, Variable, RDFS
+    from rdflib.Collection import Collection
+    from rdflib import Literal, URIRef
+    from rdflib.Graph import QuotedGraph, Graph
+    from rdflib.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
 from rdflib.util import first
-from rdflib.Collection import Collection
 from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
-from rdflib import Literal, URIRef
+
 from pprint import pprint, pformat
 import sys, copy, itertools
-from rdflib.Graph import QuotedGraph, Graph
-from rdflib.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
 from FuXi.Horn.PositiveConditions import And, Or, Uniterm, Condition, Atomic,SetOperator,Exists
 from FuXi.Horn import DATALOG_SAFETY_NONE,DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from LPNormalForms import NormalizeDisjunctions

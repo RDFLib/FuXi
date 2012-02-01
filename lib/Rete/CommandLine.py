@@ -3,13 +3,10 @@ from pprint import pprint
 from FuXi.Rete.Proof import GenerateProof
 from FuXi.Rete import ReteNetwork
 from FuXi.Rete.AlphaNode import SUBJECT,PREDICATE,OBJECT,VARIABLE
-from FuXi.Rete.BetaNode import PartialInstanciation, LEFT_MEMORY, RIGHT_MEMORY
+from FuXi.Rete.BetaNode import PartialInstantiation, LEFT_MEMORY, RIGHT_MEMORY
 from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore
 from FuXi.Rete.Util import renderNetwork,generateTokenSet, xcombine
 from FuXi.DLP.DLNormalization import NormalFormReduction
-from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
-from FuXi.LP import IdentifyHybridPredicates
-from FuXi.SPARQL.BackwardChainingStore import * 
 from FuXi.DLP import MapDLPtoNetwork, DisjunctiveNormalForm
 from FuXi.Horn import *
 from FuXi.Horn.HornRules import HornFromN3, Ruleset
@@ -18,15 +15,22 @@ from FuXi.Rete.TopDown import *
 from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
 from FuXi.Rete.Magic import *
 from FuXi.Rete.SidewaysInformationPassing import *
-from rdflib.sparql.bison.Query import Prolog
-from rdflib.Namespace import Namespace
-from rdflib import plugin,RDF,RDFS,URIRef,URIRef,Literal,Variable
+try:
+    from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
+    from rdflib.namespace import NamespaceManager
+    from rdfextras.sparql.components import Prolog
+    from rdfextras.sparql.parser import parse as ParseSPARQL
+    from rdfextras.sparql.algebra import ReduceGraphPattern
+except ImportError:
+    from rdflib.Graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+    from rdflib.sparql.bison.Query import Prolog
+    from rdflib.sparql.bison.Processor import Parse as ParseSPARQL
+    from rdflib.sparql.Algebra import ReduceGraphPattern
+from rdflib import plugin, RDF, RDFS, URIRef, Literal, Variable, Namespace
 from rdflib.store import Store
 from cStringIO import StringIO
-from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
-from rdflib.syntax.NamespaceManager import NamespaceManager
-from rdflib.sparql.parser import parse as ParseSPARQL
-from rdflib.sparql.Algebra import ReduceGraphPattern
+        
 import unittest, time, warnings,sys
 
 TEMPLATES = Namespace('http://code.google.com/p/fuxi/wiki/BuiltinSPARQLTemplates#')
@@ -426,10 +430,10 @@ def main():
         goals.extend([(s,p,o) for s,p,o,c in ReduceGraphPattern(
                                     query.query.whereClause.parsedGraphPattern,
                                     query.prolog).patterns])
-        dPreds=[]# p for s,p,o in goals ]
+        # dPreds=[]# p for s,p,o in goals ]
         magicRuleNo = 0
         bottomUpDerivedPreds = []
-        topDownDerivedPreds  = []
+        # topDownDerivedPreds  = []
         defaultBasePreds     = []
         defaultDerivedPreds  = set()
         hybridPredicates     = []
@@ -626,4 +630,4 @@ if __name__ == '__main__':
     s.sort_stats('time','cumulative','pcalls')
     s.print_stats(.05)
     s.print_callers(.01)
-    s.print_callees(.01)            
+    s.print_callees(.01)

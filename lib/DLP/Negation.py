@@ -1,13 +1,16 @@
-#!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 """
 Stratified Negation Semantics for DLP using SPARQL to handle the negation
 """
 from pprint import pprint
-from rdflib.Graph import Graph
+try:
+    from rdflib.graph import Graph
+    from rdflib.namespace import NamespaceManager
+except ImportError:
+    from rdflib.Graph import Graph
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib import Namespace, RDF, RDFS, Variable, Literal, URIRef, BNode
 from rdflib.util import first
-from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
-from rdflib.syntax.NamespaceManager import NamespaceManager
 from FuXi.Rete.RuleStore import N3RuleStore,SetupRuleStore
 from FuXi.Horn.PositiveConditions import And
 from FuXi.Rete import ReteNetwork
@@ -55,7 +58,7 @@ def CalculateStratifiedModel(network,ontGraph,derivedPreds,edb=None):
             network.feedFactsToAdd(generateTokenSet([fact]))
             
     #Now we need to clear assertions that cross the individual, concept, relation divide
-    toRemove=[]
+    # toRemove=[]
     for s,p,o in network.inferredFacts.triples((None,
                                                 RDF.type,
                                                 None)):
@@ -115,7 +118,7 @@ def StratifiedSPARQL(rule,nsMapping={EX_NS: 'ex'}):
         sipOrder=[rule.formula.head]+[rule.formula.body]
     from telescope import optional, op
     from telescope.sparql.queryforms import Select
-    from telescope.sparql.expressions import Expression
+    # from telescope.sparql.expressions import Expression
     from telescope.sparql.compiler import SelectCompiler
     from telescope.sparql.patterns import GroupGraphPattern 
     toDo=[]
@@ -152,9 +155,9 @@ def StratifiedSPARQL(rule,nsMapping={EX_NS: 'ex'}):
     #The positive variables are collected
     positiveVars=set(reduce(lambda x,y:x+y,[GetVars(atom) for atom in posLiterals]))
 
-    vars={}
-    varExprs={}
-    copyPatterns=[]
+    # vars={}
+    # varExprs={}
+    # copyPatterns=[]
     print >> sys.stderr, "%s =: { %s MINUS %s} "%(rule.formula.head,
                                                   posLiterals,
                                                   toDo)
@@ -197,7 +200,7 @@ def ProperSipOrderWithNegation(body):
     Ensures the list of literals has the negated literals
     at the end of the list
     """
-    from FuXi.Rete.SidewaysInformationPassing import iterCondition
+    # from FuXi.Rete.SidewaysInformationPassing import iterCondition
     #import pdb;pdb.set_trace()
     firstNegLiteral = None
     bodyIterator = list(body)
@@ -268,7 +271,7 @@ class UniversalRestrictionTest(unittest.TestCase):
         self.assertEqual(repr(self.testClass),
                         "ex:Bar that ( ex:propFoo only { ex:individual1 } )")        
         self.assertEqual(repr(self.testClass.identifier),
-                        "rdflib.URIRef('http://example.com/Foo')")        
+                        "rdflib.term.URIRef('http://example.com/Foo')")        
         NormalFormReduction(self.ontGraph)
         self.assertEqual(repr(self.testClass),
         "ex:Bar that ( not ( ex:propFoo value ex:individual2 ) ) and ( not ( ex:propFoo value ex:individual3 ) )")

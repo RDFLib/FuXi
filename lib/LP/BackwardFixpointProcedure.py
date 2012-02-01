@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """
 BackwardFixpointProcedure.py
@@ -22,25 +21,31 @@ already been generated.
 
 """
 
-import sys, copy, os, unittest, copy
+import sys, unittest, copy
+from cStringIO import StringIO
 from pprint import pprint
-from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
+
+try:
+    from rdflib.graph import ReadOnlyGraphAggregate
+    from rdflib.namespace import NamespaceManager
+except ImportError:
+    from rdflib.Graph import ReadOnlyGraphAggregate
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib import Literal, Namespace, RDF, Variable, URIRef
 from rdflib.util import first
-from rdflib.Graph import ReadOnlyGraphAggregate
+
 from FuXi.SPARQL import EDBQuery, EDBQueryFromBodyIterator, ConjunctiveQueryMemoize
 from FuXi.Rete.SidewaysInformationPassing import GetArgs, GetVariables, SIPRepresentation
-from FuXi.Horn.PositiveConditions import *
 from FuXi.Rete.SidewaysInformationPassing import iterCondition, GetOp
-from FuXi.Rete.BetaNode import ReteMemory, BetaNode, RIGHT_MEMORY, LEFT_MEMORY, collectVariables, PartialInstanciation
+from FuXi.Rete.BetaNode import ReteMemory, BetaNode, RIGHT_MEMORY, LEFT_MEMORY
 from FuXi.Rete.AlphaNode import AlphaNode, ReteToken, BuiltInAlphaNode
-from FuXi.Rete.Network import ReteNetwork, HashablePatternList, InferredGoal, iteritems
+from FuXi.Rete.Network import HashablePatternList, InferredGoal, iteritems
 from FuXi.Rete.Proof import MakeImmutableDict
-from FuXi.DLP import breadth_first
 from FuXi.Rete.Magic import AdornedRule, AdornedUniTerm, IsHybridPredicate
-from FuXi.Rete.Util import generateTokenSet, selective_memoize
+from FuXi.Rete.Util import generateTokenSet
 from FuXi.Horn.HornRules import extractVariables, Clause
 from FuXi.Rete.RuleStore import N3Builtin, FILTERS
-from cStringIO import StringIO
+from FuXi.Horn.PositiveConditions import *
 
 BFP_NS   = Namespace('http://dx.doi.org/10.1016/0169-023X(90)90017-8#')
 BFP_RULE = Namespace('http://code.google.com/p/python-dlp/wiki/BFPSpecializedRule#')
@@ -222,13 +227,13 @@ class QueryExecution(object):
                             if self.edbConj else ''), tNode.clauseRepresentation()
                 self.bfp.edbQueries.add(_qLit)
                 queryVars = origQuery.getOpenVars()
-                tokens2Propagate=[
-                    t for t in token.tokens
-                        if [
-                            v for v in t.getVarBindings()
-                                if v not in queryVars
-                        ]
-                ]
+                # tokens2Propagate=[
+                #     t for t in token.tokens
+                #         if [
+                #             v for v in t.getVarBindings()
+                #                 if v not in queryVars
+                #         ]
+                # ]
                 isGround = not _qLit.returnVars
                 rt = self.tabledQuery(_qLit)
                 if isGround:
@@ -295,7 +300,7 @@ class QueryExecution(object):
             tokenClone = token.copy()
 
             queryBindings,tokenBindings = bindings
-            toDo = []
+            # toDo = []
             for fact in baseAtoms:
                 queryLiteral = copy.deepcopy(fact)
                 fact.ground(tokenBindings)
@@ -464,9 +469,9 @@ class BackwardFixpointProcedure(object):
         answers collected along the way are added and returned
                 
         """
-        solutions = []
+        # solutions = []
         
-        queryOp = GetOp(self.goal)
+        # queryOp = GetOp(self.goal)
         if self.goal.isGround():
             #Mark ground goal so, production rule engine
             #halts when goal is inferred
@@ -506,7 +511,7 @@ class BackwardFixpointProcedure(object):
         predicate queries (frames whose attributes are in EDB and externally-defined
         predicates) into a single SPARQL query
         """
-        _len = len(rule.formula.body)
+        # _len = len(rule.formula.body)
         body = list(iterCondition(rule.formula.body))
         
         skipMDBQCount = 0
@@ -519,7 +524,7 @@ class BackwardFixpointProcedure(object):
                 skipMDBQCount -= 1
                 continue
             
-            remainingBodyList = body[bodyIdx+1:] if bodyIdx+1<_len else []
+            # remainingBodyList = body[bodyIdx+1:] if bodyIdx+1<_len else []
             conjunct = EDBQueryFromBodyIterator(
                         self.factGraph,
                         rule.formula.body.formulae[bodyIdx:],
@@ -551,7 +556,7 @@ class BackwardFixpointProcedure(object):
             if isinstance(bodyLiteral,N3Builtin):
                 if aNodeDk in self.metaInterpNetwork.alphaNodes:
                     self.metaInterpNetwork.alphaNodes.remove(aNodeDk)
-                evalTerm = (BFP_RULE[str(idx+1)],BFP_NS.evaluate,Literal(bodyIdx))
+                # evalTerm = (BFP_RULE[str(idx+1)],BFP_NS.evaluate,Literal(bodyIdx))
                 del aNodeDk
                 
                 executeAction = EvaluateExecution((idx+1,bodyIdx),self,[])
@@ -629,13 +634,13 @@ class BackwardFixpointProcedure(object):
                     # evaluate(..,j+1) :- evaluate(..,j), q_{j+1}(..)
                     #@@ force check builtins or derived predicate c rules
                     if isinstance(termNode.leftNode,AlphaNode):
-                        alphaNode = termNode.leftNode
+                        # alphaNode = termNode.leftNode
                         betaNode  = termNode.rightNode
                         assert isinstance(termNode.memories[RIGHT_MEMORY],
                                           EvaluateConjunctiveQueryMemory),termNode                        
                         assert isinstance(betaNode,BetaNode)
                     elif not termNode.fedByBuiltin:
-                        alphaNode = termNode.rightNode
+                        # alphaNode = termNode.rightNode
                         betaNode  = termNode.leftNode
                         
                         assert isinstance(termNode.memories[LEFT_MEMORY],
@@ -701,7 +706,7 @@ class BackwardFixpointProcedure(object):
             if rule in self.discardedRules:
                 continue                
 
-            label = BFP_RULE[str(idx+1)]
+            # label = BFP_RULE[str(idx+1)]
             conjunctLength = len(list(iterCondition(rule.formula.body)))
 
             #Rule a^k
@@ -847,7 +852,7 @@ class BackwardFixpointProcedure(object):
             #indicate no skipping is ongoing
             skipMDBQCount = -1
             mDBConjFront = None
-            _len = len(rule.formula.body)
+            # _len = len(rule.formula.body)
             for bodyIdx,bodyLiteral in enumerate(iterCondition(rule.formula.body)):
                 bodyPredSymbol = GetOp(bodyLiteral)
                 if skipMDBQCount > 0:
@@ -921,14 +926,13 @@ class BackwardFixpointProcedure(object):
     def makeAdornedRule(self,body,head):
         allVars = set()
         #first we identify body variables
-        bodyVars = set(reduce(lambda x,y:x+y,
-                              [ list(extractVariables(i,existential=False))
-                                        for i in iterCondition(body) ]))
-        #then we identify head variables
-        headVars = set(reduce(lambda x,y:x+y,
-                              [ list(extractVariables(i,existential=False))
-                                        for i in iterCondition(head) ]))
-
+        # bodyVars = set(reduce(lambda x,y:x+y,
+        #                       [ list(extractVariables(i,existential=False))
+        #                                 for i in iterCondition(body) ]))
+        # #then we identify head variables
+        # headVars = set(reduce(lambda x,y:x+y,
+        #                       [ list(extractVariables(i,existential=False))
+        #                                 for i in iterCondition(head) ]))
 
         return AdornedRule(Clause(body,head),declare=allVars)
 

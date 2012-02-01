@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # encoding: utf-8
 import unittest
-from pprint import pprint
-from rdflib import Variable, Namespace, Literal
-from rdflib.Graph import Graph
 from cStringIO import StringIO
+try:
+    from rdflib.graph import Graph
+except ImportError:
+    from rdflib.Graph import Graph
+from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
+from rdflib.util import first
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Syntax.InfixOWL import OWL_NS
 from FuXi.Horn.HornRules import HornFromN3
-from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
-from FuXi.Rete.TopDown import PrepareSipCollection, SipStrategy
-from FuXi.Rete.Magic import SetupDDLAndAdornProgram
-from FuXi.Rete.SidewaysInformationPassing import SIPRepresentation
 from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
 
 EX = Namespace('http://example.org/')

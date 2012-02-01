@@ -312,4 +312,3 @@ if __name__ == "__main__":
     for line in summary:
         print line 
     print "\nNote summary statistics are not available for the testOWL runs."
-

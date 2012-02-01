@@ -13,7 +13,7 @@ The Memories are implemented with consistent binding hashes. Unlinking is not im
 activations are mitigated (somewhat) by the hash / Set mechanism.
               
 """
-import unittest, os, time, sys, copy
+import unittest, copy
 from itertools import izip, ifilter
 from pprint import pprint
 from AlphaNode import AlphaNode, BuiltInAlphaNode, ReteToken
@@ -21,14 +21,21 @@ from Node import Node
 from RuleStore import N3Builtin
 from IteratorAlgebra import hash_join
 from Util import xcombine
-from rdflib.util import first
-from rdflib import Variable, BNode,RDF,RDFS,Literal
-from rdflib.Collection import Collection
+try:
+    set
+except NameError:
+    from sets import Set as set
 from itertools import izip
 from ReteVocabulary import RETE_NS
-from rdflib.Graph import QuotedGraph, Graph
-from rdflib.Literal import _XSD_NS
-from rdflib import BNode, RDF, Namespace, URIRef, Literal, Variable
+
+try:
+    from rdflib.graph import QuotedGraph, Graph
+    from rdflib.collection import Collection
+except ImportError:
+    from rdflib.Graph import QuotedGraph, Graph
+    from rdflib.Collection import Collection
+from rdflib import Variable, Literal, URIRef, BNode, Namespace, RDF, RDFS
+_XSD_NS = Namespace('http://www.w3.org/2001/XMLSchema#')
 OWL_NS    = Namespace("http://www.w3.org/2002/07/owl#")
 Any = None
 
@@ -91,7 +98,7 @@ class ReteMemory(set):
 
     def addToken(self,token,debug=False):
         commonVarKey = []
-        if isinstance(token,PartialInstanciation):
+        if isinstance(token,PartialInstantiation):
             for binding in token.bindings:
                 commonVarKey = []
                 for var in self.successor.commonVariables:
@@ -144,7 +151,7 @@ def project(orig_dict, attributes,inverse=False):
     else:
         return dict([item for item in orig_dict.items() if item[0] in attributes])
         
-class PartialInstanciation(object):
+class PartialInstantiation(object):
     """
     Represents a set of WMEs 'joined' along one or more
     common variables from an ancestral join node 'up' the network
@@ -168,9 +175,9 @@ class PartialInstanciation(object):
     >>> aNode = AlphaNode((Variable('X'),RDF.type,Variable('C')))
     >>> token = ReteToken((URIRef('urn:uuid:Boo'),RDF.type,URIRef('urn:uuid:Foo')))
     >>> token = token.bindVariables(aNode)
-    >>> PartialInstanciation([token])    
-    <PartialInstanciation: Set([<ReteToken: X->urn:uuid:Boo,C->urn:uuid:Foo>])>
-    >>> for token in PartialInstanciation([token]):
+    >>> PartialInstantiation([token])    
+    <PartialInstantiation: Set([<ReteToken: X->urn:uuid:Boo,C->urn:uuid:Foo>])>
+    >>> for token in PartialInstantiation([token]):
     ...   print token
     <ReteToken: X->urn:uuid:Boo,C->urn:uuid:Foo>
     """
@@ -195,7 +202,7 @@ class PartialInstanciation(object):
         for token in self.tokens:
             wme = copy.deepcopy(token)
             tokenList.append(wme)
-        return PartialInstanciation(tokenList,consistentBindings = self.joinedBindings)
+        return PartialInstantiation(tokenList,consistentBindings = self.joinedBindings)
 
     def _generateHash(self):
         tokenHashes = [hash(token) for token in self.tokens]
@@ -222,7 +229,7 @@ class PartialInstanciation(object):
     def _generateBindings(self):
         """
         Generates a list of dictionaries - each a unique variable substitution (binding)
-        which applies to the ReteTokens in this PartialInstanciation
+        which applies to the ReteTokens in this PartialInstantiation
 
         Unjoined variables with different names aren't bound to the same value
         (B and Y aren't both bound to "Bart Simpson" simultaneously)
@@ -259,9 +266,9 @@ class PartialInstanciation(object):
         >>> aNode = AlphaNode((Variable('S'),Variable('P'),Variable('O')))
         >>> token1 = ReteToken((URIRef('urn:uuid:Boo'),RDF.type,URIRef('urn:uuid:Foo')))
         >>> token2 = ReteToken((URIRef('urn:uuid:Foo'),RDF.type,URIRef('urn:uuid:Boo')))
-        >>> inst = PartialInstanciation([token1.bindVariables(aNode),token2.bindVariables(aNode)])
+        >>> inst = PartialInstantiation([token1.bindVariables(aNode),token2.bindVariables(aNode)])
         >>> inst    
-        <PartialInstanciation: Set([<ReteToken: S->urn:uuid:Boo,P->http://www.w3.org/1999/02/22-rdf-syntax-ns#type,O->urn:uuid:Foo>, <ReteToken: S->urn:uuid:Foo,P->http://www.w3.org/1999/02/22-rdf-syntax-ns#type,O->urn:uuid:Boo>])>
+        <PartialInstantiation: Set([<ReteToken: S->urn:uuid:Boo,P->http://www.w3.org/1999/02/22-rdf-syntax-ns#type,O->urn:uuid:Foo>, <ReteToken: S->urn:uuid:Foo,P->http://www.w3.org/1999/02/22-rdf-syntax-ns#type,O->urn:uuid:Boo>])>
         """
         self.tokens.add(token)        
         if not noPostProcessing:
@@ -273,7 +280,7 @@ class PartialInstanciation(object):
             joinMsg = ' (joined on %s)'%(','.join(['?'+v for v in self.joinedBindings]))
         else:
             joinMsg = ''
-        return "<PartialInstanciation%s: %s>"%(joinMsg,self.tokens)
+        return "<PartialInstantiation%s: %s>"%(joinMsg,self.tokens)
 
     def __iter__(self):
         for i in self.tokens:
@@ -284,7 +291,7 @@ class PartialInstanciation(object):
 
     def addConsistentBinding(self,newJoinVariables):
         #newJoinDict = self.joinedBindings.copy()
-        #only a subset of the tokens in this partial instanciation will be 'merged' with
+        #only a subset of the tokens in this partial instantiation will be 'merged' with
         #the new token - joined on the new join variables
         newJoinDict = dict([(v,None) for v in newJoinVariables])
         unmappedJoinVars = set(newJoinDict)
@@ -316,7 +323,7 @@ class PartialInstanciation(object):
         >>> token3 = ReteToken((RDFS.range,RDF.type,URIRef('urn:uuid:Prop1')))
         >>> token4 = ReteToken((RDFS.range,RDFS.domain,RDFS.Class))
         >>> token5 = ReteToken((RDFS.domain,RDF.type,URIRef('urn:uuid:Prop1'))).bindVariables(aNode2)
-        >>> inst = PartialInstanciation([token2.bindVariables(aNode1),token3.bindVariables(aNode2),token5])
+        >>> inst = PartialInstantiation([token2.bindVariables(aNode1),token3.bindVariables(aNode2),token5])
         >>> pprint(list(inst.tokens))
         [<ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#range>,
          <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain>,
@@ -325,7 +332,7 @@ class PartialInstanciation(object):
         >>> token1
         <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain,P2->http://www.w3.org/2000/01/rdf-schema#domain>
         >>> newInst
-        <PartialInstanciation (joined on ?P2): Set([<ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain,P2->http://www.w3.org/2000/01/rdf-schema#domain>, <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain>, <ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#domain>])>
+        <PartialInstantiation (joined on ?P2): Set([<ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain,P2->http://www.w3.org/2000/01/rdf-schema#domain>, <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain>, <ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#domain>])>
         >>> pprint(list(newInst.tokens))
         [<ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain,P2->http://www.w3.org/2000/01/rdf-schema#domain>,
          <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain>,
@@ -333,10 +340,10 @@ class PartialInstanciation(object):
         """
         newJoinDict = self.joinedBindings.copy()
         if newJoinVariables:
-            #only a subset of the tokens in this partial instanciation will be 'merged' with
+            #only a subset of the tokens in this partial instantiation will be 'merged' with
             #the new token - joined on the new join variables
             newJoinDict.update(project(rightWME.bindingDict,newJoinVariables))
-            newPInst = PartialInstanciation([],consistentBindings=newJoinDict)
+            newPInst = PartialInstantiation([],consistentBindings=newJoinDict)
             for token in self.tokens:
                 commonVars = False
                 for newVar in ifilter(
@@ -349,9 +356,9 @@ class PartialInstanciation(object):
                     #there are no common variables, no need to check
                     newPInst.add(token,noPostProcessing=True)
         else:
-            #all of the tokens in this partial instanciation are already bound consistently with
+            #all of the tokens in this partial instantiation are already bound consistently with
             #respect to the new token
-            newPInst = PartialInstanciation([],consistentBindings=newJoinDict)
+            newPInst = PartialInstantiation([],consistentBindings=newJoinDict)
             for token in self.tokens:
                 newPInst.add(token,noPostProcessing=True)
         newPInst.add(rightWME)
@@ -359,7 +366,7 @@ class PartialInstanciation(object):
             
 class BetaNode(Node): 
     """
-    Performs a rete network join between partial instanciations in its left memory and tokens in its memories
+    Performs a rete network join between partial instantiations in its left memory and tokens in its memories
 
     "The data structure for a join node, therefore, must contain pointers to its two memory
     nodes (so they can be searched), a specification of any variable binding consistency tests to be
@@ -448,7 +455,7 @@ class BetaNode(Node):
     2
     >>> aNode1.activate(token1.unboundCopy())
     >>> aNode1.activate(token2.unboundCopy())
-\    >>> joinNode1.memories[LEFT_MEMORY]
+    >>> joinNode1.memories[LEFT_MEMORY]
     <BetaMemory: 0 item(s)>
     >>> joinNode2.memories[LEFT_MEMORY]
     <BetaMemory: 2 item(s)>
@@ -456,18 +463,18 @@ class BetaNode(Node):
     Propagated from <AlphaNode: (u'X', u'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', u'Y'). Feeds 1 beta nodes>
     (u'urn:uuid:Foo', u'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', u'urn:uuid:Baz')
     <BetaNode : CommonVariables: [u'X'] (2 in left, 1 in right memories)>.propagate(right,None,<ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>)
-    activating with <PartialInstanciation (joined on ?X): Set([<ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>
+    activating with <PartialInstantiation (joined on ?X): Set([<ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>
     
     Add the remaining 3 tokens (each fires the network)
     
     >>> aNode2.activate(token4.unboundCopy())
     >>> list(joinNode3.memories[LEFT_MEMORY])[0]
-    <PartialInstanciation (joined on ?X): Set([<ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>
+    <PartialInstantiation (joined on ?X): Set([<ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>
     >>> aNode3.activate(token5.unboundCopy()))
     Propagated from <AlphaNode: (u'Z', u'urn:uuid:Prop1', u'W'). Feeds 1 beta nodes>
     (u'urn:uuid:Bar', u'urn:uuid:Prop1', u'urn:uuid:Beezle')
     <TerminalNode : CommonVariables: [] (1 in left, 1 in right memories)>.propagate(right,None,<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>)
-    activating with <PartialInstanciation (joined on ?X): Set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>
+    activating with <PartialInstantiation (joined on ?X): Set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>
 
     >>> aNode3.activate(token6.unboundCopy())
     >>> joinNode3
@@ -475,7 +482,7 @@ class BetaNode(Node):
     >>> testHelper.firings
     2
     >>> pprint(testHelper.conflictSet)
-    Set([<PartialInstanciation (joined on ?X): Set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>, <PartialInstanciation (joined on ?X): Set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Bundle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>])
+    Set([<PartialInstantiation (joined on ?X): Set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>, <PartialInstantiation (joined on ?X): Set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Bundle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>])
     """
     def __init__(self,
                  leftNode,
@@ -610,7 +617,7 @@ class BetaNode(Node):
 
     def _unrollTokens(self,iterable):
         for token in iterable:
-            if isinstance(token,PartialInstanciation):
+            if isinstance(token,PartialInstantiation):
                 for i in token:
                     yield i
             else:
@@ -659,13 +666,13 @@ class BetaNode(Node):
                     self._activate(partialInst,debug)                
                 else:
                     assert not partialInst,"%s,%s"%(partialInst,wme)
-                    self._activate(PartialInstanciation([wme],consistentBindings=wme.bindingDict.copy()),debug)                
+                    self._activate(PartialInstantiation([wme],consistentBindings=wme.bindingDict.copy()),debug)                
                 
             elif self.memories[RIGHT_MEMORY]:
                 #pass on wme as an unjoined partInst
                 #print self
                 if wme:
-                    self._activate(PartialInstanciation([wme],consistentBindings=wme.bindingDict.copy()),debug)
+                    self._activate(PartialInstantiation([wme],consistentBindings=wme.bindingDict.copy()),debug)
                 elif partialInst:
                     #print "## Problem ###"
                     #print "%s.propagate(%s,%s,%s)"%(self,memoryPosition[propagationSource],partialInst,wme)
@@ -673,7 +680,7 @@ class BetaNode(Node):
         elif not propagationSource:
             #Beta node right activated by another beta node
             #Need to unify on common variable hash, using the bindings
-            #provided by the partial instanciation that triggered the activation
+            #provided by the partial instantiation that triggered the activation
             if partialInst:
                 for binding in partialInst.bindings:
                     # for var in self.commonVariables:
@@ -686,7 +693,7 @@ class BetaNode(Node):
                         joinedTokens = set(self._unrollTokens(rTokens | lTokens))
                         if joinedTokens:                    
                             commonDict = dict([(var,list(commonVals)[self.commonVariables.index(var)]) for var in self.commonVariables])
-                            newP = PartialInstanciation(joinedTokens,consistentBindings=commonDict)
+                            newP = PartialInstantiation(joinedTokens,consistentBindings=commonDict)
                             self._activate(newP,debug)            
                     except KeyError:
                         print "\tProblem with ", partialInst
@@ -757,16 +764,16 @@ class BetaNode(Node):
                                     consVars = ifilter(lambda x:isinstance(x,Variable),consequent)
                                     # [i for i in consequent if isinstance(i,Variable)]                                
                                 failed = True
-                                for binding in PartialInstanciation(joinedTokens,consistentBindings=commonDict).bindings:
+                                for binding in PartialInstantiation(joinedTokens,consistentBindings=commonDict).bindings:
                                     if any(consVars,lambda x:x not in binding):# [key for key in consVars if key not in binding]:
                                         continue
                                     else:
                                         failed = False                                                                    
                                 if not failed:                                        
-                                    newP = PartialInstanciation(joinedTokens,consistentBindings=commonDict)
+                                    newP = PartialInstantiation(joinedTokens,consistentBindings=commonDict)
                                     matches.add(newP)
                             else:
-                                newP = PartialInstanciation(joinedTokens,consistentBindings=commonDict)
+                                newP = PartialInstantiation(joinedTokens,consistentBindings=commonDict)
                                 matches.add(newP)
                                 
             for pInst in matches:
@@ -786,11 +793,11 @@ class BetaNode(Node):
                 raise Exception("%s and %s"%(repr(self),repr(wme.bindingDict)))
             if lPartInsts:
                 for partialInst in lPartInsts:
-                    if not isinstance(partialInst,PartialInstanciation):
-                        singleToken = PartialInstanciation([partialInst],consistentBindings=partialInst.bindingDict.copy())
+                    if not isinstance(partialInst,PartialInstantiation):
+                        singleToken = PartialInstantiation([partialInst],consistentBindings=partialInst.bindingDict.copy())
                         matches.add(singleToken)
                     else:
-                        assert isinstance(partialInst,PartialInstanciation),repr(partialInst)
+                        assert isinstance(partialInst,PartialInstantiation),repr(partialInst)
                         matches.add(partialInst.newJoin(
                                         wme,
                                         ifilter(lambda x:x not in partialInst.joinedBindings,
@@ -809,7 +816,7 @@ def PopulateTokenFromANode(aNode,bindings):
     token.bindVariables(aNode)
     return token
 
-class PartialInstanciationTests(unittest.TestCase):
+class PartialInstantiationTests(unittest.TestCase):
     def testConsistentBinding(self):
         allBindings = {}
         allBindings.update(self.joinedBindings)
@@ -823,7 +830,7 @@ class PartialInstanciationTests(unittest.TestCase):
                   self.aNode9,
                   self.aNode10,
                   self.aNode11]
-        pToken = PartialInstanciation(
+        pToken = PartialInstantiation(
                       tokens = [PopulateTokenFromANode(aNode,
                                                        allBindings) 
                                   for aNode in aNodes],
@@ -885,7 +892,7 @@ class PartialInstanciationTests(unittest.TestCase):
 def test():
 #    import doctest
 #    doctest.testmod()
-    suite = unittest.makeSuite(PartialInstanciationTests)
+    suite = unittest.makeSuite(PartialInstantiationTests)
     unittest.TextTestRunner(verbosity=5).run(suite)    
 
 if __name__ == '__main__':

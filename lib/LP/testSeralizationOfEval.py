@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """
 testSeralizationOfEval.py
@@ -7,11 +6,11 @@ Created by Chimezie Ogbuji on 2010-08-15.
 Copyright (c) 2010 __MyCompanyName__. All rights reserved.
 """
 
-import sys, os, unittest
+import unittest
+from rdflib import Literal, RDF, Variable
 from BackwardFixpointProcedure import BFP_RULE, BFP_NS
 from FuXi.Horn.PositiveConditions import Uniterm
 from FuXi.Horn.HornRules import Rule, Clause
-from rdflib import Literal, RDF, Variable
 
 nsBindings = {
     u'bfp'  : BFP_NS, 
