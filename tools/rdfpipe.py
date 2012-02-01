@@ -2,11 +2,14 @@
 import sys
 from pprint import pprint
 
-from rdflib.Namespace import Namespace
-from rdflib import plugin, RDF, RDFS, URIRef, ConjunctiveGraph
+try:
+    from rdflib.graph import Graph, ConjunctiveGraph
+    from rdflib.namespace import NamespaceManager
+except ImportError:
+    from rdflib.Graph import Graph, ConjunctiveGraph
+    from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib import Namespace, plugin, RDF, RDFS, URIRef
 from rdflib.store import Store
-from rdflib.Graph import Graph
-from rdflib.syntax.NamespaceManager import NamespaceManager
 
 from FuXi.Rete import ReteNetwork
 from FuXi.Rete.RuleStore import N3RuleStore
