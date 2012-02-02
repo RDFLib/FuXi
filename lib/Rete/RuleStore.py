@@ -1,5 +1,7 @@
 from __future__ import generators
 import sys
+from rdflib import Namespace, RDF, BNode, Literal, URIRef, Variable
+from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
 try:
     from rdflib.graph import QuotedGraph, Graph
     from rdflib.namespace import NamespaceManager
@@ -10,8 +12,6 @@ except ImportError:
     from rdflib.syntax.NamespaceManager import NamespaceManager
     from rdflib.term_utils import *
     from rdflib.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
-from rdflib import Namespace, RDF, BNode, Literal, URIRef, Variable
-from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
 
 from pprint import pprint
 from cStringIO import StringIO

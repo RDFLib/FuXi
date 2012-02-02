@@ -6,6 +6,7 @@ The language of positive RIF conditions determines what can appear as a body (th
   bodies of such rules are conjunctions of atomic formulas without negation.
 """
 import itertools
+from rdflib import Namespace, RDF, RDFS, Variable, BNode, Literal, URIRef
 try:
     from rdflib.collection import Collection
     from rdflib.graph import ConjunctiveGraph, QuotedGraph, ReadOnlyGraphAggregate, Graph
@@ -16,7 +17,6 @@ except ImportError:
     from rdflib.Graph import ConjunctiveGraph,QuotedGraph,ReadOnlyGraphAggregate, Graph
     from rdflib.syntax.NamespaceManager import NamespaceManager
     from rdflib.Literal import _XSD_NS
-from rdflib import Namespace, RDF, RDFS, Variable, BNode, Literal, URIRef
 from rdflib.util import first
 
 OWL    = Namespace("http://www.w3.org/2002/07/owl#")
