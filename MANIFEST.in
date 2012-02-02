@@ -1,0 +1,7 @@
+include CHANGELOG
+include LICENSE
+include ez_setup.py
+recursive-include lib *.py
+recursive-include tools *.py
+include *.n3
+graft test
