@@ -18,7 +18,7 @@ except:
         warnings.warn("Missing pydot library",ImportWarning)                
 #        raise NotImplementedError("Boost Graph Library & Python bindings (or pydot) not installed.  See: see: http://www.osl.iu.edu/~dgregor/bgl-python/")
 
-from itertools import izip,ifilter,ifilterfalse
+from itertools import izip, ifilter, ifilterfalse
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Horn.HornRules import Clause, Ruleset
 from FuXi.Horn.PositiveConditions import Uniterm, buildUniTerm, SetOperator, Exists
@@ -33,7 +33,7 @@ except ImportError:
     from rdflib.Graph import Graph
     from rdflib.syntax.NamespaceManager import NamespaceManager
 from rdflib import Namespace, BNode, Variable
-from pprint import pprint,pformat
+from pprint import pprint, pformat
 
 #From itertools recipes
 def iteritems(mapping): 

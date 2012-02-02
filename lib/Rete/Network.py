@@ -11,7 +11,7 @@ The network :
     - stores inferred triples in provided triple source (an RDFLib graph) or a temporary IOMemory Graph by default
 
 """
-from itertools import izip,ifilter,chain
+from itertools import izip, ifilter, chain
 import time,sys
 from pprint import pprint
 from cStringIO import StringIO

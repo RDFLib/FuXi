@@ -41,7 +41,7 @@ def encodeAction(tNode, inferredTriple, token, binding, debug = False):
   from hashlib import sha1
   person = binding[Variable('person')]
   email = binding[Variable('email')]
-  newTriple = (person,FOAF['mbox_sha1sum'],Literal(sha1(email).hexdigest()))
+  newTriple = (person,FOAF['mbox_sha1sum'],Literal(sha1(email.encode('utf-8')).hexdigest()))
   tNode.network.inferredFacts.add(newTriple)
 
 class ReteActionTest(unittest.TestCase):

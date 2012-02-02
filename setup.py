@@ -41,9 +41,9 @@ def find_version(filename):
 
 __version__ = find_version('lib/__init__.py')
 
-import ez_setup
-ez_setup.use_setuptools()
-from setuptools  import setup
+# import ez_setup
+# ez_setup.use_setuptools()
+# from setuptools  import setup
 
 config=dict(
     name="FuXi",
@@ -88,11 +88,17 @@ config=dict(
     zip_safe=False
 )
 
+kwargs = {}
 if sys.version_info[0] >= 3:
-    config.update({'use_2to3': True})
-    config.update({'src_root': setup_python3()})
+    from setuptools import setup
+    kwargs['use_2to3'] = True
+    kwargs['src_root'] = setup_python3()
 else:
-    config.update({'test_suite' : "nose.collector"})
+    try:
+        from setuptools import setup
+        kwargs['test_suite'] = "nose.collector"
+    except ImportError:
+        from distutils.core import setup
 
 setup(**config)
 
