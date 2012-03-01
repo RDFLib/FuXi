@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 This module implements a Description Horn Logic implementation as defined
-by Grosof, B. et.al. ("Description Logic Programs: Combining Logic Programs with 
+by Grosof, B. et.al. ("Description Logic Programs: Combining Logic Programs with
 Description Logic" [1]) in section 4.4.  As such, it implements recursive mapping
-functions "T", "Th" and "Tb" which result in "custom" (dynamic) rulesets, RIF Basic 
-Logic Dialect: Horn rulesets [2], [3].  The rulesets are evaluated against an 
+functions "T", "Th" and "Tb" which result in "custom" (dynamic) rulesets, RIF Basic
+Logic Dialect: Horn rulesets [2], [3].  The rulesets are evaluated against an
 efficient RETE-UL network.
 
 It is a Description Logic Programming [1] Implementation on top of RETE-UL:
@@ -19,10 +19,10 @@ The mapping is as follows:
 
 == Class Equivalence ==
 
-T(owl:equivalentClass(C,D)) -> { T(rdfs:subClassOf(C,D) 
+T(owl:equivalentClass(C,D)) -> { T(rdfs:subClassOf(C,D)
                                  T(rdfs:subClassOf(D,C) }
-                                 
-== Domain and Range Axioms (Base Description Logic: "ALC") ==                                                                                                       
+
+== Domain and Range Axioms (Base Description Logic: "ALC") ==
 
 T(rdfs:range(P,D))  -> D(y) := P(x,y)
 T(rdfs:domain(P,D)) -> D(x) := P(x,y)
@@ -34,7 +34,7 @@ T(owl:equivalentProperty(P,Q)) -> { Q(x,y) :- P(x,y)
                                     P(x,y) :- Q(x,y) }
 T(owl:inverseOf(P,Q))          -> { Q(x,y) :- P(y,x)
                                     P(y,x) :- Q(x,y) }
-T(owl:TransitiveProperty(P))   -> P(x,z) :- P(x,y) ^ P(y,z)                                                                        
+T(owl:TransitiveProperty(P))   -> P(x,z) :- P(x,y) ^ P(y,z)
 
 [1] http://www.cs.man.ac.uk/~horrocks/Publications/download/2003/p117-grosof.pdf
 [2] http://www.w3.org/2005/rules/wg/wiki/Core/Positive_Conditions
@@ -43,29 +43,17 @@ T(owl:TransitiveProperty(P))   -> P(x,z) :- P(x,y) ^ P(y,z)
 """
 
 from __future__ import generators
-# from sets import Set
-try:
-    from rdflib.collection import Collection
-    from rdflib.graph import QuotedGraph, Graph
-    from rdflib.namespace import Namespace, RDF, RDFS
-    from rdflib import BNode, Variable, Literal, URIRef
-    from rdfextras.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
-except ImportError:
-    from rdflib import BNode, RDF, Namespace, Variable, RDFS
-    from rdflib.Collection import Collection
-    from rdflib import Literal, URIRef
-    from rdflib.Graph import QuotedGraph, Graph
-    from rdflib.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
+from rdflib.collection import Collection
+# from rdflib.graph import Graph
+from rdflib.namespace import Namespace, RDF, RDFS
+from rdflib import BNode, Variable, URIRef
 from rdflib.util import first
-from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
 
-from pprint import pprint, pformat
-import sys, copy, itertools
+import copy, itertools
 from FuXi.Horn.PositiveConditions import And, Or, Uniterm, Condition, Atomic,SetOperator,Exists
 from FuXi.Horn import DATALOG_SAFETY_NONE,DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from LPNormalForms import NormalizeDisjunctions
 from FuXi.Horn.HornRules import Clause as OriginalClause, Rule
-from cStringIO import StringIO
 
 SKOLEMIZED_CLASS_NS=Namespace('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')
 
@@ -79,7 +67,7 @@ non_DHL_OWL_Semantics=\
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix : <http://eulersharp.sourceforge.net/2003/03swap/owl-rules#>.
 @prefix list: <http://www.w3.org/2000/10/swap/list#>.
-#Additional OWL-compliant semantics, mappable to Production Rules 
+#Additional OWL-compliant semantics, mappable to Production Rules
 
 #Subsumption (purely for TBOX classification)
 {?C rdfs:subClassOf ?SC. ?A rdfs:subClassOf ?C} => {?A rdfs:subClassOf ?SC}.
@@ -125,7 +113,7 @@ def reduceAnd(left,right):
         return [left]+right
     else:
         return [left,right]
-    
+
 def NormalizeClause(clause):
     def fetchFirst(gen):
         rt=first(gen)
@@ -155,7 +143,7 @@ class Clause(OriginalClause):
     i.e.:   H1 ^ H2 ^ ... ^ H3 :- B1 ^  ^ Bm
     The Clause definition is overridden to permit this syntax (not allowed
     in definite LP or Horn rules)
-    
+
     In addition, since we allow (in definite Horn) entailments beyond simple facts
     we ease restrictions on the form of the head to include Clauses
         """
@@ -165,13 +153,13 @@ class Clause(OriginalClause):
         if isinstance(head,Uniterm):
             from FuXi.Rete.Network import HashablePatternList
             try:
-                antHash=HashablePatternList([term.toRDFTuple() 
+                antHash=HashablePatternList([term.toRDFTuple()
                                     for term in body],skipBNodes=True)
-                consHash=HashablePatternList([term.toRDFTuple() 
-                                    for term in head],skipBNodes=True)      
+                consHash=HashablePatternList([term.toRDFTuple()
+                                    for term in head],skipBNodes=True)
                 self._bodyHash = hash(antHash)
-                self._headHash = hash(consHash)             
-                self._hash     = hash((self._headHash,self._bodyHash))                                                      
+                self._headHash = hash(consHash)
+                self._hash     = hash((self._headHash,self._bodyHash))
             except:
                 self._hash = None
         else:
@@ -180,20 +168,20 @@ class Clause(OriginalClause):
     def __hash__(self):
         if self._hash is None:
             from FuXi.Rete.Network import HashablePatternList
-            antHash=HashablePatternList([term.toRDFTuple() 
+            antHash=HashablePatternList([term.toRDFTuple()
                                 for term in self.body],skipBNodes=True)
-            consHash=HashablePatternList([term.toRDFTuple() 
-                                for term in self.head],skipBNodes=True)                                                                                            
+            consHash=HashablePatternList([term.toRDFTuple()
+                                for term in self.head],skipBNodes=True)
             self._bodyHash = hash(antHash)
-            self._headHash = hash(consHash)             
-            self._hash     = hash((self._headHash,self._bodyHash))                                                      
+            self._headHash = hash(consHash)
+            self._hash     = hash((self._headHash,self._bodyHash))
         return self._hash
-                
+
     def __repr__(self):
         return "%r :- %r"%(self.head,self.body)
 
     def n3(self):
-        return u'{ %s } => { %s }'%(self.body.n3(),self.head.n3())    
+        return u'{ %s } => { %s }'%(self.body.n3(),self.head.n3())
 
 def makeRule(clause,nsMap):
     from FuXi.Horn.HornRules import Rule
@@ -201,9 +189,9 @@ def makeRule(clause,nsMap):
     for child in clause.head:
         if isinstance(child,Or):
             #Disjunction in the head, skip this rule:
-            #When a disjunction occurs on the r.h.s. of a subclass axiom it 
-            #becomes a disjunction in the head of the corresponding rule, and 
-            #this cannot be handled within the def-Horn framework.            
+            #When a disjunction occurs on the r.h.s. of a subclass axiom it
+            #becomes a disjunction in the head of the corresponding rule, and
+            #this cannot be handled within the def-Horn framework.
             return None
         assert isinstance(child,Uniterm),repr(child)
         vars.update([term for term in child.toRDFTuple() if isinstance(term,Variable)])
@@ -220,7 +208,7 @@ def DisjunctiveNormalForm(program,safety = DATALOG_SAFETY_NONE, network = None):
     from FuXi.Rete.SidewaysInformationPassing import GetArgs, iterCondition, GetOp
     for rule in program:
         tx_horn_clause = NormalizeClause(rule.formula)
-        for tx_horn_clause in LloydToporTransformation(tx_horn_clause,True):    
+        for tx_horn_clause in LloydToporTransformation(tx_horn_clause,True):
             if safety in [DATALOG_SAFETY_LOOSE, DATALOG_SAFETY_STRICT]:
                 rule = Rule(tx_horn_clause,nsMapping=network and network.nsMap or {})
                 if not rule.isSafe():
@@ -231,7 +219,7 @@ def DisjunctiveNormalForm(program,safety = DATALOG_SAFETY_NONE, network = None):
                                       3)
                         continue
                     elif safety == DATALOG_SAFETY_STRICT:
-                        raise SyntaxError("Unsafe RIF Core rule: %s"%rule) 
+                        raise SyntaxError("Unsafe RIF Core rule: %s"%rule)
             disj = [i for i in breadth_first(tx_horn_clause.body) if isinstance(i,Or)]
             import warnings
             if len(disj)>0:
@@ -240,7 +228,7 @@ def DisjunctiveNormalForm(program,safety = DATALOG_SAFETY_NONE, network = None):
         #                print "No Disjunction in the body"
                     for hc in ExtendN3Rules(network,NormalizeClause(tx_horn_clause)):
                         yield makeRule(hc,network and network.nsMap or {})
-    
+
 def MapDLPtoNetwork(network,
                     factGraph,
                     complementExpansions=[],
@@ -280,12 +268,12 @@ def MapDLPtoNetwork(network,
                                                   3)
                                     continue
                                 elif safety == DATALOG_SAFETY_STRICT:
-                                    raise SyntaxError("Unsafe RIF Core rule: %s"%rule) 
+                                    raise SyntaxError("Unsafe RIF Core rule: %s"%rule)
                         _rule=makeRule(hc,network.nsMap)
                         if _rule.negativeStratus:
-                            negativeStratus.append(_rule)                    
+                            negativeStratus.append(_rule)
                         if _rule is not None and (not _rule.negativeStratus or not ignoreNegativeStratus):
-                            ruleset.add(_rule)                    
+                            ruleset.add(_rule)
             #Extract free variables anre add rule to ruleset
 #        print "#######################"
 #    print "########## Finished Building decision network from DLP ##########"
@@ -297,11 +285,11 @@ def MapDLPtoNetwork(network,
 
 def IsaFactFormingConclusion(head):
     """
-    'Relative to the def-Horn ruleset, the def-LP is thus sound; moreover, it is 
-    complete for fact-form conclusions, i.e., for queries whose answers amount 
-    to conjunctions of facts. However, the def-LP is a mildly weaker version of 
+    'Relative to the def-Horn ruleset, the def-LP is thus sound; moreover, it is
+    complete for fact-form conclusions, i.e., for queries whose answers amount
+    to conjunctions of facts. However, the def-LP is a mildly weaker version of
     the def-Horn ruleset, in the following sense. Every conclusion of the def-LP
-    must have the form of a fact. By contrast, the entailments, i.e., conclusions, 
+    must have the form of a fact. By contrast, the entailments, i.e., conclusions,
     of the def-Horn ruleset are not restricted to be facts.' - Scan depth-first
     looking for Clauses
     """
@@ -325,16 +313,16 @@ def traverseClause(condition):
         for i in iter(condition):
             yield i
     elif isinstance(condition,Atomic):
-        return 
+        return
 
 def breadth_first(condition,children=traverseClause):
     """Traverse the nodes of a tree in breadth-first order.
     The first argument should be the tree root; children
     should be a function taking as argument a tree node and
     returning an iterator of the node's children.
-    
+
     From http://ndirty.cute.fi/~karttu/matikka/Python/eppsteins_bf_traversal_231503.htm
-    
+
     """
     yield condition
     last = condition
@@ -353,9 +341,9 @@ def breadth_first_replace(condition,
     The first argument should be the tree root; children
     should be a function taking as argument a tree node and
     returning an iterator of the node's children.
-    
+
     From http://ndirty.cute.fi/~karttu/matikka/Python/eppsteins_bf_traversal_231503.htm
-    
+
     """
     yield condition
     last = condition
@@ -442,18 +430,18 @@ def PrepareHornClauseForRETE(horn_clause):
                 if isinstance(t,existential and BNode or Variable):
                     yield t
     from FuXi.Rete.SidewaysInformationPassing import iterCondition, GetArgs
-            
-    #first we identify body variables                        
+
+    #first we identify body variables
     bodyVars = set(reduce(lambda x,y:x+y,
                           [ list(extractVariables(i,existential=False)) for i in iterCondition(horn_clause.body) ]))
-    
+
     #then we identify head variables
     headVars = set(reduce(lambda x,y:x+y,
                           [ list(extractVariables(i,existential=False)) for i in iterCondition(horn_clause.head) ]))
-    
+
     #then we identify those variables that should (or should not) be converted to skolem terms
     updateDict       = dict([(var,BNode()) for var in headVars if var not in bodyVars])
-    
+
     if set(updateDict.keys()).intersection(GetArgs(horn_clause.head)):
         #There are skolem terms in the head
         newHead = copy.deepcopy(horn_clause.head)
@@ -461,18 +449,18 @@ def PrepareHornClauseForRETE(horn_clause):
             newArg      = [ updateDict.get(i,i) for i in uniTerm.arg ]
             uniTerm.arg = newArg
         horn_clause.head = newHead
-        
+
     skolemsInBody=[
                    list(itertools.ifilter(
                              lambda term:isinstance(term,
                                                     BNode),
-                                 GetArgs(lit))) 
+                                 GetArgs(lit)))
                                  for lit in iterCondition(horn_clause.body)]
     skolemsInBody = reduce(lambda x,y:x+y,skolemsInBody,
                            [])
     if skolemsInBody:
         newBody = copy.deepcopy(horn_clause.body)
-        _e=Exists(formula=newBody,declare=set(skolemsInBody))        
+        _e=Exists(formula=newBody,declare=set(skolemsInBody))
         horn_clause.body=_e
 
     PrepareHeadExistential(horn_clause)
@@ -500,7 +488,7 @@ def SkolemizeExistentialClasses(term,check=True):
 def NormalizeBooleanClassOperand(term,owlGraph):
     return ((isinstance(term,BNode) and IsaBooleanClassDescription(term,owlGraph)) or \
              IsaRestriction(term,owlGraph))\
-          and SkolemizeExistentialClasses(term) or term    
+          and SkolemizeExistentialClasses(term) or term
 
 def IsaBooleanClassDescription(term,owlGraph):
     for s,p,o in owlGraph.triples_choices((term,[OWL_NS.unionOf,
@@ -525,7 +513,7 @@ def Tc(owlGraph,negatedFormula):
                               [Variable("X"),
                                NormalizeBooleanClassOperand(negatedFormula,owlGraph)],
                               newNss=owlGraph.namespaces())
-        
+
         condition = NormalizeClause(Clause(Tb(owlGraph,negatedFormula),
                                            bodyUniTerm)).body
         assert isinstance(condition,Uniterm)
@@ -547,11 +535,11 @@ def Tc(owlGraph,negatedFormula):
                        naf=True)
     else:
         raise UnsupportedNegation("Unsupported negated concept: %s"%negatedFormula)
-    
+
 class MalformedDLPFormulaError(NotImplementedError):
     def __init__(self,message):
         self.message = message
-    
+
 def handleConjunct(conjunction,owlGraph,o,conjunctVar=Variable('X')):
     for bodyTerm in Collection(owlGraph,o):
         negatedFormula = False
@@ -572,27 +560,27 @@ def handleConjunct(conjunction,owlGraph,o,conjunctVar=Variable('X')):
             if isinstance(normalizedBodyTerm,URIRef) and normalizedBodyTerm.find(SKOLEMIZED_CLASS_NS)==-1:
                 conjunction.append(bodyUniTerm)
             elif (bodyTerm,OWL_NS.someValuesFrom,None) in owlGraph or\
-                 (bodyTerm,OWL_NS.hasValue,None) in owlGraph:                    
+                 (bodyTerm,OWL_NS.hasValue,None) in owlGraph:
                 conjunction.extend(classifyingClause.body)
             elif (bodyTerm,OWL_NS.allValuesFrom,None) in owlGraph:
                 raise MalformedDLPFormulaError("Universal restrictions can only be used as the second argument to rdfs:subClassOf (GCIs)")
             elif (bodyTerm,OWL_NS.unionOf,None) in owlGraph:
                 conjunction.append(classifyingClause.body)
             elif (bodyTerm,OWL_NS.intersectionOf,None) in owlGraph:
-                conjunction.append(bodyUniTerm)                    
-                        
+                conjunction.append(bodyUniTerm)
+
 def T(owlGraph,complementExpansions=[],derivedPreds=[]):
     """
     #Subsumption (purely for TBOX classification)
     {?C rdfs:subClassOf ?SC. ?A rdfs:subClassOf ?C} => {?A rdfs:subClassOf ?SC}.
     {?C owl:equivalentClass ?A} => {?C rdfs:subClassOf ?A. ?A rdfs:subClassOf ?C}.
     {?C rdfs:subClassOf ?SC. ?SC rdfs:subClassOf ?C} => {?C owl:equivalentClass ?SC}.
-    
+
     T(rdfs:subClassOf(C,D))       -> Th(D(y)) :- Tb(C(y))
-    
-    T(owl:equivalentClass(C,D)) -> { T(rdfs:subClassOf(C,D) 
+
+    T(owl:equivalentClass(C,D)) -> { T(rdfs:subClassOf(C,D)
                                      T(rdfs:subClassOf(D,C) }
-    
+
     A generator over the Logic Programming rules which correspond
     to the DL  ( unary predicate logic ) subsumption axiom described via rdfs:subClassOf
     """
@@ -633,12 +621,12 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
                 head = Uniterm(RDF.type,[Variable("X"),
                                          SkolemizeExistentialClasses(s)],
                                          newNss=owlGraph.namespaces())
-    #            O1 ^ O2 ^ ... ^ On => S(?X)            
+    #            O1 ^ O2 ^ ... ^ On => S(?X)
                 yield Clause(body,head)
                 if isinstance(s,URIRef):
-    #                S(?X) => O1 ^ O2 ^ ... ^ On                
+    #                S(?X) => O1 ^ O2 ^ ... ^ On
         #            special case, owl:intersectionOf is a neccessary and sufficient
-        #            criteria and should thus work in *both* directions 
+        #            criteria and should thus work in *both* directions
         #            This rule is not added for anonymous classes or derived predicates
                     if s not in derivedPreds:
                         yield Clause(head,body)
@@ -647,7 +635,7 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
             warnings.warn("Unable to handle negation in DL axiom (%s), skipping"%s,#e.msg,
                           SyntaxWarning,
                           3)
-        
+
     for s,p,o in owlGraph.triples((None,OWL_NS.unionOf,None)):
         if isinstance(s,URIRef):
             #special case, owl:unionOf is a neccessary and sufficient
@@ -686,7 +674,7 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
         head = Uniterm(s,[x,z],newNss=owlGraph.namespaces())
         yield Clause(body,head)
     for s,p,o in owlGraph.triples((None,RDFS.subPropertyOf,None)):
-        # T(rdfs:subPropertyOf(P,Q))     -> Q(x,y) :- P(x,y)        
+        # T(rdfs:subPropertyOf(P,Q))     -> Q(x,y) :- P(x,y)
         x = Variable("X")
         y = Variable("Y")
 
@@ -695,7 +683,7 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
 
         body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
         head = Uniterm(o,[x,y],newNss=owlGraph.namespaces())
-        
+
         yield Clause(body,head)
     for s,p,o in owlGraph.triples((None,OWL_NS.equivalentProperty,None)):
         # T(owl:equivalentProperty(P,Q)) -> { Q(x,y) :- P(x,y)
@@ -722,7 +710,7 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
         body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
         head = Uniterm(s,[y,x],newNss=owlGraph.namespaces())
         yield Clause(body,head)
-        
+
     for s,p,o in owlGraph.triples_choices((None,
                                            [RDFS.range,RDFS.domain],
                                            None)):
@@ -730,29 +718,29 @@ def T(owlGraph,complementExpansions=[],derivedPreds=[]):
         s = SkolemizeExistentialClasses(s) if isinstance(s,BNode) else s
 
         if p == RDFS.range:
-            #T(rdfs:range(P,D))  -> D(y) := P(x,y)        
+            #T(rdfs:range(P,D))  -> D(y) := P(x,y)
             x = Variable("X")
             y = Variable(BNode())
             body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
             head = Uniterm(RDF.type,[y,o],newNss=owlGraph.namespaces())
             yield Clause(body,head)
-        else: 
+        else:
             #T(rdfs:domain(P,D)) -> D(x) := P(x,y)
             x = Variable("X")
             y = Variable(BNode())
             body = Uniterm(s,[x,y],newNss=owlGraph.namespaces())
             head = Uniterm(RDF.type,[x,o],newNss=owlGraph.namespaces())
             yield Clause(body,head)
-            
+
 def LloydToporTransformation(clause,fullReduction=True):
     """
-    Tautological, common horn logic forms (useful for normalizing 
+    Tautological, common horn logic forms (useful for normalizing
     conjunctive & disjunctive clauses)
-    
+
     (H ^ H0) :- B                 -> { H  :- B
                                        H0 :- B }
     (H :- H0) :- B                -> H :- B ^ H0
-    
+
     H :- (B v B0)                 -> { H :- B
                                        H :- B0 }
     """
@@ -788,7 +776,7 @@ def LloydToporTransformation(clause,fullReduction=True):
                     yield PrepareHeadExistential(j)
     else:
         yield clause
-    
+
 
 def Th(owlGraph,_class,variable=Variable('X'),position=LHS):
     """
@@ -823,11 +811,11 @@ def Th(owlGraph,_class,variable=Variable('X'),position=LHS):
         yield Uniterm(RDF.type,[variable,
                                 isinstance(_class,BNode) and SkolemizeExistentialClasses(_class) or _class],
                                 newNss=owlGraph.namespaces())
-            
-    
+
+
 def Tb(owlGraph,_class,variable=Variable('X')):
     """
-    DLP body (consequent knowledge assertional forms (ABox assertions, 
+    DLP body (consequent knowledge assertional forms (ABox assertions,
     conjunction / disjunction of ABox assertions, and exisential role restriction assertions)
     These are all common EL++ templates for KR
     """
@@ -854,7 +842,7 @@ def Tb(owlGraph,_class,variable=Variable('X')):
     elif OWL_NS.hasValue in props:
         #http://www.w3.org/TR/owl-semantics/#owl_hasValue
         #Domain-specific rules for hasValue
-        #Can be achieved via pD semantics        
+        #Can be achieved via pD semantics
         prop = list(owlGraph.objects(subject=_class,predicate=OWL_NS.onProperty))[0]
         o =first(owlGraph.objects(subject=_class,predicate=OWL_NS.hasValue))
         return Uniterm(prop,[variable,o],newNss=owlGraph.namespaces())

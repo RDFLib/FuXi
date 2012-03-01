@@ -2,10 +2,7 @@
 import unittest
 from pprint import pprint
 from cStringIO import StringIO
-try:
-    from rdflib.graph import Graph, ConjunctiveGraph, QuotedGraph
-except ImportError:
-    from rdflib.Graph import Graph, QuotedGraph, ConjunctiveGraph
+from rdflib.graph import Graph, ConjunctiveGraph, QuotedGraph
 from rdflib import Literal, Variable, URIRef, Namespace
 from FuXi.Rete.BuiltinPredicates import FILTERS, STRING_NS
 from FuXi.Rete.RuleStore import SetupRuleStore
@@ -48,7 +45,7 @@ def build_network(rules):
 
 def build_network2(rules):
     graph = ConjunctiveGraph()
-    graph.load(StringIO(rules), publicID='test', format='n3')    
+    graph.load(StringIO(rules), publicID='test', format='n3')
     rule_store, rule_graph=SetupRuleStore(
                       StringIO(rules),
                       additionalBuiltins={STRING_NS.startsWith:StringStartsWith})
@@ -73,7 +70,7 @@ class LiteralStringStartsWith(unittest.TestCase):
 
     def test_literal_variable_startswith_literal_should_match(self):
         self.failUnless(self.fact in self.network.inferredFacts)
-    def test_literal_variable_startswith_literal_should_match2(self):        
+    def test_literal_variable_startswith_literal_should_match2(self):
         self.failUnless(self.fact in self.network2.inferredFacts)
 
 class URIRefStringStartsWith(unittest.TestCase):
@@ -92,7 +89,7 @@ class URIRefStringStartsWith(unittest.TestCase):
 
     def test_uriref_variable_startswith_literal_should_match(self):
         self.failUnless(self.fact in self.network.inferredFacts)
-    def test_uriref_variable_startswith_literal_should_match2(self):        
+    def test_uriref_variable_startswith_literal_should_match2(self):
         self.failUnless(self.fact in self.network2.inferredFacts)
 
 if __name__ == '__main__':

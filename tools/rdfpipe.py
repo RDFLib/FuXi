@@ -2,12 +2,8 @@
 import sys
 from pprint import pprint
 
-try:
-    from rdflib.graph import Graph, ConjunctiveGraph
-    from rdflib.namespace import NamespaceManager
-except ImportError:
-    from rdflib.Graph import Graph, ConjunctiveGraph
-    from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib.graph import Graph, ConjunctiveGraph
+from rdflib.namespace import NamespaceManager
 from rdflib import Namespace, plugin, RDF, RDFS, URIRef
 from rdflib.store import Store
 
@@ -57,15 +53,15 @@ def main():
 
   (options, args) = parser.parse_args()
 
-  store = plugin.get(RDFLIB_STORE,Store)()        
+  store = plugin.get(RDFLIB_STORE,Store)()
   store.open(RDFLIB_CONNECTION)
 
   namespace_manager = NamespaceManager(Graph())
   for prefixDef in options.ns:
     prefix, uri = prefixDef.split('=')
-    namespace_manager.bind(prefix, uri, override=False)    
+    namespace_manager.bind(prefix, uri, override=False)
 
-  factGraph = ConjunctiveGraph(store) 
+  factGraph = ConjunctiveGraph(store)
   for graphRef in options.xml:
     factGraph.parse(graphRef, publicID=Uri.OsPathToUri(graphRef),
                     format='xml')

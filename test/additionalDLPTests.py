@@ -1,10 +1,6 @@
 import sys, unittest, copy
-try:
-    from rdflib.graph import Graph
-    from rdflib.namespace import NamespaceManager
-except ImportError:
-    from rdflib.Graph import Graph
-    from rdflib.syntax.NamespaceManager import NamespaceManager
+from rdflib.graph import Graph
+from rdflib.namespace import NamespaceManager
 from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
 from rdflib.util import first
 from FuXi.Rete.RuleStore import N3RuleStore,SetupRuleStore
@@ -45,7 +41,7 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
 #        conjunct = EX.Foo & (someProp|only|EX.Omega)
 #        conjunct.identifier = EX_NS.Bar
 #        ruleStore,ruleGraph,network=SetupRuleStore(makeNetwork=True)
-#        self.failUnlessRaises(MalformedDLPFormulaError, 
+#        self.failUnlessRaises(MalformedDLPFormulaError,
 #                              network.setupDescriptionLogicProgramming,
 #                              self.ontGraph,
 #                              derivedPreds=[EX_NS.Bar],
@@ -81,10 +77,10 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
 #                        "There should be 1 rule: %s"%rules)
 #        rule=rules[0]
 #        self.assertEqual(repr(rule.formula.body),
-#                         "ex:Foo(?X)")             
+#                         "ex:Foo(?X)")
 #        self.assertEqual(len(rule.formula.head.formula),
 #                         2)
-        
+
     def testValueRestrictionInLeftOfGCI(self):
         someProp = Property(EX_NS.someProp)
         leftGCI = (someProp|value|EX.fish) & EX.Bar
@@ -99,7 +95,7 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
                               constructNetwork=False)
         self.assertEqual(repr(rules),
                          "[Forall ?X ( ex:Foo(?X) :- And( ex:someProp(?X ex:fish) ex:Bar(?X) ) )]")
-        
+
     def testNestedConjunct(self):
         nestedConj = (EX.Foo & EX.Bar) & EX.Baz
         (EX.Omega)+= nestedConj
@@ -125,11 +121,11 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
                 self.failUnless(skolemPredicate.find(SKOLEMIZED_CLASS_NS)!=-1,
                                 "Head should be a unary skolem predicate")
                 skolemPredicate=skolemPredicate[0]
-                
+
     def testOtherForm(self):
         contains   = Property(EX_NS.contains)
         locatedIn  = Property(EX_NS.locatedIn)
-        topConjunct = (EX.Cath & 
+        topConjunct = (EX.Cath &
                          (contains|some|
                             (EX.MajorStenosis & (locatedIn|value|EX_NS.LAD)))  &
                          (contains|some|
@@ -146,7 +142,7 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
         from FuXi.Rete.Magic import PrettyPrintRule
         for rule in rules:
             PrettyPrintRule(rule)
-            
+
     def testOtherForm2(self):
         hasCoronaryBypassConduit   = Property(EX_NS.hasCoronaryBypassConduit)
 
@@ -154,12 +150,12 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
         ITALeft += (hasCoronaryBypassConduit|some|
                     EnumeratedClass(
                        members=[EX_NS.CoronaryBypassConduit_internal_thoracic_artery_left_insitu,
-                                EX_NS.CoronaryBypassConduit_internal_thoracic_artery_left_free])) 
+                                EX_NS.CoronaryBypassConduit_internal_thoracic_artery_left_free]))
         from FuXi.DLP.DLNormalization import NormalFormReduction
         self.assertEquals(repr(Class(first(ITALeft.subSumpteeIds()))),"Some Class SubClassOf: Class: ex:ITALeft ")
         NormalFormReduction(self.ontGraph)
         self.assertEquals(repr(Class(first(ITALeft.subSumpteeIds()))),
                           "Some Class SubClassOf: Class: ex:ITALeft  . EquivalentTo: ( ( ex:hasCoronaryBypassConduit VALUE ex:CoronaryBypassConduit_internal_thoracic_artery_left_insitu ) OR ( ex:hasCoronaryBypassConduit VALUE ex:CoronaryBypassConduit_internal_thoracic_artery_left_free ) )")
-                     
+
 if __name__ == '__main__':
     unittest.main()

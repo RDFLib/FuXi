@@ -1,22 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 The language of positive RIF conditions determines what can appear as a body (the
- if-part) of a rule supported by the basic RIF logic. As explained in Section 
+ if-part) of a rule supported by the basic RIF logic. As explained in Section
  Overview, RIF's Basic Logic Dialect corresponds to definite Horn rules, and the
   bodies of such rules are conjunctions of atomic formulas without negation.
 """
 import itertools
 from rdflib import Namespace, RDF, RDFS, Variable, BNode, Literal, URIRef
-try:
-    from rdflib.collection import Collection
-    from rdflib.graph import ConjunctiveGraph, QuotedGraph, ReadOnlyGraphAggregate, Graph
-    from rdflib.namespace import NamespaceManager
-    _XSD_NS = Namespace("http://www.w3.org/2001/XMLSchema#")
-except ImportError:
-    from rdflib.Collection import Collection
-    from rdflib.Graph import ConjunctiveGraph,QuotedGraph,ReadOnlyGraphAggregate, Graph
-    from rdflib.syntax.NamespaceManager import NamespaceManager
-    from rdflib.Literal import _XSD_NS
+from rdflib.collection import Collection
+from rdflib.graph import ConjunctiveGraph, QuotedGraph, ReadOnlyGraphAggregate, Graph
+from rdflib.namespace import NamespaceManager
+_XSD_NS = Namespace("http://www.w3.org/2001/XMLSchema#")
 from rdflib.util import first
 
 OWL    = Namespace("http://www.w3.org/2002/07/owl#")
@@ -38,7 +32,7 @@ class QNameManager(object):
         self.nsMgr = NamespaceManager(Graph())
         self.nsMgr.bind('owl','http://www.w3.org/2002/07/owl#')
         self.nsMgr.bind('math','http://www.w3.org/2000/10/swap/math#')
-        
+
     def bind(self,prefix,namespace):
         self.nsMgr.bind(prefix,namespace)
 
@@ -51,7 +45,7 @@ class SetOperator(object):
             return "%s%s( %s )"%(nafPrefix,operator,' '.join([repr(i) for i in self.formulae]))
     def remove(self,item):
         self.formulae.remove(item)
-        
+
     def __len__(self):
         return len(self.formulae)
 
@@ -64,7 +58,7 @@ class Condition(object):
         A variable, v is safe in a condition formula if and only if ..
         """
         return False
-    
+
     def __iter__(self):
         for f in self.formulae:
             yield f
@@ -72,7 +66,7 @@ class Condition(object):
 class And(QNameManager,SetOperator,Condition):
     """
     CONJUNCTION ::= 'And' '(' CONDITION* ')'
-    
+
     >>> And([Uniterm(RDF.type,[RDFS.comment,RDF.Property]),
     ...      Uniterm(RDF.type,[OWL.Class,RDFS.Class])])
     And( rdf:Property(rdfs:comment) rdfs:Class(owl:Class) )
@@ -84,14 +78,14 @@ class And(QNameManager,SetOperator,Condition):
 
     def binds(self, var):
         """
-        A variable, v, is bound in a conjunction formula, f = And(c1...cn), n ≥ 1, 
+        A variable, v, is bound in a conjunction formula, f = And(c1...cn), n ≥ 1,
         if and only if, either
 
         - v is bound in at least one of the conjuncts;
 
-        For now we don't support equality predicates, so we only check the 
+        For now we don't support equality predicates, so we only check the
         first condition
-        
+
         >>> x=Variable('X')
         >>> y=Variable('Y')
         >>> lit1 = Uniterm(RDF.type,[x,RDFS.Class])
@@ -104,17 +98,17 @@ class And(QNameManager,SetOperator,Condition):
         """
         return first(itertools.ifilter(lambda conj: conj.binds(var),
                                        self.formulae)) is not None
-        
+
     def isSafeForVariable(self,var):
         """
         A variable, v is safe in a condition formula if and only if ..
-        
-        f is a conjunction, f = And(c1...cn), n ≥ 1, and v is safe in at least 
+
+        f is a conjunction, f = And(c1...cn), n ≥ 1, and v is safe in at least
         one conjunct in f
-        
+
         Since we currently don't support equality predicates, we only check
         the first condition
-        
+
         >>> x=Variable('X')
         >>> y=Variable('Y')
         >>> lit1 = Uniterm(RDF.type,[x,RDFS.Class])
@@ -122,17 +116,17 @@ class And(QNameManager,SetOperator,Condition):
         >>> conj = And([lit1,lit2])
         >>> conj.isSafeForVariable(y)
         True
-                
+
         """
         return first(itertools.ifilter(lambda conj: conj.isSafeForVariable(var),
                                        self.formulae)) is not None
-        
+
     def n3(self):
         """
         >>> And([Uniterm(RDF.type,[RDFS.comment,RDF.Property]),
         ...      Uniterm(RDF.type,[OWL.Class,RDFS.Class])]).n3()
         u'rdfs:comment a rdf:Property .\\n owl:Class a rdfs:Class'
-        
+
         """
 #        if not [term for term in self if not isinstance(term,Uniterm)]:
 #            g= Graph(namespace_manager = self.nsMgr)
@@ -141,14 +135,14 @@ class And(QNameManager,SetOperator,Condition):
 #            return g.serialize(format='n3')
 #        else:
         return u' .\n '.join([i.n3() for i in self])
-        
+
     def __repr__(self):
         return self.repr('And')
-    
+
 class Or(QNameManager,SetOperator,Condition):
     """
     DISJUNCTION ::= 'Or' '(' CONDITION* ')'
-    
+
     >>> Or([Uniterm(RDF.type,[RDFS.comment,RDF.Property]),
     ...      Uniterm(RDF.type,[OWL.Class,RDFS.Class])])
     Or( rdf:Property(rdfs:comment) rdfs:Class(owl:Class) )
@@ -160,9 +154,9 @@ class Or(QNameManager,SetOperator,Condition):
 
     def binds(self, var):
         """
-        A variable, v, is bound in a disjunction formula, if and only if v is 
+        A variable, v, is bound in a disjunction formula, if and only if v is
         bound in every disjunct where it occurs
-        
+
         >>> x=Variable('X')
         >>> y=Variable('Y')
         >>> lit1 = Uniterm(RDF.type,[x,RDFS.Class])
@@ -185,7 +179,7 @@ class Or(QNameManager,SetOperator,Condition):
     def isSafeForVariable(self,var):
         """
         A variable, v is safe in a condition formula if and only if ..
-        
+
         f is a disjunction, and v is safe in every disjunct;
         """
         unboundConjs = list(itertools.takewhile(
@@ -193,7 +187,7 @@ class Or(QNameManager,SetOperator,Condition):
                                     self.formulae))
         return len(unboundConjs) == len(self.formulae)
 
-        
+
     def __repr__(self):
         return self.repr('Or')
 
@@ -211,9 +205,9 @@ class Exists(Condition):
 
     def binds(self, var):
         """
-        A variable, v, is bound in an existential formula, 
+        A variable, v, is bound in an existential formula,
         Exists v1,...,vn (f'), n ≥ 1, if and only if v is bound in f'
-        
+
         >>> ex=Exists(formula=And([Uniterm(RDF.type,[RDFS.comment,RDF.Property]),
         ...                    Uniterm(RDF.type,[Variable('X'),RDFS.Class])]),
         ...        declare=[Variable('X')])
@@ -221,29 +215,29 @@ class Exists(Condition):
         True
         """
         return self.formula.binds(var)
-    
+
     def isSafeForVariable(self,var):
         """
         A variable, v is safe in a condition formula if and only if ..
-        
-        f is an existential formula, f = Exists v1,...,vn (f'), n ≥ 1, and 
+
+        f is an existential formula, f = Exists v1,...,vn (f'), n ≥ 1, and
         v is safe in f' .
         """
-        return self.formula.isSafeForVariable(var) 
-            
+        return self.formula.isSafeForVariable(var)
+
     def __iter__(self):
-        for term in self.formula: 
+        for term in self.formula:
             yield term
     def n3(self):
         """
         """
         return self.formula.n3()
         #return u"@forSome %s %s"%(','.join(self.declare),self.formula.n3())
-    
+
     def __repr__(self):
         return "Exists %s ( %r )"%(' '.join([var.n3() for var in self.declare]),
                                    self.formula )
-        
+
 class Atomic(Condition):
     """
     ATOMIC ::= Uniterm | Equal | Member | Subclass (| Frame)
@@ -251,16 +245,16 @@ class Atomic(Condition):
     def binds(self, var):
         """
         A variable, v, is bound in an atomic formula, a, if and only if
-        
-        - a is neither an equality nor an external predicate, and v occurs as an 
+
+        - a is neither an equality nor an external predicate, and v occurs as an
           argument in a;
         - or v is bound in the conjunction formula f = And(a).
-        
+
         Default is False
-                
+
         """
         return False
-    
+
     def __iter__(self):
         yield self
 
@@ -268,7 +262,7 @@ class Equal(QNameManager,Atomic):
     """
     Equal ::= TERM '=' TERM
     TERM ::= Const | Var | Uniterm | 'External' '(' Expr ')'
-    
+
     >>> Equal(RDFS.Resource,OWL.Thing)
     rdfs:Resource =  owl:Thing
     """
@@ -276,7 +270,7 @@ class Equal(QNameManager,Atomic):
         self.lhs = lhs
         self.rhs = rhs
         QNameManager.__init__(self)
-        
+
     def __repr__(self):
         left  = self.nsMgr.qname(self.lhs)
         right = self.nsMgr.qname(self.rhs)
@@ -289,9 +283,9 @@ class Uniterm(QNameManager,Atomic):
     """
     Uniterm ::= Const '(' TERM* ')'
     TERM ::= Const | Var | Uniterm
-    
+
     We restrict to binary predicates (RDF triples)
-    
+
     >>> Uniterm(RDF.type,[RDFS.comment,RDF.Property])
     rdf:Property(rdfs:comment)
     """
@@ -310,13 +304,13 @@ class Uniterm(QNameManager,Atomic):
     def binds(self, var):
         """
         A variable, v, is bound in an atomic formula, a, if and only if
-        
-        - a is neither an equality nor an external predicate, and v occurs as an 
+
+        - a is neither an equality nor an external predicate, and v occurs as an
           argument in a;
         - or v is bound in the conjunction formula f = And(a).
-        
+
         Default is False
-        
+
         >>> x = Variable('X')
         >>> lit = Uniterm(RDF.type,[RDFS.comment,x])
         >>> lit.binds(Variable('Z'))
@@ -325,23 +319,23 @@ class Uniterm(QNameManager,Atomic):
         False
         >>> Uniterm(RDF.type,[x,RDFS.Class]).binds(x)
         True
-        
+
         """
         if self.op == RDF.type:
             arg0,arg1 = self.arg
-            return var == arg0            
+            return var == arg0
         else:
             return var in self.arg
-        
+
     def isSafeForVariable(self,var):
         """
         A variable, v is safe in a condition formula if and only if ..
-        
-        f is an atomic formula and f is not an equality formula in which both 
+
+        f is an atomic formula and f is not an equality formula in which both
         terms are variables, and v occurs in f;
         """
         return self.binds(var)
-        
+
     def renameVariables(self,varMapping):
         if self.op == RDF.type:
             self.arg[0]=varMapping.get(self.arg[0],self.arg[0])
@@ -351,8 +345,8 @@ class Uniterm(QNameManager,Atomic):
         #Recalculate the hash after modification
         self._hash=hash(reduce(lambda x,y:str(x)+str(y),
             len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))
-            
-            
+
+
     def _get_terms(self):
         """
         Class attribute that returns all the terms of the literal as a lists
@@ -362,17 +356,17 @@ class Uniterm(QNameManager,Atomic):
         [rdflib.URIRef('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), rdflib.URIRef('http://www.w3.org/2000/01/rdf-schema#comment'), ?X]
         """
         return [self.op]+self.arg
-            
+
     terms = property(_get_terms)
-            
+
     def getVarMapping(self,otherLit, reverse=False):
         """
-        Takes another Uniterm and in every case where the corresponding term 
+        Takes another Uniterm and in every case where the corresponding term
         for both literals are different variables, we map from the variable
         for *this* uniterm to the corresponding variable of the other.
         The mapping will go in the other direction if the reverse
         keyword is True
-          
+
         >>> x = Variable('X')
         >>> y = Variable('Y')
         >>> lit1 = Uniterm(RDF.type,[RDFS.comment,x])
@@ -386,7 +380,7 @@ class Uniterm(QNameManager,Atomic):
         if isinstance(self.op,Variable) and isinstance(otherLit.op,Variable) and \
             self.op != otherLit.op:
             if reverse:
-                map[otherLit.op] = self.op 
+                map[otherLit.op] = self.op
             else:
                 map[self.op] = otherLit.op
         if isinstance(self.arg[0],Variable) and isinstance(otherLit.arg[0],Variable) \
@@ -398,7 +392,7 @@ class Uniterm(QNameManager,Atomic):
         if isinstance(self.arg[1],Variable) and isinstance(otherLit.arg[1],Variable) and \
             self.arg[1] != otherLit.arg[1]:
             if reverse:
-                map[otherLit.arg[1]] = self.arg[1] 
+                map[otherLit.arg[1]] = self.arg[1]
             else:
                 map[self.arg[1]] = otherLit.arg[1]
         return map
@@ -407,7 +401,7 @@ class Uniterm(QNameManager,Atomic):
         """
         Can the given mapping (presumably from variables to terms) be applied?
         """
-        return bool(set(mapping).intersection([self.op]+self.arg))        
+        return bool(set(mapping).intersection([self.op]+self.arg))
 
     def ground(self,varMapping):
         appliedKeys = set([self.op]+self.arg).intersection(varMapping.keys())
@@ -416,21 +410,21 @@ class Uniterm(QNameManager,Atomic):
         self.arg[1]=varMapping.get(self.arg[1],self.arg[1])
         #Recalculate the hash after modification
         self._hash=hash(reduce(lambda x,y:str(x)+str(y),
-            len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))        
+            len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))
         return appliedKeys
-            
+
     def isGround(self):
         for term in [self.op]+self.arg:
             if isinstance(term,Variable):
                 return False
         return True
-                
+
     def __hash__(self):
         return self._hash
-    
+
     def __eq__(self,other):
-        return hash(self) == hash(other)                       
-        
+        return hash(self) == hash(other)
+
     def renderTermAsN3(self,term):
         if term == RDF.type:
             return 'a'
@@ -438,22 +432,22 @@ class Uniterm(QNameManager,Atomic):
             return term.n3()
         else:
             return self.nsMgr.qname(term)
-        
+
     def n3(self):
         """
         Serialize as N3 (using available namespace managers)
-        
+
         >>> Uniterm(RDF.type,[RDFS.comment,RDF.Property]).n3()
         u'rdfs:comment a rdf:Property'
 
         """
-        return ' '.join([ self.renderTermAsN3(term) 
+        return ' '.join([ self.renderTermAsN3(term)
                          for term in [self.arg[0],self.op,self.arg[1]]])
-        
+
     def toRDFTuple(self):
         subject,_object = self.arg
         return (subject,self.op,_object)
-        
+
     def collapseName(self,val):
         try:
             rt = self.nsMgr.qname(val)
@@ -461,13 +455,13 @@ class Uniterm(QNameManager,Atomic):
                 return u':'+rt.split(':')[-1]
             else:
                 return rt
-                
+
         except:
             for prefix,uri in self.nsMgr.namespaces():
                 if val.startswith(uri):
                     return u'%s:%s'%(prefix,val.split(uri)[-1])
             return val
-        
+
     def normalizeTerm(self,term):
         if isinstance(term,Literal):
             if term.datatype == _XSD_NS.integer:
@@ -476,25 +470,25 @@ class Uniterm(QNameManager,Atomic):
                 return term.n3()
         else:
             return isinstance(term,Variable) and term.n3() or \
-                   self.collapseName(term)        
-   
+                   self.collapseName(term)
+
     def getArity(self):
         return 1 if self.op == RDF.type else 2
-        
+
     arity = property(getArity)
-   
+
     def setOperator(self,newOp):
         if self.op == RDF.type:
             self.arg[-1] = newOp
         else:
             self.op = newOp
-        
+
     def isSecondOrder(self):
         if self.op == RDF.type:
             return isinstance(self.arg[-1],Variable)
         else:
             return isinstance(self.op,Variable)
-        
+
     def __repr__(self):
         negPrefix = self.naf and 'not ' or ''
         if self.op == RDF.type:
@@ -503,13 +497,13 @@ class Uniterm(QNameManager,Atomic):
         else:
             return "%s%s(%s)"%(negPrefix,self.normalizeTerm(self.op),
                                 ' '.join([self.normalizeTerm(i) for i in self.arg]))
-            
+
 class PredicateExtentFactory(object):
     """
     Creates an object which when indexed returns
     a Uniterm with the 'registered' symbol and
     two-tuple argument
-    
+
     >>> from rdflib import Namespace, URIRef
     >>> EX_NS = Namespace('http://example.com/')
     >>> ns = {'ex':EX_NS}
@@ -519,13 +513,13 @@ class PredicateExtentFactory(object):
     >>> somePred2Factory = PredicateExtentFactory(EX_NS.somePredicate,binary=False,newNss=ns)
     >>> somePred2Factory[EX_NS.individual1]
     ex:somePredicate(ex:individual1)
-    
+
     """
     def __init__(self,predicateSymbol,binary=True,newNss=None):
         self.predicateSymbol = predicateSymbol
         self.binary = binary
         self.newNss = newNss
-        
+
     def term(self, name):
         from FuXi.Syntax.infixOWL import Class
         return Class(URIRef(self + name))
@@ -536,11 +530,11 @@ class PredicateExtentFactory(object):
             return Uniterm(self.predicateSymbol,[arg1,arg2],newNss=self.newNss)
         else:
             return Uniterm(RDF.type,[args,self.predicateSymbol],newNss=self.newNss)
-                        
+
 class ExternalFunction(Uniterm):
     """
-    An External(ATOMIC) is a call to an externally defined predicate, equality, 
-    membership, subclassing, or frame. Likewise, External(Expr) is a call to an 
+    An External(ATOMIC) is a call to an externally defined predicate, equality,
+    membership, subclassing, or frame. Likewise, External(Expr) is a call to an
     externally defined function.
     >>> ExternalFunction(Uniterm(URIRef('http://www.w3.org/2000/10/swap/math#greaterThan'),[Variable('VAL'),Literal(2)]))
     math:greaterThan(?VAL "2"^^<http://www.w3.org/2001/XMLSchema#integer>)
@@ -557,7 +551,7 @@ class ExternalFunction(Uniterm):
             newNss = isinstance(newNss,dict) and newNss.items() or newNss
             for k,v in newNss:
                 self.nsMgr.bind(k,v)
-            
+
 def test():
     import doctest
     doctest.testmod()

@@ -1,8 +1,4 @@
 from pprint import pprint, pformat
-try:
-    set
-except NameError:
-    from sets import Set as set
 from FuXi.Rete import *
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Rete.AlphaNode import SUBJECT,PREDICATE,OBJECT,VARIABLE
@@ -19,16 +15,9 @@ from FuXi.Rete.SidewaysInformationPassing import *
 from FuXi.Rete.TopDown import PrepareSipCollection, SipStrategy, RDFTuplesToSPARQL
 from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
 from rdflib import Namespace, RDF, RDFS, URIRef
-try:
-    from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
-    from rdfextras.sparql.parser import parse
-    from rdflib.namespace import NamespaceManager
-except ImportError:
-    from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
-    from rdflib.syntax.NamespaceManager import NamespaceManager
-    from rdflib.sparql.parser import parse
-    RDF = str(RDF.RDFNS)
-    RDFS = str(RDFS.RDFSNS)
+from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
+from rdfextras.sparql.parser import parse
+from rdflib.namespace import NamespaceManager
 from rdflib.store import Store
 from cStringIO import StringIO
 from glob import glob

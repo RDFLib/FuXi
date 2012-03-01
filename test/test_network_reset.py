@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 import unittest
-try:
-    from rdflib import Graph
-except ImportError:
-    from rdflib.Graph import Graph
+from rdflib import Graph
 from FuXi.Rete.RuleStore import SetupRuleStore
 
 ## fix for bug in reset method which didn't initialise
@@ -19,7 +16,7 @@ class NetworkReset(unittest.TestCase):
     def testReset(self):
         newInferredFacts = Graph()
         self.network.reset(newInferredFacts)
-        self.failUnless(newInferredFacts is self.network.inferredFacts)		
-    
+        self.failUnless(newInferredFacts is self.network.inferredFacts)
+
 if __name__ == '__main__':
 	unittest.main()

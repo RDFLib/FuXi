@@ -1,15 +1,8 @@
 """
 """
 from RuleStore import N3Builtin
-try:
-    from rdflib.graph import Graph
-except ImportError:
-    from rdflib.Graph import Graph 
+from rdflib.graph import Graph
 from rdflib import Namespace, RDF, RDFS, Literal, Variable, BNode, URIRef
-try:
-    set
-except NameError:
-    from sets import Set as set
 from ReteVocabulary import RETE_NS
 from Node import Node
 
@@ -32,7 +25,7 @@ def normalizeTerm(term):
         return term.identifier
     else:
         return term
-        
+
 from cPickle import dumps, PicklingError # for memoize
 class memoize(object):
     """Decorator that caches a function's return value each time it is called.
@@ -82,12 +75,12 @@ class ReteToken:
         self.object_   = (None,normalizeTerm(object_))
         self.bindingDict = {}
         self._termConcat = self.concatenateTerms([self.subject,self.predicate,self.object_])
-        self.hash = hash(self._termConcat) 
+        self.hash = hash(self._termConcat)
         self.inferred = False
 
     def __hash__(self):
         """
-        
+
         >>> token1 = ReteToken((RDFS.domain,RDFS.domain,RDFS.Class))
         >>> token2 = ReteToken((RDFS.domain,RDFS.domain,RDFS.Class))
         >>> token1 == token2
@@ -95,14 +88,14 @@ class ReteToken:
         >>> token1 in set([token2])
         True
         """
-        return self.hash 
+        return self.hash
 
     @memoize
     def concatenateTerms(terms):
         return reduce(lambda x,y:str(x)+str(y),[term[VALUE] for term in terms])
 
     def __eq__(self,other):
-        return hash(self) == hash(other)   
+        return hash(self) == hash(other)
 
     def alphaNetworkHash(self,termHash):
         """
@@ -115,19 +108,19 @@ class ReteToken:
         >>> token = ReteToken((URIRef('urn:uuid:Boo'),RDF.type,URIRef('urn:uuid:Foo')))
         >>> token.alphaNetworkHash(aNode1.alphaNetworkHash())
         u'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
-                
+
         """
         triple = list(self.asTuple())
         termHash = list(termHash)
-        return ''.join([triple[idx] for idx in TERMS if termHash[idx] == '1'])        
-                
+        return ''.join([triple[idx] for idx in TERMS if termHash[idx] == '1'])
+
     def unboundCopy(self,noSubsequentDebug=False):
         if noSubsequentDebug:
             return ReteToken((self.subject[VALUE],self.predicate[VALUE],self.object_[VALUE]))
         else:
             return ReteToken((self.subject[VALUE],self.predicate[VALUE],self.object_[VALUE]),self.debug)
-                
-    def __repr__(self):        
+
+    def __repr__(self):
         return "<ReteToken: %s>"%(
             ','.join(["%s->%s"%(var,val) for var,val in self.getVarBindings(False)])
         )
@@ -145,11 +138,11 @@ class ReteToken:
 
     def asTuple(self):
         return (self.subject[VALUE],self.predicate[VALUE],self.object_[VALUE])
-        
+
     def bindVariables(self,thing):
         """
         This function, called when a token passes a node test, associates token terms with variables
-        in the node test         
+        in the node test
         """
         if isinstance(thing,BuiltInAlphaNode):
             self.pattern = list(thing.n3builtin)
@@ -200,7 +193,7 @@ def defaultIntraElementTest(aReteToken,triplePattern):
         tokenTerm   = tokenTerms[idx]
         patternTerm = triplePattern[idx]
         if not isinstance(patternTerm,(Variable,BNode)) and tokenTerm != patternTerm:
-            return False            
+            return False
         elif patternTerm in varBindings and varBindings[patternTerm] != tokenTerm:
             return False
         elif patternTerm not in varBindings:
@@ -224,12 +217,12 @@ class AlphaNode(Node):
     def alphaNetworkHash(self,groundTermHash=False,skolemTerms=[]):
         """
         Thus, given a WME w, to determine which alpha memories w should be added to, we need only check whether
-        any of these eight possibilities is actually present in the system.  (Some might not be present, since 
+        any of these eight possibilities is actually present in the system.  (Some might not be present, since
         there might not be any alpha memory corresponding to that particular combination of tests and 's.)
-        
+
         0 - Variable
-        1 - Ground term        
-        
+        1 - Ground term
+
         >>> aNode1 = AlphaNode((Variable('P'),RDF.type,OWL_NS.InverseFunctionalProperty))
         >>> aNode2 = AlphaNode((Variable('X'),Variable('P'),Variable('Z')))
         >>> aNode1.alphaNetworkHash()
@@ -240,7 +233,7 @@ class AlphaNode(Node):
         u'http://www.w3.org/1999/02/22-rdf-syntax-ns#typehttp://www.w3.org/2002/07/owl#InverseFunctionalProperty'
         """
         if groundTermHash:
-            return ''.join([term for term in self.triplePattern 
+            return ''.join([term for term in self.triplePattern
                             if not isinstance(term,(BNode,Variable)) or \
                                isinstance(term,BNode) and term in skolemTerms])
         else:
@@ -271,13 +264,13 @@ class AlphaNode(Node):
             if memory.position == LEFT_MEMORY:
                 memory.addToken(singleToken)
             else:
-                memory.addToken(aReteToken)                
+                memory.addToken(aReteToken)
             if memory.successor.leftUnlinkedNodes and len(memory) == 1 and LEFT_UNLINKING:
                 #Relink left memory of successor
 #                from Util import renderNetwork
 #                from md5 import md5
 #                from datetime import datetime
-#                import os                                
+#                import os
 #                print "Re-linking %s"%(memory.successor)
 #                print "Re-linking triggered from %s"%(repr(self))
                 for node in memory.successor.leftUnlinkedNodes:
@@ -286,19 +279,19 @@ class AlphaNode(Node):
                     if node.unlinkedMemory is None:
                         assert len(node.descendentMemory) == 1,"%s %s %s"%(node,
                                                                         node.descendentMemory,
-                                                                        memory.successor)                        
-                        disconnectedMemory = list(node.descendentMemory)[0]                        
-                        
+                                                                        memory.successor)
+                        disconnectedMemory = list(node.descendentMemory)[0]
+
                     else:
                         disconnectedMemory = node.unlinkedMemory
                         node.descendentMemory.append(disconnectedMemory)
                         node.unlinkedMemory = None
 #                    if aReteToken.debug:
-#                        print "\t reattached memory ",str(disconnectedMemory) 
-                    memory.successor.memories[LEFT_MEMORY] = disconnectedMemory                    
+#                        print "\t reattached memory ",str(disconnectedMemory)
+                    memory.successor.memories[LEFT_MEMORY] = disconnectedMemory
                     node.descendentBetaNodes.add(memory.successor)
                     #print memory.successor.memories[LEFT_MEMORY]
-                    memory.successor.propagate(RIGHT_MEMORY,aReteToken.debug,wme=aReteToken)                    
+                    memory.successor.propagate(RIGHT_MEMORY,aReteToken.debug,wme=aReteToken)
                     #node._activate(singleToken,aReteToken.debug)
                     #print "Activating re-linked node", node
                     #node.propagate(None,aReteToken.debug)
@@ -314,7 +307,7 @@ class AlphaNode(Node):
 #                    os.popen ('dot -Tsvg -o %s %s'%(fName+'.svg',fName+'.dot'),'r')
 #                    os.remove(fName+'.dot')
 #                    print fName
-                
+
                 #self.relinked = True
                 memory.successor.leftUnlinkedNodes = set()
             if aReteToken.debug:
@@ -330,7 +323,7 @@ class AlphaNode(Node):
             else:
                 if aReteToken.debug:
                     print "skipped null right activation of %s from %s"%(memory.successor,self)
-                                
+
 class BuiltInAlphaNode(AlphaNode):
     """
     An Alpha Node for Builtins which doesn't participate in intraElement tests
@@ -340,10 +333,10 @@ class BuiltInAlphaNode(AlphaNode):
         self.n3builtin = n3builtin
         self.descendentMemory = []
         self.descendentBetaNodes = set()
-        self.universalTruths = [] 
+        self.universalTruths = []
     def __iter__(self):
         yield self.n3builtin.argument
-        yield self.n3builtin.result       
+        yield self.n3builtin.result
 
     def alphaNetworkHash(self,groundTermHash=False):
         if groundTermHash:
@@ -355,10 +348,10 @@ class BuiltInAlphaNode(AlphaNode):
         return "<BuiltInAlphaNode %s(%s),%s : Feeds %s beta nodes>"%(self.n3builtin.func,
                                                                      self.n3builtin.argument,
                                                                      self.n3builtin.result,len(self.descendentBetaNodes))
-    
+
     def intraElementTest(self,aReteToken):
-        pass    
-    
+        pass
+
 def test():
     import doctest
     doctest.testmod()

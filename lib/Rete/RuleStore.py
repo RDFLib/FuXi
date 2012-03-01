@@ -2,16 +2,10 @@ from __future__ import generators
 import sys
 from rdflib import Namespace, RDF, BNode, Literal, URIRef, Variable
 from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
-try:
-    from rdflib.graph import QuotedGraph, Graph
-    from rdflib.namespace import NamespaceManager
-    from rdfextras.utils.termutils import *
-    from rdfextras.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
-except ImportError:
-    from rdflib.Graph import QuotedGraph, Graph
-    from rdflib.syntax.NamespaceManager import NamespaceManager
-    from rdflib.term_utils import *
-    from rdflib.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
+from rdflib.graph import QuotedGraph, Graph
+from rdflib.namespace import NamespaceManager
+from rdfextras.utils.termutils import *
+from rdfextras.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
 
 from pprint import pprint
 from cStringIO import StringIO
@@ -37,13 +31,13 @@ class N3Builtin(object):
 
     def isSecondOrder(self):
         return False
-        
+
     def ground(self,varMapping):
         appliedKeys = set([self.argument,self.result]).intersection(varMapping.keys())
         self.argument = varMapping.get(self.argument,self.argument)
         self.result   = varMapping.get(self.result,self.result)
         return appliedKeys
-        
+
     def isGround(self):
         for term in [self.result,self.argument]:
             if isinstance(term,Variable):
@@ -54,10 +48,10 @@ class N3Builtin(object):
         if varMapping:
             self.argument=varMapping.get(self.argument,self.argument)
             self.result  =varMapping.get(self.result  ,self.result)
-        
+
     def binds(self,var):
         return True
-    
+
     def toRDFTuple(self):
         return (self.argument,self.uri,self.result)
     def render(self,argument,result):
@@ -65,12 +59,12 @@ class N3Builtin(object):
     def __iter__(self):
         for f in [self.uri,self.argument,self.result]:
             yield f
-    
+
     def __repr__(self):
         return "<%s>(%s,%s)"%(self.uri,
                               isinstance(self.argument,Variable) and '?%s'%self.argument or self.argument,
                               isinstance(self.result,Variable) and '?%s'%self.result or self.result)
-                              
+
 class Formula(object):
     """
     An N3 Formula.  Consists of an (internal) identifier
@@ -110,18 +104,18 @@ def SetupRuleStore(n3Stream=None,additionalBuiltins=None,makeNetwork=False):
     """
     ruleStore = N3RuleStore(additionalBuiltins=additionalBuiltins)
     nsMgr = NamespaceManager(Graph(ruleStore))
-    ruleGraph = Graph(ruleStore,namespace_manager=nsMgr)            
+    ruleGraph = Graph(ruleStore,namespace_manager=nsMgr)
     if n3Stream:
         ruleGraph.parse(n3Stream,format='n3')
     if makeNetwork:
         from Network import ReteNetwork
         closureDeltaGraph = Graph()
-        network = ReteNetwork(ruleStore,inferredTarget = closureDeltaGraph)        
+        network = ReteNetwork(ruleStore,inferredTarget = closureDeltaGraph)
         return ruleStore,ruleGraph,network
     return ruleStore,ruleGraph
-        
+
 class N3RuleStore(Store):
-    """    
+    """
     A specialized Store which maintains order of statements
     and creates N3Filters, Rules, Formula objects, and other facts
     Ensures builtin filters refer to variables that have preceded
@@ -136,7 +130,7 @@ class N3RuleStore(Store):
     ... @prefix m: <http://metacognition.info/FuXi/test#>.
     ... @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.    
+    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
     ... m:a a rdfs:Class;
     ...    m:prop1 1;
     ...    m:prop2 4.
@@ -144,7 +138,7 @@ class N3RuleStore(Store):
     ...    m:prop1 2;
     ...    m:prop2 4,1,5.
     ... (1 2) :relatedTo (3 4).
-    ... { ?X a owl:Class. ?X :prop1 ?M. ?X :prop2 ?N. ?N math:equalTo 3 } => { [] :selected (?M ?N) }.\"\"\"    
+    ... { ?X a owl:Class. ?X :prop1 ?M. ?X :prop2 ?N. ?N math:equalTo 3 } => { [] :selected (?M ?N) }.\"\"\"
     >>> g=g.parse(StringIO(src),format='n3')
     >>> s._finalize()
     >>> len([pred for subj,pred,obj in s.facts if pred == u'http://metacognition.info/FuXi/test#relatedTo'])
@@ -168,12 +162,12 @@ Description Rule Patterns Compilation
     ... @prefix : <http://metacognition.info/FuXi/test#>.
     ... @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-    ... @prefix owl: <http://www.w3.org/2002/07/owl#>. 
+    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
     ... { ?S a [ rdfs:subClassOf ?C ] } => { ?S a ?C }.\"\"\"
     >>> g=g.parse(StringIO(src),format='n3')
     >>> s._finalize()
     >>> assert s.rules
-    >>> assert [pattern for pattern in s.rules[0][RULE_LHS] if isinstance(pattern,tuple) and [term for term in pattern if isinstance(term,BNode) ]],repr(s.rules[0][RULE_LHS])    
+    >>> assert [pattern for pattern in s.rules[0][RULE_LHS] if isinstance(pattern,tuple) and [term for term in pattern if isinstance(term,BNode) ]],repr(s.rules[0][RULE_LHS])
 
 
 Test single fact with collection
@@ -185,8 +179,8 @@ Test single fact with collection
     ... @prefix : <http://metacognition.info/FuXi/test#>.
     ... @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.    
-    ... (1 2) :relatedTo owl:Class.\"\"\"    
+    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
+    ... (1 2) :relatedTo owl:Class.\"\"\"
     >>> g=g.parse(StringIO(src),format='n3')
     >>> s._finalize()
     >>> print len(s.facts)
@@ -201,10 +195,10 @@ RHS can only include RDF triples
     ... @prefix : <http://metacognition.info/FuXi/test#>.
     ... @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.    
-    ... {} => { 3 math:lessThan 2}.\"\"\"    
+    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
+    ... {} => { 3 math:lessThan 2}.\"\"\"
     >>> g=g.parse(StringIO(src),format='n3')
-    >>> try: 
+    >>> try:
     ...   s._finalize()
     ... except Exception,e:
     ...   print e
@@ -217,8 +211,8 @@ BuiltIn used out of order
     >>> src = \"\"\"
     ... @prefix math: <http://www.w3.org/2000/10/swap/math#>.
     ... @prefix : <http://metacognition.info/FuXi/test#>.
-    ... { ?M math:lessThan ?Z.  ?R :value ?M; :value2 ?Z} => { ?R a :Selected.  }.\"\"\"    
-    >>> try: 
+    ... { ?M math:lessThan ?Z.  ?R :value ?M; :value2 ?Z} => { ?R a :Selected.  }.\"\"\"
+    >>> try:
     ...   g=g.parse(StringIO(src),format='n3')
     ... except Exception,e:
     ...   print e
@@ -232,9 +226,9 @@ BuiltIn used out of order
     ... @prefix : <http://metacognition.info/FuXi/test#>.
     ... @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.    
+    ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
     ... {} => {rdf:nil :allClasses ?C}.
-    ... {?C owl:oneOf ?L. ?X a ?C. ?L :notItem ?X} => {}.\"\"\"    
+    ... {?C owl:oneOf ?L. ?X a ?C. ?L :notItem ?X} => {}.\"\"\"
     >>> g=g.parse(StringIO(src),format='n3')
     >>> len(s.formulae)
     2
@@ -261,18 +255,18 @@ BuiltIn used out of order
         self.filters.update(FILTERS)
         if additionalBuiltins:
             self.filters.update(additionalBuiltins)
-        
+
     def namespace(self,prefix):
         return self.nsMgr.get(prefix)
-    
+
     def bind(self, prefix, namespace, override=True):
         if override or prefix not in self.nsMgr:
             self.nsMgr[prefix]=namespace
 
     def prefix(self,namespace):
-        return dict([(v,k) for 
+        return dict([(v,k) for
                        k,v in self.nsMgr.items()]).get(namespace)
-        
+
     def _unrollList(self,l,listName):
         listTriples = []
         lastItemName = None
@@ -283,17 +277,17 @@ BuiltIn used out of order
             listTriples.append((linkName,RDF.first,linkItem))
             lastItemName = linkName
         listTriples.append((lastItemName,RDF.rest,RDF.nil))
-        return listTriples 
-        
-    def _finalize(self):        
-        def unrollFunc(left,right):            
+        return listTriples
+
+    def _finalize(self):
+        def unrollFunc(left,right):
             leftListsToUnroll = []
             rightListsToUnroll = []
             if isinstance(left,tuple):
                 s,p,o = left
                 leftListsToUnroll = [term for term in [s,o] if term in self._lists]
                 if leftListsToUnroll:
-                    leftListsToUnroll = reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in leftListsToUnroll]) 
+                    leftListsToUnroll = reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in leftListsToUnroll])
                 left = [left]
             elif isinstance(left,N3Builtin):
                 left = [left]
@@ -304,13 +298,13 @@ BuiltIn used out of order
                     rightListsToUnroll = reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in rightListsToUnroll])
                 right = [right]
             elif isinstance(right,N3Builtin):
-                right = [right]                    
+                right = [right]
             return left +leftListsToUnroll+right+rightListsToUnroll
         if len(self.facts) == 1:
             s,p,o = self.facts[0]
             listsToUnroll = [term for term in [s,o] if term in self._lists]
             if listsToUnroll:
-                self.facts.extend(reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in listsToUnroll]))            
+                self.facts.extend(reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in listsToUnroll]))
         elif self.facts:
             self.facts = reduce(unrollFunc,self.facts)
         for formula in self.formulae.values():
@@ -321,18 +315,18 @@ BuiltIn used out of order
                     if listsToUnroll:
                         listTriples = reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in listsToUnroll])
                         formula.extend(listTriples)
-            elif len(formula):            
+            elif len(formula):
                 formula.triples = reduce(unrollFunc,[i for i in formula])
         for lhs,rhs in self.rules:
             for item in self.formulae.get(rhs,[]):
                 assert isinstance(item,tuple),"Rule RHS must only include RDF triples! (%s)"%item
         self.rules = [(self.formulae.get(lhs,Formula(lhs)),self.formulae.get(rhs,Formula(rhs))) for lhs,rhs in self.rules]
-    
+
     def _checkVariableReferences(self,referencedVariables,terms,funcObj):
         for term in [i for i in terms if isinstance(i,Variable)]:
             if term not in referencedVariables:
                 raise Exception("Builtin refers to variables without previous reference! (%s)"%funcObj)
-    
+
     def add(self, (subject, predicate, obj), context=None, quoted=False):
         if predicate == RDF.first and not isinstance(subject,Variable) and not isinstance(object,Variable):
             if not self.currentList:
@@ -352,7 +346,7 @@ BuiltIn used out of order
                 self.rules.append(
                       (isinstance(subject,URIRef) and subject or subject.identifier,
                        isinstance(obj,URIRef) and obj or obj.identifier))
-            else:                
+            else:
                 self.facts.append((subject,predicate,obj))
         else:
             formula = self.formulae.get(context.identifier,Formula(context.identifier))
@@ -368,13 +362,13 @@ BuiltIn used out of order
                 self.referencedVariables.update(variables)
                 formula.append((subject,predicate,obj))
             self.formulae[context.identifier] = formula
-                
+
     def __repr__(self):
         return ""
-    
+
     def __len__(self, context=None):
         return 0
-    
+
     def optimizeRules(self):
         patternDict = {}
         for lhs,rhs in self.rules:
@@ -386,9 +380,9 @@ BuiltIn used out of order
             if len(vals) > 1:
                 print "###### Similar Patterns ######"
                 for val in vals:
-                    print val 
+                    print val
                 print "##############################"
-    
+
 def test():
     import doctest
     doctest.testmod()
@@ -402,8 +396,8 @@ def test2():
     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
     @prefix owl: <http://www.w3.org/2002/07/owl#>.
-    :subj :pred obj.     
-    {} => { 3 math:lessThan 2}."""    
+    :subj :pred obj.
+    {} => { 3 math:lessThan 2}."""
     g=g.parse(StringIO(src),format='n3')
     s._finalize()
 

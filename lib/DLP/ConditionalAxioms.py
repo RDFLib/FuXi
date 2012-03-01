@@ -1,19 +1,15 @@
 from cStringIO import StringIO
-from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal, URIRef
+from rdflib import RDF
 from FuXi.Syntax.InfixOWL import OWL_NS
 from FuXi.Horn.HornRules import HornFromN3
-try:
-    from rdflib import plugin, query
-    rdflib_version = 3
-    plugin.register(
-            'sparql', query.Processor,
-            'rdfextras.sparql.processor', 'Processor')
+from rdflib import plugin, query
+plugin.register(
+        'sparql', query.Processor,
+        'rdfextras.sparql.processor', 'Processor')
 
-    plugin.register(
-            'sparql', query.Result,
-            'rdfextras.sparql.query', 'SPARQLQueryResult')
-except ImportError:
-    rdflib_version = 2
+plugin.register(
+        'sparql', query.Result,
+        'rdfextras.sparql.query', 'SPARQLQueryResult')
 
 LIST_MEMBERSHIP_SEMANTICS=\
 """
@@ -71,20 +67,15 @@ ASK {
 def AdditionalRules(tBox):
     """
     Only include list and oneOf semantics
-    if oneOf axiom is detected in graph 
+    if oneOf axiom is detected in graph
     reduce computational complexity.  Same with other conditional axioms
-    
+
     """
     ruleSrc = set()
     addListSemantics = False
-    if rdflib_version == 3:
-        if tBox.query(FUNCTIONAL_PROPERTIES,
-                      initNs={"owl":OWL_NS}).askAnswer:
-            ruleSrc.add(FUNCTIONAL_SEMANTICS)
-    else:
-        if tBox.query(FUNCTIONAL_PROPERTIES,
-                      initNs={"owl":OWL_NS}).askAnswer[0]:
-            ruleSrc.add(FUNCTIONAL_SEMANTICS)
+    if tBox.query(FUNCTIONAL_PROPERTIES,
+                  initNs={"owl":OWL_NS}).askAnswer:
+        ruleSrc.add(FUNCTIONAL_SEMANTICS)
     if (None,OWL_NS.oneOf,None) in tBox:
         ruleSrc.add(NOMINAL_SEMANTICS)
         addListSemantics = True
@@ -92,7 +83,7 @@ def AdditionalRules(tBox):
         ruleSrc.add(DIFFERENT_FROM_SEMANTICS)
         addListSemantics = True
     if addListSemantics:
-        ruleSrc.add(LIST_MEMBERSHIP_SEMANTICS)                
+        ruleSrc.add(LIST_MEMBERSHIP_SEMANTICS)
     for src in ruleSrc:
         for rule in HornFromN3(StringIO(src)):
             yield rule

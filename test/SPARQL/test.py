@@ -12,18 +12,9 @@ from FuXi.SPARQL.BackwardChainingStore import *
 from FuXi.Rete.Util import setdict
 
 from rdflib import Namespace, RDF, RDFS, URIRef
-try:
-    from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, URIRef, Variable
-    from rdfextras.sparql.parser import parse
-    from rdflib import OWL as OWLNS
-except ImportError:
-    from rdflib.Namespace import Namespace
-    from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef, Variable
-    from rdflib.sparql.parser import parse
-    from rdflib import OWL
-    OWLNS = str(OWL.OWLNS)
-    RDF = str(RDF.RDFNS)
-    RDFS = str(RDFS.RDFSNS)
+from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, URIRef, Variable
+from rdfextras.sparql.parser import parse
+from rdflib import OWL as OWLNS
 from rdflib.store import Store
 
 
@@ -125,7 +116,7 @@ def parseResults(sparqlRT):
             if currBind:
                 actualRT.append(currBind)
     return actualRT
-        
+
 class TestSequence(unittest.TestCase):
     verbose = False
     def setUp(self):

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from pprint import pprint
 from FuXi.Rete.Proof import GenerateProof
 from FuXi.Rete import ReteNetwork
 from FuXi.Rete.AlphaNode import SUBJECT,PREDICATE,OBJECT,VARIABLE
@@ -9,7 +8,7 @@ from FuXi.Rete.Util import renderNetwork,generateTokenSet, xcombine
 from FuXi.DLP.DLNormalization import NormalFormReduction
 from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
 from FuXi.LP import IdentifyHybridPredicates
-from FuXi.SPARQL.BackwardChainingStore import * 
+from FuXi.SPARQL.BackwardChainingStore import *
 from FuXi.DLP import MapDLPtoNetwork, DisjunctiveNormalForm
 from FuXi.Horn import *
 from FuXi.Horn.HornRules import HornFromN3, Ruleset
@@ -18,57 +17,50 @@ from FuXi.Rete.TopDown import *
 from FuXi.Rete.Proof import ProofBuilder, PML, GMP_NS
 from FuXi.Rete.Magic import *
 from FuXi.Rete.SidewaysInformationPassing import *
-try:
-    from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
-    from rdflib.namespace import NamespaceManager
-    from rdfextras.sparql.components import Prolog
-    from rdfextras.sparql.parser import parse as ParseSPARQL
-    from rdfextras.sparql.algebra import ReduceGraphPattern
-except ImportError:
-    from rdflib.Graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
-    from rdflib.syntax.NamespaceManager import NamespaceManager
-    from rdflib.sparql.bison.Query import Prolog
-    from rdflib.sparql.bison.Processor import Parse as ParseSPARQL
-    from rdflib.sparql.Algebra import ReduceGraphPattern
+from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
+from rdflib.namespace import NamespaceManager
+from rdfextras.sparql.components import Prolog
+from rdfextras.sparql.parser import parse as ParseSPARQL
+from rdfextras.sparql.algebra import ReduceGraphPattern
 from rdflib import plugin, RDF, RDFS, URIRef, Literal, Variable, Namespace
 from rdflib.store import Store
 from cStringIO import StringIO
-        
+
 import unittest, time, warnings,sys
 
 TEMPLATES = Namespace('http://code.google.com/p/fuxi/wiki/BuiltinSPARQLTemplates#')
 
 RDF_SERIALIZATION_FORMATS = [
-    'xml', 
-    'TriX', 
+    'xml',
+    'TriX',
     'pretty-xml',
     'turtle',
-    'n3', 
+    'n3',
 ]
 
 def main():
     from optparse import OptionParser
     op = OptionParser('usage: %prog [options] factFile1 factFile2 ... factFileN')
-    op.add_option('--why', 
+    op.add_option('--why',
                   default=None,
       help = 'Specifies the goals to solve for using the non-niave methods'+
-              'see --method')    
-    op.add_option('--closure', 
+              'see --method')
+    op.add_option('--closure',
                   action='store_true',
                   default=False,
-      help = 'Whether or not to serialize the inferred triples'+ 
+      help = 'Whether or not to serialize the inferred triples'+
              ' along with the original triples.  Otherwise '+
               '(the default behavior), serialize only the inferred triples')
-    op.add_option('--imports', 
+    op.add_option('--imports',
                 action='store_true',
                 default=False,
     help = 'Whether or not to follow owl:imports in the fact graph')
-    op.add_option('--output', 
+    op.add_option('--output',
                   default='n3',
                   metavar='RDF_FORMAT',
-                  choices = ['xml', 
-                             'TriX', 
-                             'n3', 
+                  choices = ['xml',
+                             'TriX',
+                             'n3',
                              'pml',
                              'proof-graph',
                              'nt',
@@ -90,7 +82,7 @@ def main():
                   dest='classes',
                   action='append',
                   default=[],
-                  metavar='QNAME', 
+                  metavar='QNAME',
       help = 'Used with --output=man-owl to determine which '+
              'classes within the entire OWL/RDF are targetted for serialization'+
              '.  Can be used more than once')
@@ -105,18 +97,18 @@ def main():
                   action='append',
                   dest='properties',
                   default=[],
-                  metavar='QNAME', 
+                  metavar='QNAME',
       help = 'Used with --output=man-owl or --extract to determine which '+
              'properties are serialized / extracted.  Can be used more than once')
-    op.add_option('--normalize', 
+    op.add_option('--normalize',
                   action='store_true',
                   default=False,
       help = "Used with --output=man-owl to attempt to determine if the ontology is 'normalized' [Rector, A. 2003]"+
       "The default is %default")
-    op.add_option('--ddlGraph', 
+    op.add_option('--ddlGraph',
                 default=False,
-      help = "The location of a N3 Data Description document describing the IDB predicates")      
-    op.add_option('--input-format', 
+      help = "The location of a N3 Data Description document describing the IDB predicates")
+    op.add_option('--input-format',
                   default='xml',
                   dest='inputFormat',
                   metavar='RDF_FORMAT',
@@ -124,31 +116,31 @@ def main():
       help = "The format of the RDF document(s) which serve as the initial facts "+
              " for the RETE network. One of 'xml','n3','trix', 'nt', "+
              "or 'rdfa'.  The default is %default")
-    op.add_option('--safety', 
+    op.add_option('--safety',
                   default='none',
                   metavar='RULE_SAFETY',
                   choices = ['loose', 'strict','none'],
       help = "Determines how to handle RIF Core safety.  A value of 'loose' "+
              " means that unsafe rules will be ignored.  A value of 'strict' "+
              " will cause a syntax exception upon any unsafe rule.  A value of "+
-             "'none' (the default) does nothing")    
-    op.add_option('--pDSemantics', 
+             "'none' (the default) does nothing")
+    op.add_option('--pDSemantics',
                   action='store_true',
                   default=False,
       help = 'Used with --dlp to add pD semantics ruleset for semantics not covered '+
       'by DLP but can be expressed in definite Datalog Logic Programming'+
       ' The default is %default')
-    op.add_option('--stdin', 
+    op.add_option('--stdin',
                   action='store_true',
                   default=False,
       help = 'Parse STDIN as an RDF graph to contribute to the initial facts. The default is %default ')
-    op.add_option('--ns', 
+    op.add_option('--ns',
                   action='append',
                   default=[],
                   metavar="PREFIX=URI",
       help = 'Register a namespace binding (QName prefix to a base URI).  This '+
              'can be used more than once')
-    op.add_option('--rules', 
+    op.add_option('--rules',
                   default=[],
                   action='append',
                   metavar='PATH_OR_URI',
@@ -159,13 +151,13 @@ def main():
     op.add_option('--strictness',
                   default='defaultBase',
                   metavar='DDL_STRICTNESS',
-                  choices = ['loose', 
-                             'defaultBase', 
-                             'defaultDerived', 
+                  choices = ['loose',
+                             'defaultBase',
+                             'defaultDerived',
                              'harsh'],
       help = 'Used with --why to specify whether to: *not* check if predicates are '+
       ' both derived and base (loose), if they are, mark as derived (defaultDerived) '+
-      'or as base (defaultBase) predicates, else raise an exception (harsh)')    
+      'or as base (defaultBase) predicates, else raise an exception (harsh)')
     op.add_option('--method',
                   default='naive',
                   metavar='reasoning algorithm',
@@ -176,96 +168,96 @@ def main():
                   default=False,
                   action='store_true',
       help = 'Used with --why to determine whether to fetch all answers or just '+
-      'the first')            
+      'the first')
     op.add_option('--edb',
                   default=[],
                   action='append',
-                  metavar='EXTENSIONAL_DB_PREDICATE_QNAME',                  
+                  metavar='EXTENSIONAL_DB_PREDICATE_QNAME',
       help = 'Used with --why/--strictness=defaultDerived to specify which clashing '+
       'predicate will be designated as a base predicate')
     op.add_option('--idb',
                   default=[],
                   action='append',
-                  metavar='INTENSIONAL_DB_PREDICATE_QNAME',                  
+                  metavar='INTENSIONAL_DB_PREDICATE_QNAME',
       help = 'Used with --why/--strictness=defaultBase to specify which clashing '+
-      'predicate will be designated as a derived predicate')                    
+      'predicate will be designated as a derived predicate')
     op.add_option('--hybridPredicate',
                 default=[],
                 action='append',
-                metavar='PREDICATE_QNAME',                  
+                metavar='PREDICATE_QNAME',
     help = 'Used with --why to explicitely specify a hybrid predicate (in both '+
            ' IDB and EDB) ')
-      
+
     op.add_option('--noMagic',
                   default=[],
                   action='append',
-                  metavar='DB_PREDICATE_QNAME',                  
+                  metavar='DB_PREDICATE_QNAME',
       help = 'Used with --why to specify that the predicate shouldnt have its '+
-      'magic sets calculated')                    
-    op.add_option('--filter', 
+      'magic sets calculated')
+    op.add_option('--filter',
                   action='append',
                   default=[],
                   metavar='PATH_OR_URI',
       help = 'The Notation 3 documents to use as a filter (entailments do not particpate in network)')
-    op.add_option('--ruleFacts', 
+    op.add_option('--ruleFacts',
                   action='store_true',
                   default=False,
       help = "Determines whether or not to attempt to parse initial facts from "+
       "the rule graph.  The default is %default")
-    op.add_option('--builtins', 
+    op.add_option('--builtins',
                   default=False,
                   metavar='PATH_TO_PYTHON_MODULE',
       help = "The path to a python module with function definitions (and a "+
       "dicitonary called ADDITIONAL_FILTERS) to use for builtins implementations")
-    op.add_option('--dlp', 
+    op.add_option('--dlp',
                   action='store_true',
                   default=False,
       help = 'Use Description Logic Programming (DLP) to extract rules from OWL/RDF.  The default is %default')
-    op.add_option('--sparqlEndpoint', 
+    op.add_option('--sparqlEndpoint',
                 action='store_true',
                 default=False,
     help = 'Indicates that the sole argument is the URI of a SPARQL endpoint to query')
 
-    op.add_option('--ontology', 
+    op.add_option('--ontology',
                   action='append',
                   default=[],
                   metavar='PATH_OR_URI',
       help = 'The path to an OWL RDF/XML graph to use DLP to extract rules from '+
-      '(other wise, fact graph(s) are used)  ') 
-      
-    op.add_option('--ontologyFormat', 
+      '(other wise, fact graph(s) are used)  ')
+
+    op.add_option('--ontologyFormat',
                 default='xml',
                 dest='ontologyFormat',
                 metavar='RDF_FORMAT',
                 choices = ['xml', 'trix', 'n3', 'nt', 'rdfa'],
     help = "The format of the OWL RDF/XML graph specified via --ontology.  The default is %default")
-   
-    op.add_option('--builtinTemplates', 
+
+    op.add_option('--builtinTemplates',
                   default=None,
                   metavar='N3_DOC_PATH_OR_URI',
       help = 'The path to an N3 document associating SPARQL FILTER templates to '+
-      'rule builtins')        
-    op.add_option('--negation', 
+      'rule builtins')
+    op.add_option('--negation',
                   action='store_true',
-                  default=False,                
-      help = 'Extract negative rules?')    
-    op.add_option('--normalForm', 
+                  default=False,
+      help = 'Extract negative rules?')
+    op.add_option('--normalForm',
                   action='store_true',
-                  default=False,                
-      help = 'Whether or not to reduce DL axioms & LP rules to a normal form')        
+                  default=False,
+      help = 'Whether or not to reduce DL axioms & LP rules to a normal form')
     (options, facts) = op.parse_args()
-    
+
     nsBinds = {'iw':'http://inferenceweb.stanford.edu/2004/07/iw.owl#'}
     for nsBind in options.ns:
         pref,nsUri = nsBind.split('=')
         nsBinds[pref]=nsUri
-    
+
     namespace_manager = NamespaceManager(Graph())
     if options.sparqlEndpoint:
-        factGraph = Graph(plugin.get('SPARQL',Store)(facts[0])) 
+        factGraph = Graph(plugin.get('SPARQL',Store)(facts[0]))
         options.hybrid = False
     else:
-        factGraph = Graph() 
+        factGraph = Graph()
     ruleSet = Ruleset()
 
     for fileN in options.rules:
@@ -298,24 +290,24 @@ def main():
                 for owlImport in factGraph.objects(predicate=OWL_NS.imports):
                     factGraph.parse(owlImport)
                     print >>sys.stderr, "Parsed Semantic Web Graph.. ", owlImport
-                
+
     if not options.sparqlEndpoint and facts:
         for pref,uri in factGraph.namespaces():
             nsBinds[pref]=uri
-        
+
     if options.stdin:
         assert not options.sparqlEndpoint,"Cannot use --stdin with --sparqlEndpoint"
         factGraph.parse(sys.stdin,format=options.inputFormat)
-        
+
     #Normalize namespace mappings
     #prune redundant, rdflib-allocated namespace prefix mappings
     newNsMgr = NamespaceManager(factGraph)
-    from FuXi.Rete.Util import CollapseDictionary    
-    for k,v in CollapseDictionary(dict([(k,v) 
+    from FuXi.Rete.Util import CollapseDictionary
+    for k,v in CollapseDictionary(dict([(k,v)
                                     for k,v in factGraph.namespaces()])).items():
         newNsMgr.bind(k,v)
     factGraph.namespace_manager = newNsMgr
-        
+
     if options.normalForm:
         NormalFormReduction(factGraph)
 
@@ -331,7 +323,7 @@ def main():
         rule_store, rule_graph, network = SetupRuleStore(makeNetwork=True)
     network.inferredFacts = closureDeltaGraph
     network.nsMap = nsBinds
-    
+
     if options.dlp:
         from FuXi.DLP.DLNormalization import NormalFormReduction
         if options.ontology:
@@ -351,7 +343,7 @@ def main():
                                  addPDSemantics=options.pDSemantics,
                                  constructNetwork=False,
                                  ignoreNegativeStratus=options.negation,
-                                 safety = safetyNameMap[options.safety]) 
+                                 safety = safetyNameMap[options.safety])
         ruleSet.formulae.extend(dlp)
     if options.output == 'rif' and not options.why:
         for rule in ruleSet:
@@ -359,7 +351,7 @@ def main():
         if options.negation:
             for nRule in network.negRules:
                 print nRule
-        
+
     elif options.output == 'man-owl':
         cGraph = network.closureGraph(factGraph,readOnly=False)
         cGraph.namespace_manager = namespace_manager
@@ -381,7 +373,7 @@ def main():
             for c in AllClasses(cGraph):
                 if options.normalize:
                     if c.isPrimitive():
-                        primAnc = [sc for sc in c.subClassOf if sc.isPrimitive()] 
+                        primAnc = [sc for sc in c.subClassOf if sc.isPrimitive()]
                         if len(primAnc)>1:
                             warnings.warn("Branches of primitive skeleton taxonomy"+
                               " should form trees: %s has %s primitive parents: %s"%(
@@ -397,7 +389,7 @@ def main():
                                       Class(otherChild).qname),UserWarning,1)
 #                if not isinstance(c.identifier,BNode):
                 print c.__repr__(True)
-                    
+
     if not options.why:
         #Niave construction of graph
         for rule in ruleSet:
@@ -411,16 +403,16 @@ def main():
                                                 format='n3')
         factGraph.templateMap = \
             dict([(pred,template)
-                      for pred,_ignore,template in 
+                      for pred,_ignore,template in
                             builtinTemplateGraph.triples(
                                 (None,
                                  TEMPLATES.filterTemplate,
                                  None))])
         goals=[]
-        query = ParseSPARQL(options.why) 
+        query = ParseSPARQL(options.why)
         network.nsMap['pml'] = PML
         network.nsMap['gmp'] = GMP_NS
-        network.nsMap['owl'] = OWL_NS        
+        network.nsMap['owl'] = OWL_NS
         nsBinds.update(network.nsMap)
         network.nsMap = nsBinds
         if not query.prolog:
@@ -441,7 +433,7 @@ def main():
         defaultDerivedPreds  = set()
         hybridPredicates     = []
         mapping = dict(newNsMgr.namespaces())
-        for edb in options.edb: 
+        for edb in options.edb:
             pref,uri=edb.split(':')
             defaultBasePreds.append(URIRef(mapping[pref]+uri))
         noMagic = []
@@ -456,14 +448,14 @@ def main():
                                     Graph(),
                                     ruleSet)
         else:
-            for idb in options.idb: 
+            for idb in options.idb:
                 pref,uri=idb.split(':')
                 defaultDerivedPreds.add(URIRef(mapping[pref]+uri))
             defaultDerivedPreds.update(set([p == RDF.type and o or p for s,p,o in goals]))
             for hybrid in options.hybridPredicate:
                 pref,uri=hybrid.split(':')
                 hybridPredicates.append(URIRef(mapping[pref]+uri))
-        
+
         if options.method == 'gms':
             for goal in goals:
                 goalSeed=AdornLiteral(goal).makeMagicPred()
@@ -502,26 +494,26 @@ def main():
             else:
                 sTime = sTime * 1000
                 sTimeStr = "%s milli seconds"%sTime
-            print >>sys.stderr, "Time to calculate closure on working memory: ",sTimeStr                                 
+            print >>sys.stderr, "Time to calculate closure on working memory: ",sTimeStr
 
             if options.output == 'rif':
                 print >>sys.stderr,"Rules used for bottom-up evaluation"
                 if network.rules:
                     for clause in network.rules:
-                        print >>sys.stderr,clause                    
+                        print >>sys.stderr,clause
                 else:
                     for clause in factGraph.adornedProgram:
                         print >>sys.stderr,clause
             if options.output == 'conflict':
                 network.reportConflictSet()
-                        
+
         elif options.method == 'bfp':
             topDownDPreds = defaultDerivedPreds
             if options.builtinTemplates:
                 builtinTemplateGraph = Graph().parse(options.builtinTemplates,
                                                     format='n3')
                 builtinDict = dict([(pred,template)
-                              for pred,_ignore,template in 
+                              for pred,_ignore,template in
                                     builtinTemplateGraph.triples(
                                         (None,
                                          TEMPLATES.filterTemplate,
@@ -536,13 +528,13 @@ def main():
                             derivedPredicates = topDownDPreds,
                             templateMap = builtinDict,
                             nsBindings=network.nsMap,
-                            identifyHybridPredicates = 
+                            identifyHybridPredicates =
                             options.hybrid if options.method == 'bfp' else False,
                             hybridPredicates = hybridPredicates)
             targetGraph = Graph(topDownStore)
             for pref,nsUri in network.nsMap.items():
-                targetGraph.bind(pref,nsUri)      
-            start = time.time()                  
+                targetGraph.bind(pref,nsUri)
+            start = time.time()
             # queryLiteral = EDBQuery([BuildUnitermFromTuple(goal) for goal in goals],
             #                         targetGraph)
             # query = queryLiteral.asSPARQL()
@@ -578,7 +570,7 @@ def main():
                     print >>sys.stderr,query.asSPARQL()
 
     elif options.method == 'naive':
-        start = time.time()                  
+        start = time.time()
         network.feedFactsToAdd(workingMemory)
         sTime = time.time() - start
         if sTime > 1:
@@ -589,20 +581,20 @@ def main():
         print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
         print >>sys.stderr, network
         if options.output == 'conflict':
-            network.reportConflictSet()            
-                                    
+            network.reportConflictSet()
+
     for fileN in options.filter:
         for rule in HornFromN3(fileN):
             network.buildFilterNetworkFromClause(rule)
 
     if options.negation and network.negRules and options.method in ['both',
                                                                     'bottomUp']:
-        now=time.time()      
+        now=time.time()
         rt=network.calculateStratifiedModel(factGraph)
         print >>sys.stderr,\
         "Time to calculate stratified, stable model (inferred %s facts): %s"%(
                                     rt,
-                                    time.time()-now)                
+                                    time.time()-now)
     if options.filter:
         print >>sys.stderr,"Applying filter to entailed facts"
         network.inferredFacts = network.filteredFacts
@@ -611,13 +603,13 @@ def main():
     if options.closure and options.output in RDF_SERIALIZATION_FORMATS:
         cGraph = network.closureGraph(factGraph)
         cGraph.namespace_manager = namespace_manager
-        print cGraph.serialize(destination=None, 
-                               format=options.output, 
+        print cGraph.serialize(destination=None,
+                               format=options.output,
                                base=None)
     elif options.output and options.output in RDF_SERIALIZATION_FORMATS:
-        print network.inferredFacts.serialize(destination=None, 
-                                              format=options.output, 
-                                              base=None)            
+        print network.inferredFacts.serialize(destination=None,
+                                              format=options.output,
+                                              base=None)
 if __name__ == '__main__':
     from hotshot import Profile, stats
 #    import pycallgraph
@@ -627,7 +619,7 @@ if __name__ == '__main__':
 #    sys.exit(1)
     p = Profile('fuxi.profile')
     p.runcall(main)
-    p.close()    
+    p.close()
     s = stats.load('fuxi.profile')
     s.strip_dirs()
     s.sort_stats('time','cumulative','pcalls')

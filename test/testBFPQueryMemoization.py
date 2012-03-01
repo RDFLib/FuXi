@@ -1,9 +1,6 @@
 import unittest
 from cStringIO import StringIO
-try:
-    from rdflib.graph import Graph
-except ImportError:
-    from rdflib.Graph import Graph
+from rdflib.graph import Graph
 from rdflib import RDF, RDFS, Namespace, Variable, URIRef
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from FuXi.Rete.RuleStore import SetupRuleStore

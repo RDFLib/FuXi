@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 """
-import copy, warnings
+import copy
 from rdflib import BNode, RDF, Namespace, Variable, RDFS
 from FuXi.Horn.PositiveConditions import And, Or, Uniterm, PredicateExtentFactory, SetOperator,Exists
 
@@ -23,16 +23,16 @@ def flattenHelper(condition):
 def HasBreadthFirstNestedConj(condition):
     from FuXi.DLP import breadth_first
     return HasNestedConjunction(condition) or\
-           [i for i in breadth_first(condition) 
+           [i for i in breadth_first(condition)
                 if isinstance(i,And) and HasNestedConjunction(i)]
 
 def FlattenConjunctions(condition,isNested=False):
     from FuXi.DLP import breadth_first
     if isNested or HasNestedConjunction(condition):
         flattenHelper(condition)
-    for nestedConj in [i for i in breadth_first(condition) 
+    for nestedConj in [i for i in breadth_first(condition)
                        if isinstance(i,And) and HasNestedConjunction(i)]:
-        FlattenConjunctions(nestedConj, isNested=True)    
+        FlattenConjunctions(nestedConj, isNested=True)
 
 def ApplyDemorgans(clause):
     """
@@ -58,7 +58,7 @@ def ApplyDemorgans(clause):
     """
     from FuXi.DLP import breadth_first, breadth_first_replace
     replacementMap = {}
-    for negDisj in [i for i in breadth_first(clause.body) 
+    for negDisj in [i for i in breadth_first(clause.body)
                         if isinstance(i,Or) and i.naf]:
         replacementList = []
         for innerTerm in negDisj:
@@ -68,7 +68,7 @@ def ApplyDemorgans(clause):
         replacementMap[negDisj] = And(replacementList)
     for old,new in replacementMap.items():
         list(breadth_first_replace(clause.body,candidate=old,replacement=new))
-        
+
 def HandleNonDisjunctiveClauses(ruleset, network, constructNetwork, negativeStratus, ignoreNegativeStratus, clause):
     from FuXi.DLP import NormalizeClause, ExtendN3Rules, makeRule
     for hc in ExtendN3Rules(network, NormalizeClause(clause), constructNetwork):
@@ -77,7 +77,7 @@ def HandleNonDisjunctiveClauses(ruleset, network, constructNetwork, negativeStra
             negativeStratus.append(rule)
         if not rule.negativeStratus or not ignoreNegativeStratus:
             ruleset.add(rule)
-            
+
 def NormalizeDisjunctions(disj,
                           clause,
                           ruleset,
@@ -98,7 +98,7 @@ def NormalizeDisjunctions(disj,
         assert len(disj)<2,"Unable to effectively reduce disjunctions"
     if len(disj) == 1:
         #There is one disjunction in the body, we can reduce from:
-        #H :- B1 V B2  to H : - B1 and H :- B2 
+        #H :- B1 V B2  to H : - B1 and H :- B2
         origDisj = disj[0]
         for item in origDisj:
             #First we want to replace the entire disjunct with an item within it
@@ -114,7 +114,7 @@ def NormalizeDisjunctions(disj,
                                       constructNetwork,
                                       negativeStratus,
                                       ignoreNegativeStratus)
-            else:               
+            else:
                 if HasBreadthFirstNestedConj(clause_clone.body):
                     FlattenConjunctions(clause_clone.body)
                 #Otherwise handle normally
@@ -122,16 +122,15 @@ def NormalizeDisjunctions(disj,
             #restore the replaced term (for the subsequent iteration)
             list(breadth_first_replace(clause.body,candidate=item,replacement=origDisj))
     else:
-        #The disjunction has been handled by normal form transformation, we just need to 
+        #The disjunction has been handled by normal form transformation, we just need to
         #handle normally
         if HasBreadthFirstNestedConj(clause_clone.body):
-            FlattenConjunctions(clause_clone.body)        
+            FlattenConjunctions(clause_clone.body)
         HandleNonDisjunctiveClauses(ruleset, network, constructNetwork, negativeStratus, ignoreNegativeStratus, clause)
-    
+
 def test():
     import doctest
     doctest.testmod()
 
 if __name__ == '__main__':
     test()
-   

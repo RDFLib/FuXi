@@ -21,19 +21,11 @@ from Node import Node
 from RuleStore import N3Builtin
 from IteratorAlgebra import hash_join
 from Util import xcombine
-try:
-    set
-except NameError:
-    from sets import Set as set
 from itertools import izip
 from ReteVocabulary import RETE_NS
 
-try:
-    from rdflib.graph import QuotedGraph, Graph
-    from rdflib.collection import Collection
-except ImportError:
-    from rdflib.Graph import QuotedGraph, Graph
-    from rdflib.Collection import Collection
+from rdflib.graph import QuotedGraph, Graph
+from rdflib.collection import Collection
 from rdflib import Variable, Literal, URIRef, BNode, Namespace, RDF, RDFS
 from rdflib.util import first
 _XSD_NS = Namespace('http://www.w3.org/2001/XMLSchema#')

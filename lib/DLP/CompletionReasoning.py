@@ -1,4 +1,4 @@
-#-- 
+#--
 """
 Solution:
 Unadorned:
@@ -6,11 +6,11 @@ Unadorned:
 Query: rdfs:subClassOf_bf(KneeJoint,?Class)
 Query fact: rdfs:subClassOf_derived_query_bf(KneeJoint)
 
-7. Forall ?C3 ?C2 ?C1 ( 
-    rdfs:subClassOf_derived_bf(?C1 ?C3) 
-        :- And( rdfs:subClassOf_derived_bf(?C1 ?C2) 
+7. Forall ?C3 ?C2 ?C1 (
+    rdfs:subClassOf_derived_bf(?C1 ?C3)
+        :- And( rdfs:subClassOf_derived_bf(?C1 ?C2)
                 rdfs:subClassOf_derived_bf(?C2 ?C3) ) )
-                
+
 		{ subClassOf }             -> ?C1 subClassOf_C1_C2
 		{ subClassOf, subClassOf } -> ?C2 subClassOf_C2_C3
 
@@ -26,16 +26,8 @@ from FuXi.Horn.HornRules               import HornFromN3
 from FuXi.Rete.RuleStore               import SetupRuleStore
 from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
 from rdflib                            import RDF, RDFS, OWL, URIRef, Variable, BNode, Namespace
-try:
-    from rdflib.graph                  import Graph
-except ImportError:
-    from rdflib.Graph                  import Graph
-    RDF = str(RDF.RDFNS)
-    RDFS = str(RDFS.RDFSNS)
-from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
-from rdflib.util import first
+from rdflib.graph                      import Graph
 from cStringIO                         import StringIO
-from FuXi.Horn.HornRules               import HornFromN3
 
 LIST_NS = Namespace('http://www.w3.org/2000/10/swap/list#')
 KOR_NS  = Namespace('http://korrekt.org/')
@@ -93,7 +85,7 @@ RULES=\
 { ?C  rdfs:subClassOf ?CLASS .
   ?CLASS owl:intersectionOf ?L  .
   ?D list:in ?L  } => { ?C rdfs:subClassOf ?D } .
-  
+
 #Rule 3
 { ?C rdfs:subClassOf ?RESTRICTION .
   ?RESTRICTION owl:onProperty ?R ;
@@ -108,7 +100,7 @@ RULES=\
 #Rule 6
 { ?C rdfs:subClassOf ?D .
   ?E owl:onProperty ?S ;
-     owl:someValuesFrom ?D 
+     owl:someValuesFrom ?D
  } => { [ a owl:Restriction;
           owl:onProperty ?S ;
           owl:someValuesFrom ?C ] rdfs:subClassOf ?E } .
@@ -196,7 +188,7 @@ def StructuralTransformation(owlGraph,newOwlGraph):
     ...     if c.identifier in revDict: print "## New concept for %s ##"%revDict[c.identifier]
     ...     print c.__repr__(True)
     ...     print "################################"
-    
+
     """
     FreshConcept = {}
     newOwlGraph.bind('skolem',SKOLEMIZED_CLASS_NS,True)
@@ -249,7 +241,7 @@ def ProcessConcept(klass,owlGraph,FreshConcept,newOwlGraph):
             #An existential role restriction
             print "Original (role restriction) appears in a subsumption axiom"
             role      = Property(cls.onProperty,graph=newOwlGraph)
-                        
+
             fillerCls = ProcessConcept(
                             Class(cls.restrictionRange),
                             owlGraph,
@@ -298,7 +290,7 @@ def createTestOntGraph():
     Individual.factoryGraph = graph
     kneeJoint = EX_CL.KneeJoint
     joint = EX_CL.Joint
-    
+
     knee  = EX_CL.Knee
     isPartOf = Property(EX_NS.isPartOf)
     graph.add((isPartOf.identifier,RDF.type,OWL_NS.TransitiveProperty))
@@ -314,7 +306,7 @@ def createTestOntGraph():
     structure += joint
     locatedInLeg = hasLocation|some|leg
     locatedInLeg += knee
-    
+
 
     # print graph.serialize(format='n3')
 
@@ -406,11 +398,11 @@ def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
     print >>sys.stderr, bfp.metaInterpNetwork
     bfp.metaInterpNetwork.reportConflictSet(True,sys.stderr)
     for query in bfp.edbQueries:
-        print >>sys.stderr, "Dispatched query against dataset: ", query.asSPARQL()    
+        print >>sys.stderr, "Dispatched query against dataset: ", query.asSPARQL()
     pprint(list(bfp.goalSolutions))
 
 def NormalizeSubsumption(owlGraph):
-    operands = [(clsLHS,clsRHS) 
+    operands = [(clsLHS,clsRHS)
         for clsLHS,p,clsRHS in owlGraph.triples((None,
                                                  OWL_NS.equivalentClass,
                                                  None))]
@@ -425,7 +417,7 @@ def NormalizeSubsumption(owlGraph):
         elif isinstance(clsLHS,BNode) and isinstance(clsRHS,URIRef):
             owlGraph.add((clsRHS,RDFS.subClassOf,clsLHS))
             owlGraph.remove((clsLHS,OWL_NS.equivalentClass,clsRHS))
-    
+
 if __name__ == '__main__':
     goal = (EX_NS.KneeJoint,
             RDFS.subClassOf,
@@ -436,8 +428,8 @@ if __name__ == '__main__':
     #               EX_NS.KneeJoint))
     NormalizeSubsumption(ontGraph)
     for c in AllClasses(ontGraph):
-        print c.__repr__(True)    
-    SetupMetaInterpreter(ontGraph,goal)    
+        print c.__repr__(True)
+    SetupMetaInterpreter(ontGraph,goal)
 #    test()
 #    import doctest
 #    doctest.testmod()

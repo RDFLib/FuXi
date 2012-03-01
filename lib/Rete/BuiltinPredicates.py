@@ -3,10 +3,7 @@ See: http://www.w3.org/2000/10/swap/doc/CwmBuiltins
 """
 import unittest
 from cStringIO import StringIO
-try:
-    from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
-except ImportError:
-    from rdflib.Graph import Graph,ReadOnlyGraphAggregate,ConjunctiveGraph
+from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
 from rdflib.util import first
 
 from rdflib import Namespace, Variable, Literal, URIRef
@@ -17,7 +14,7 @@ EULER_NS = Namespace("http://eulersharp.sourceforge.net/2003/03swap/owl-rules#")
 
 def LogNotEqualTo(subject,object_):
     """
-    Equality in this sense is actually the same URI.      
+    Equality in this sense is actually the same URI.
     """
     def func(s,o):
         return s != o
@@ -71,7 +68,7 @@ def MathEqualTo(subject,object_):
     for term in [subject,object_]:
         if not isinstance(term,Variable):
             assert isinstance(term,Literal),"math:equalTo can only be used with Literals! (%s)"%term
-            assert isinstance(term.toPython(),(int,float,long)),"math:equalTo can only be used with Numeric Literals! (%s)"%term    
+            assert isinstance(term.toPython(),(int,float,long)),"math:equalTo can only be used with Numeric Literals! (%s)"%term
     def func(s,o):
         for term in [s,o]:
             assert isinstance(term,Literal),"math:equalTo can only be used with Literals!"
@@ -82,7 +79,7 @@ def MathGreaterThan(subject,object_):
     for term in [subject,object_]:
         if not isinstance(term,Variable):
             assert isinstance(term,Literal),"math:lessThan can only be used with Literals! (%s)"%term
-            assert isinstance(term.toPython(),(int,float,long)),"math:lessThan can only be used with Numeric Literals! (%s)"%term    
+            assert isinstance(term.toPython(),(int,float,long)),"math:lessThan can only be used with Numeric Literals! (%s)"%term
     def greaterThanF(s,o):
         for term in [s,o]:
             assert isinstance(term,Literal),"math:greaterThan can only be used with Literals!"
@@ -94,7 +91,7 @@ def MathLessThan(subject,object_):
     for term in [subject,object_]:
         if not isinstance(term,Variable):
             assert isinstance(term,Literal),"math:lessThan can only be used with Literals! (%s)"%term
-            assert isinstance(term.toPython(),(int,float,long)),"math:lessThan can only be used with Numeric Literals! (%s)"%term    
+            assert isinstance(term.toPython(),(int,float,long)),"math:lessThan can only be used with Numeric Literals! (%s)"%term
     def lessThanF(s,o):
         for term in [s,o]:
             assert isinstance(term,Literal),"math:lessThan can only be used with Literals!"
@@ -106,7 +103,7 @@ def MathNotLessThan(subject,object_):
     for term in [subject,object_]:
         if not isinstance(term,Variable):
             assert isinstance(term,Literal),"math:notLessThan can only be used with Literals! (%s)"%term
-            assert isinstance(term.toPython(),(int,float,long)),"math:lessThan can only be used with Numeric Literals! (%s)"%term    
+            assert isinstance(term.toPython(),(int,float,long)),"math:lessThan can only be used with Numeric Literals! (%s)"%term
     def nLessThanF(s,o):
         for term in [s,o]:
             assert isinstance(term,Literal),"math:notLessThan can only be used with Literals!"
@@ -138,7 +135,7 @@ FILTERS = {
     STRING_NS.notGreaterThan : None,
     STRING_NS.notLessThan : None,
     STRING_NS.notMatches : None,
-    STRING_NS.startsWith : None,    
+    STRING_NS.startsWith : None,
 }
 
 testN3="""
@@ -159,9 +156,9 @@ class NonEqualityPredicatesTestSuite(unittest.TestCase):
         from FuXi.Rete.Util import generateTokenSet
         self.testGraph = Graph()
         self.ruleStore=N3RuleStore()
-        self.ruleGraph = Graph(self.ruleStore)           
+        self.ruleGraph = Graph(self.ruleStore)
         self.ruleGraph.parse(StringIO(testN3),format='n3')
-        self.testGraph.parse(StringIO(testN3),format='n3')        
+        self.testGraph.parse(StringIO(testN3),format='n3')
         self.closureDeltaGraph = Graph()
         self.network = ReteNetwork(self.ruleStore,
                                    initialWorkingMemory=generateTokenSet(self.testGraph),
@@ -173,7 +170,7 @@ class NonEqualityPredicatesTestSuite(unittest.TestCase):
         self.failUnless(self.ruleStore.rules>0, "No rules parsed out form N3!")
         for alphaNode in self.network.alphaNodes:
             if isinstance(alphaNode, BuiltInAlphaNode):
-                self.failUnless(alphaNode.n3builtin.uri == MATH_NS.greaterThan, 
+                self.failUnless(alphaNode.n3builtin.uri == MATH_NS.greaterThan,
                                 "Unable to find math:greaterThan func")
 
     def testEvaluateBuiltIns(self):
@@ -181,6 +178,6 @@ class NonEqualityPredicatesTestSuite(unittest.TestCase):
         # from FuXi.Rete.AlphaNode import BuiltInAlphaNode
         self.failUnless(first(self.closureDeltaGraph.triples((None,URIRef('http://test/pred1'),Literal(3)))),
                             "Missing inferred :pred1 assertions")
-    
+
 if __name__ == '__main__':
-    unittest.main()    
+    unittest.main()

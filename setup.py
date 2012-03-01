@@ -8,7 +8,7 @@ def setup_python3():
     from distutils.filelist import FileList
     from distutils import dir_util, file_util, util, log
     from os.path import join
-  
+
     tmp_src = join("build", "src")
     log.set_verbosity(1)
     fl = FileList()
@@ -22,9 +22,9 @@ def setup_python3():
         outf, copied = file_util.copy_file(f, join(tmp_src, f), update=1)
         if copied and outf.endswith(".py"):
             outfiles_2to3.append(outf)
-  
+
     util.run_2to3(outfiles_2to3)
-  
+
     # arrange setup to use the copy
     sys.path.insert(0, tmp_src)
 
@@ -55,7 +55,6 @@ config=dict(
     classifiers = ["Programming Language :: Python",
                    "Programming Language :: Python :: 2",
                    "Programming Language :: Python :: 3",
-                   "Programming Language :: Python :: 2.5",
                    "Programming Language :: Python :: 2.6",
                    "Programming Language :: Python :: 2.7",
                    "Programming Language :: Python :: 3.2",
@@ -76,7 +75,7 @@ config=dict(
         "FuXi.Horn",
         "FuXi.Syntax",
     ],
-    install_requires = ['rdflib',],#'telescope'],
+    install_requires = ['rdflib>2',],#'telescope'],
     license = "Apache",
     keywords = "python logic owl rdf dlp n3 rule reasoner",
     url = "http://code.google.com/p/python-dlp/wiki/FuXi",

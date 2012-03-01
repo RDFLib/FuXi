@@ -1,10 +1,7 @@
 import unittest
 from cStringIO import StringIO
 from rdflib import Graph, Literal, Namespace, Variable
-try:
-    from rdflib.graph import Graph
-except ImportError:
-    from rdflib.Graph import Graph
+from rdflib.graph import Graph
 from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
 from rdflib.util import first
 from FuXi.Horn.HornRules import HornFromN3

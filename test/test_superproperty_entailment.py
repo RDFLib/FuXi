@@ -3,11 +3,7 @@
 import sys, unittest
 from pprint import pprint
 from cStringIO import StringIO
-try:
-    from rdflib import Graph, Namespace
-except ImportError:
-    from rdflib.Graph import Graph
-    from rdflib import Namespace
+from rdflib import Graph, Namespace
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Rete.Util import generateTokenSet
 from FuXi.DLP.DLNormalization import NormalFormReduction
@@ -18,7 +14,7 @@ EX_TERMS = Namespace('http://example.org/terms/')
 expected_triples = [
     (EX.john,EX_TERMS.has_sibling,EX.jack),
     (EX.john,EX_TERMS.brother,EX.jack),
-    (EX.jack,EX_TERMS.has_brother,EX.john),    
+    (EX.jack,EX_TERMS.has_brother,EX.john),
 ]
 
 ABOX=\
@@ -52,13 +48,13 @@ exterms:has_brother
 	rdfs:subPropertyOf exterms:has_sibling ;
 	rdfs:domain exterms:Person ;
 	rdfs:range exterms:Person .
-	
+
 exterms:brother
 	a rdf:Property ;
 	owl:equivalentProperty exterms:has_brother ;
 	rdfs:domain exterms:Person ;
 	rdfs:range exterms:Person .
-	
+
 """
 
 class test_superproperty_entailment(unittest.TestCase):
@@ -73,19 +69,19 @@ class test_superproperty_entailment(unittest.TestCase):
         self.network.setupDescriptionLogicProgramming(self.tBoxGraph)
         pprint(list(self.network.rules))
         print self.network
-        
+
         print 'feeding TBox... '
         self.network.feedFactsToAdd(generateTokenSet(self.tBoxGraph))
         print 'feeding ABox...'
         self.network.feedFactsToAdd(generateTokenSet(self.aBoxGraph))
 
         self.network.inferredFacts.bind('ex',EX)
-        self.network.inferredFacts.bind('exterms',EX_TERMS)        
-        print self.network.inferredFacts.serialize(format='n3')        
+        self.network.inferredFacts.bind('exterms',EX_TERMS)
+        print self.network.inferredFacts.serialize(format='n3')
 
         print 'Checking...'
         for triple in expected_triples:
             self.failUnless(triple in self.network.inferredFacts,"Missing %s"%(repr(triple)))
-    
+
 if __name__ == '__main__':
 	unittest.main()

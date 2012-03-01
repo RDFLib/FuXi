@@ -2,18 +2,13 @@
 Utility functions for a Boost Graph Library (BGL) DiGraph via the BGL Python Bindings
 """
 import itertools, pickle
-from FuXi.Rete.AlphaNode import AlphaNode        
+from FuXi.Rete.AlphaNode import AlphaNode
 from rdflib import BNode, Namespace, Variable, URIRef
 from rdflib.util import first
+from rdflib.graph import Graph
+from rdflib.collection import Collection
+from rdflib.namespace import NamespaceManager
 try:
-    from rdflib.graph import Graph
-    from rdflib.collection import Collection
-    from rdflib.namespace import NamespaceManager
-except ImportError:
-    from rdflib.Graph import Graph
-    from rdflib.Collection import Collection
-    from rdflib.syntax.NamespaceManager import NamespaceManager
-try:    
     import boost.graph as bgl
     bglGraph = bgl.Digraph()
 except:
@@ -31,7 +26,7 @@ def xcombine(*seqin):
     returns a generator which returns combinations of argument sequences
     for example xcombine((1,2),(3,4)) returns a generator; calling the next()
     method on the generator will return [1,3], [1,4], [2,3], [2,4] and
-    StopIteration exception.  This will not create the whole list of 
+    StopIteration exception.  This will not create the whole list of
     combinations in memory at once.
     '''
     def rloop(seqin,comb):
@@ -40,7 +35,7 @@ def xcombine(*seqin):
             for item in seqin[0]:
                 newcomb=comb+[item]     # add next item to current combination
                 # call rloop w/ remaining seqs, newcomb
-                for item in rloop(seqin[1:],newcomb):   
+                for item in rloop(seqin[1:],newcomb):
                     yield item          # seqs and newcomb
         else:                           # processing last sequence
             yield comb                  # comb finished, add to list
@@ -50,10 +45,10 @@ def permu(xs):
     """
     http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/496819
     "A recursive function to get permutation of a list"
-    
+
     >>> print list(permu([1,2,3]))
     [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]
-     
+
     """
     if len(xs) <= 1:
         yield xs
@@ -67,7 +62,7 @@ def CollapseDictionary(mapping):
     Takes a dictionary mapping prefixes to URIs
     and removes prefix mappings that begin with _ and
     there is already a map to their value
-    
+
     >>> a = {'ex': URIRef('http://example.com/')}
     >>> a['_1'] =  a['ex']
     >>> len(a)
@@ -97,7 +92,7 @@ def CollapseDictionary(mapping):
                 origPrefixes.extend(items)
         if origPrefixes and len(v) > 1 and len(dupePrefixes):
             #There are allocated prefixes for URIs that were originally
-            #given a prefix 
+            #given a prefix
             assert len(origPrefixes)==1
             prefixes2Collapse.extend(dupePrefixes)
     return dict([(k,v) for k,v in mapping.items() if k not in prefixes2Collapse])
@@ -107,9 +102,9 @@ class selective_memoize(object):
     If called later with the same arguments, the cached value is returned, and
     not re-evaluated. Slow for mutable types.
     The arguments used for the cache are given to the decorator
-    
+
     >>> @selective_memoize([0,1])
-    ... def addition(l,r,other): 
+    ... def addition(l,r,other):
     ...     print "calculating.."
     ...     return l+r
     >>> addition(1,2,3)
@@ -118,9 +113,9 @@ class selective_memoize(object):
     >>> addition(1,2,4)
     3
     >>> @selective_memoize()
-    ... def addition(l,r,other): 
+    ... def addition(l,r,other):
     ...     print "calculating.."
-    ...     return l+r    
+    ...     return l+r
     >>> addition(1,2,3)
     calculating..
     3
@@ -128,9 +123,9 @@ class selective_memoize(object):
     calculating..
     3
     >>> @selective_memoize([0,1],'baz')
-    ... def addition(l,r,baz=False, bar=False): 
+    ... def addition(l,r,baz=False, bar=False):
     ...     print "calculating.."
-    ...     return l+r    
+    ...     return l+r
     >>> addition(1,2,baz=True)
     calculating..
     3
@@ -143,7 +138,7 @@ class selective_memoize(object):
         self.cacheableArgPos = cacheableArgPos
         self.cacheableArgKey = cacheableArgKey
         self._cache = {}
-        
+
     def __call__(self, func):
         def innerHandler(*args, **kwds):
             if self.cacheableArgPos:
@@ -156,7 +151,7 @@ class selective_memoize(object):
                 key = args
             if kwds:
                 if self.cacheableArgKey:
-                    items = [(k,v) for k,v in kwds.items() 
+                    items = [(k,v) for k,v in kwds.items()
                                 if k in self.cacheableArgKey]
                 else:
                     items = []
@@ -183,16 +178,16 @@ class InformedLazyGenerator(object):
     def __init__(self, generator, successful):
         self.generator  = generator
         self.successful = successful
-        
+
     def __iter__(self):
         for item in self.generator:
-            yield item        
-    
+            yield item
+
 def lazyGeneratorPeek(iterable,firstN=1):
     """
-    Lazily peeks into an iterable and returns None if it has less than N items 
+    Lazily peeks into an iterable and returns None if it has less than N items
     or returns another generator over *all* content if it isn't
-    
+
     >>> a=(i for i in [1,2,3])
     >>> first(a)
     1
@@ -223,11 +218,11 @@ def lazyGeneratorPeek(iterable,firstN=1):
         return InformedLazyGenerator((i for i in itertools.chain(header,iterable)),True)
     else:
         return InformedLazyGenerator((i for i in header),False)
-        
+
 class setdict(dict):
     '''
     Add set operations to dicts.
-    
+
     Credit thom neale
     See: http://code.activestate.com/recipes/577471-setdict/
     '''
@@ -273,7 +268,7 @@ def call_with_filtered_args(args, _callable):
 
     args = setdict(**args) & argnames
 
-    return _callable(**args)        
+    return _callable(**args)
 
 def generateTokenSet(graph,debugTriples=[],skipImplies=True):
     """
@@ -281,16 +276,16 @@ def generateTokenSet(graph,debugTriples=[],skipImplies=True):
     Note implication statements are excluded from the realm of facts by default
     """
     from FuXi.Rete import ReteToken
-    rt = set()    
+    rt = set()
     def normalizeGraphTerms(term):
         if isinstance(term, Collection):
             return term.uri
         else:
             return term
     for s,p,o in graph:
-        
+
         if not skipImplies or p != LOG.implies:
-            #print s,p,o             
+            #print s,p,o
             debug = debugTriples and (s,p,o) in debugTriples
             rt.add(ReteToken((normalizeGraphTerms(s),
                               normalizeGraphTerms(p),
@@ -304,10 +299,10 @@ def generateBGLNode(dot,node,namespace_manager,identifier):
 
     shape = 'circle'
     root        = False
-    if isinstance(node,ReteNetwork):     
+    if isinstance(node,ReteNetwork):
         root        = True
         peripheries = '3'
-    elif isinstance(node,BetaNode) and not node.consequent:     
+    elif isinstance(node,BetaNode) and not node.consequent:
         peripheries = '1'
         if node.fedByBuiltin:
             label = "Built-in pass-thru\\n"
@@ -322,7 +317,7 @@ def generateBGLNode(dot,node,namespace_manager,identifier):
             rightLen = len(node.memories[RIGHT_MEMORY])
             label+='\\n %s in left, %s in right memories'%(leftLen,rightLen)
 
-    elif isinstance(node,BetaNode) and node.consequent:     
+    elif isinstance(node,BetaNode) and node.consequent:
         #rootMap[vertex] = 'true'
         peripheries = '2'
         stmts = []
@@ -330,14 +325,14 @@ def generateBGLNode(dot,node,namespace_manager,identifier):
             stmts.append(' '.join([str(namespace_manager.normalizeUri(s)),
               str(namespace_manager.normalizeUri(p)),
               str(namespace_manager.normalizeUri(o))]))
-              
+
         rhsVertex = Node(BNode(),
                          label='"'+'\\n'.join(stmts)+'"',
-                         shape='plaintext') 
+                         shape='plaintext')
         edge = Edge(vertex,rhsVertex)
         #edge.color = 'red'
-        dot.add_edge(edge)              
-        dot.add_node(rhsVertex)      
+        dot.add_edge(edge)
+        dot.add_node(rhsVertex)
         if node.commonVariables:
             inst=node.network.instantiations.get(node,0)
             label = str("Terminal node\\n(%s)\\n%d instantiations"%(','.join(["?%s"%i for i in node.commonVariables]),inst))
@@ -345,11 +340,11 @@ def generateBGLNode(dot,node,namespace_manager,identifier):
             label = "Terminal node"
         leftLen = node.memories[LEFT_MEMORY] and len(node.memories[LEFT_MEMORY]) or 0
         rightLen = len(node.memories[RIGHT_MEMORY])
-        label+='\\n %s in left, %s in right memories'%(leftLen,rightLen)      
+        label+='\\n %s in left, %s in right memories'%(leftLen,rightLen)
         inst = node.network.instantiations[node]
         if inst:
-            label += "\\n%s instantiations"%inst      
-        
+            label += "\\n%s instantiations"%inst
+
     elif isinstance(node,BuiltInAlphaNode):
         peripheries = '1'
         shape = 'plaintext'
@@ -359,13 +354,13 @@ def generateBGLNode(dot,node,namespace_manager,identifier):
         canonicalArg1 = namespace_manager.normalizeUri(node.n3builtin.argument)
         canonicalArg2 = namespace_manager.normalizeUri(node.n3builtin.result)
         label = '%s(%s,%s)'%(canonicalFunc,canonicalArg1,canonicalArg2)
-        
+
     elif isinstance(node,AlphaNode):
         peripheries = '1'
         shape = 'plaintext'
 #        widthMap[vertex] = '50em'
-        label = ' '.join([isinstance(i,BNode) and i.n3() or str(namespace_manager.normalizeUri(i)) 
-                           for i in node.triplePattern])    
+        label = ' '.join([isinstance(i,BNode) and i.n3() or str(namespace_manager.normalizeUri(i))
+                           for i in node.triplePattern])
 
     vertex.set_shape(shape)
     vertex.set_label('"%s"'%label)
@@ -395,7 +390,7 @@ def renderNetwork(network,nsMap = {}):
             idx += 1
             visitedNodes[node] = generateBGLNode(dot,node,namespace_manager,str(idx))
             dot.add_node(visitedNodes[node])
-    nodeIdxs = {}                        
+    nodeIdxs = {}
     for node in network.nodes.values():
         for mem in node.descendentMemory:
             if not mem:
@@ -407,15 +402,15 @@ def renderNetwork(network,nsMap = {}):
                     for i in [node,bNode]:
                         if i not in visitedNodes:
                             idx += 1
-                            nodeIdxs[i] = idx 
+                            nodeIdxs[i] = idx
                             visitedNodes[i] = generateBGLNode(dot,i,namespace_manager,str(idx))
                             dot.add_node(visitedNodes[i])
                     edge = Edge(visitedNodes[node],
                                 visitedNodes[bNode],
                                 label=idx==0 and 'left' or 'right')
-                    dot.add_edge(edge)                                        
+                    dot.add_edge(edge)
                     edges.append((node,bNode))
-                    
+
     return dot
 
 def test():
