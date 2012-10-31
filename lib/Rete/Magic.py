@@ -66,6 +66,17 @@ nameMap = {
   'harsh'          : DDL_STRICTNESS_HARSH,
 }
 
+def ReplaceHybridPredcates(rules,hybridPreds2Replace):
+    for rule in rules:
+        for headLiteral in iterCondition(rule.formula.head):
+            headOp = GetOp(headLiteral)
+            if headOp in hybridPreds2Replace:
+                headLiteral.setOperator(URIRef(headOp + u'_derived'))
+        for bodyAtom in iterCondition(rule.formula.body):
+            bodyPred = GetOp(bodyAtom)
+            if bodyPred in hybridPreds2Replace:
+                bodyAtom.setOperator(URIRef(bodyPred + u'_derived'))
+
 def SetupDDLAndAdornProgram(factGraph,
                             rules,
                             GOALS,
@@ -76,7 +87,6 @@ def SetupDDLAndAdornProgram(factGraph,
                             hybridPreds2Replace=None):
     if not defaultPredicates:
         defaultPredicates = [],[]
-    # _dPredsProvided = bool(derivedPreds)
     if not derivedPreds:
         _derivedPreds=DerivedPredicateIterator(factGraph,
                                                rules,
@@ -94,49 +104,55 @@ def SetupDDLAndAdornProgram(factGraph,
                         derivedPreds,
                         ignoreUnboundDPreds,
                         hybridPreds2Replace = hybridPreds2Replace)
-    rt=reduce(lambda l,r: l+r,
-              [list(iterCondition(clause.formula.body))
-                    for clause in adornedProgram])
-    for hybridPred, adornment in [(t,a)
-        for t,a in set(
-            [ (URIRef(GetOp(term).split('_derived')[0]
-                   ) if GetOp(term).find('_derived')+1 else GetOp(term),
-               ''.join(term.adornment)
-               ) for term in rt if isinstance(term,AdornedUniTerm)])
-            if t in hybridPreds2Replace]:
-        #If there are hybrid predicates, add rules that derived their IDB counterpart
-        #using information from the adorned queries to determine appropriate arity
-        #and adornment
-        hybridPred      = URIRef(hybridPred)
-        hPred           = URIRef(hybridPred + u'_derived')
-        if len(adornment) == 1:
-            # p_derived^{a}(X) :- p(X)
-            body = BuildUnitermFromTuple(
-                                (Variable('X'),
-                                 RDF.type,
-                                 hybridPred))
-            head = BuildUnitermFromTuple(
-                                (Variable('X'),
-                                 RDF.type,
-                                 hPred))
-        else:
-            # p_derived^{a}(X,Y) :- p(X,Y)
-            body = BuildUnitermFromTuple(
-                                (Variable('X'),
-                                 hybridPred,
-                                 Variable('Y')))
-            head = BuildUnitermFromTuple(
-                                (Variable('X'),
-                                 hPred,
-                                 Variable('Y')))
-        _head=AdornedUniTerm(head,list(adornment))
-        rule=AdornedRule(Clause(And([body]),_head.clone()))
-        rule.sip = Graph()
-        adornedProgram.add(rule)
 
     if factGraph is not None:
         factGraph.adornedProgram = adornedProgram
     return adornedProgram
+
+def CreateHybridPredicateRule(hybridPred,program,nsMap=None):
+    hPred           = URIRef(hybridPred + u'_derived')
+    literals = set(reduce(lambda l,r: l+r,
+        [list(iterCondition(clause.formula.body))+
+         list(iterCondition(clause.formula.head))
+         for clause in program]))
+    for literal in literals:
+        if GetOp(literal) == hybridPred:
+            noArgs = len(GetArgs(literal))
+            if noArgs == 1:
+                # p_derived(X) :- p(X)
+                body = BuildUnitermFromTuple(
+                    (Variable('X'),
+                     RDF.type,
+                     hybridPred),
+                    newNss=nsMap
+                )
+                head = BuildUnitermFromTuple(
+                    (Variable('X'),
+                     RDF.type,
+                     hPred),
+                    newNss=nsMap
+                )
+                vars = [Variable('X')]
+            else:
+                # p_derived(X,Y) :- p(X,Y)
+                body = BuildUnitermFromTuple(
+                    (Variable('X'),
+                     hybridPred,
+                     Variable('Y')),
+                    newNss=nsMap
+                )
+                head = BuildUnitermFromTuple(
+                    (Variable('X'),
+                     hPred,
+                     Variable('Y')),
+                    newNss=nsMap
+                )
+                vars = [Variable('Y'),Variable('X')]
+            return Rule(
+                Clause(And([body]),head),
+                nsMapping=nsMap,
+                declare=vars
+            )
 
 def MagicSetTransformation(factGraph,
                            rules,
@@ -363,6 +379,14 @@ def AdornRule(derivedPreds,
 def BasePredicateFromHybrid(pred):
     return URIRef(pred[:-8])
 
+def IsHybridPredicateRule(rule,derivedSuffix='derived'):
+    fullSuffix = '_'+derivedSuffix
+    basePred = URIRef(GetOp(rule.formula.head).split(fullSuffix)[0])
+    return GetOp(
+        rule.formula.head).find(fullSuffix)+1 and len(
+            list(iterCondition(rule.formula.body)))==1 and \
+            GetOp(list(iterCondition(rule.formula.body))[0]) == basePred
+
 def IsHybridPredicate(pred,hybridPreds2Replace):
     op = GetOp(pred)
     return op[-7:] == 'derived' and op[:-8] in hybridPreds2Replace
@@ -376,9 +400,7 @@ def compareAdornedPredToRuleHead(aPred,head, hybridPreds2Replace):
     assert isinstance(head,Uniterm)
     if head.getArity() == aPred.getArity():
         return headPredicateTerm == aPredTerm or isinstance(headPredicateTerm,
-                                                            Variable) or (
-               IsHybridPredicate(aPred,hybridPreds2Replace) and
-               aPredTerm[:-8] == headPredicateTerm)
+                                                            Variable)
     return False
 
 def AdornProgram(factGraph,
@@ -403,6 +425,7 @@ def AdornProgram(factGraph,
     from FuXi.DLP import LloydToporTransformation
     from collections import deque
     goalDict = {}
+    handled = set()
     hybridPreds2Replace = hybridPreds2Replace or []
     adornedPredicateCollection=set()
     for goal,nsBindings in NormalizeGoals(goals):
@@ -412,7 +435,7 @@ def AdornProgram(factGraph,
     def unprocessedPreds(aPredCol):
         rt=[]
         for p in aPredCol:
-            if not  p.marked:
+            if p.herbrand_hash not in handled:
                 rt.append(p)
             if p not in goalDict:
                 goalDict.setdefault(GetOp(p),set()).add(p)
@@ -450,7 +473,7 @@ def AdornProgram(factGraph,
                             else False)
                             ) and aPred not in adornedPredicateCollection:
                             adornedPredicateCollection.add(aPred)
-        term.marked=True
+        handled.add(term.herbrand_hash)  # term.marked=True
         toDo.extendleft(unprocessedPreds(adornedPredicateCollection))
 
     factGraph.queryAtoms = goalDict
@@ -468,6 +491,10 @@ class AdornedUniTerm(Uniterm):
     def clone(self):
         return AdornedUniTerm(self,self.adornment,self.naf)
 
+        
+    def convert2NormalUterm(self):
+        return buildUniTerm(self.toRDFTuple())
+                
     def makeMagicPred(self):
         """
         Make a (cloned) magic predicate
@@ -507,16 +534,17 @@ class AdornedUniTerm(Uniterm):
                     return True
         return False
 
-    def getDistinguishedVariables(self,varsOnly=False):
+    def getDistinguishedVariables(self,varsOnly=False,bound=True):
+        adornment2Compare = 'b' if bound else 'f'
         if self.op == RDF.type:
             for idx,term in enumerate(GetArgs(self)):
-                if self.adornment[idx]=='b':
+                if self.adornment[idx]==adornment2Compare:
                     if not varsOnly or isinstance(term,Variable):
                         yield term
         else:
             for idx,term in enumerate(self.arg):
                 try:
-                    if self.adornment[idx]=='b':
+                    if self.adornment[idx]==adornment2Compare:
                         if not varsOnly or isinstance(term,Variable):
                             yield term
                 except IndexError: pass
@@ -579,17 +607,17 @@ def AdornLiteral(rdfTuple,newNss=None,naf = False):
     the other arguments free, where the bound arguments are those that are
     so indicated by the adornment.
 
-    >>> EX=Namespace('http://doi.acm.org/10.1145/6012.15399#')
-    >>> query=RenderSPARQLAlgebra(parse(NON_LINEAR_MS_QUERY))
-    >>> literal=query.patterns[0][:3]
-    >>> literal
+    >>> EX=Namespace('http://doi.acm.org/10.1145/6012.15399#') # doctest: +SKIP
+    >>> query=RenderSPARQLAlgebra(parse(NON_LINEAR_MS_QUERY)) # doctest: +SKIP
+    >>> literal=query.patterns[0][:3] # doctest: +SKIP
+    >>> literal # doctest: +SKIP
     (rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#john'), rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#sg'), ?X)
-    >>> aLit=AdornLiteral(literal,query.prolog.prefixBindings)
-    >>> aLit
+    >>> aLit=AdornLiteral(literal,query.prolog.prefixBindings) # doctest: +SKIP
+    >>> aLit # doctest: +SKIP
     mst:sg_bf(mst:john ?X)
-    >>> aLit.adornment
+    >>> aLit.adornment # doctest: +SKIP
     ['b', 'f']
-    >>> aLit.getBindings(Uniterm(EX.sg,[Variable('X'),EX.jill]))
+    >>> aLit.getBindings(Uniterm(EX.sg,[Variable('X'),EX.jill])) # doctest: +SKIP
     {?X: rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#john')}
     """
     args=[rdfTuple[0],rdfTuple[-1]]

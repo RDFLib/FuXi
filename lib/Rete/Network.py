@@ -21,7 +21,7 @@ from AlphaNode import AlphaNode, ReteToken, SUBJECT, PREDICATE, OBJECT, BuiltInA
 from BuiltinPredicates import FILTERS
 from FuXi.Horn import ComplementExpansion, DATALOG_SAFETY_NONE, \
                       DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
-from FuXi.Syntax.InfixOWL import *
+from FuXi.Syntax.InfixOWL import Class, Property, Individual
 from FuXi.Horn.PositiveConditions import Uniterm, SetOperator, Exists, Or, GetUterm
 from FuXi.DLP import MapDLPtoNetwork,non_DHL_OWL_Semantics,IsaFactFormingConclusion
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
@@ -162,7 +162,9 @@ class ReteNetwork:
                  nsMap = {},
                  graphVizOutFile=None,
                  dontFinalize=False,
-                 goal=None):
+                 goal=None,
+                 rulePrioritizer=None,
+                 alphaNodePrioritizer=None):
         self.leanCheck = {}
         self.goal = goal
         self.nsMap = nsMap
@@ -192,7 +194,10 @@ class ReteNetwork:
             self.ruleStore._finalize()
         self.filteredFacts = Graph()
 
-        #'Universal truths' for a rule set are rules where the LHS is empty.
+        self.rulePrioritizer      = rulePrioritizer
+        self.alphaNodePrioritizer = alphaNodePrioritizer
+        
+        #'Universal truths' for a rule set are rules where the LHS is empty.  
         # Rather than automatically adding them to the working set, alpha nodes are 'notified'
         # of them, so they can be checked for while performing inter element tests.
         self.universalTruths = []
@@ -517,7 +522,9 @@ class ReteNetwork:
                     if not isinstance(rule.formula.body,Exists) or \
                        bN not in rule.formula.body.declare:
                        BNodeReplacement[bN] = BNode()
-        for rhsTriple in termNode.consequent:
+        consequents = self.rulePrioritizer(termNode.consequent
+            ) if self.rulePrioritizer else termNode.consequent
+        for rhsTriple in consequents:
             if BNodeReplacement:
                 rhsTriple = tuple([BNodeReplacement.get(term,term) for term in rhsTriple])
             if debug:
@@ -591,12 +598,20 @@ class ReteNetwork:
         end
         """
 #        print wme.asTuple()
-        for termComb,termDict in iteritems(self.alphaPatternHash):
-            for alphaNode in termDict.get(wme.alphaNetworkHash(termComb),[]):
-#                print "\t## Activated AlphaNode ##"
-#                print "\t\t",termComb,wme.alphaNetworkHash(termComb)
-#                print "\t\t",alphaNode
-                alphaNode.activate(wme.unboundCopy())
+        #If the user provided a function that enforces an ordering in the
+        # evaluation of alpha nodes, then we use this ordering or the 'natural'
+        # ordering otherwise
+        aNodes = reduce(
+            lambda l,r:l+r,
+            filter(lambda i:i,
+                   map(lambda (termComb,termDict): termDict.get(wme.alphaNetworkHash(termComb),[]) ,
+                       iteritems(self.alphaPatternHash))),[])
+        sortedANodes = self.alphaNodePrioritizer(aNodes) if self.alphaNodePrioritizer else aNodes
+        for alphaNode in sortedANodes:
+#            print "\t## Activated AlphaNode ##"
+#            print "\t\t",termComb,wme.alphaNetworkHash(termComb)
+#            print "\t\t",alphaNode
+            alphaNode.activate(wme.unboundCopy())
 
     def feedFactsToAdd(self,tokenIterator):
         """

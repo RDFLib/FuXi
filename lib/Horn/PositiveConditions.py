@@ -99,6 +99,9 @@ class And(QNameManager,SetOperator,Condition):
         return first(itertools.ifilter(lambda conj: conj.binds(var),
                                        self.formulae)) is not None
 
+    def __getitem__(self, item):
+        return self.formulae[item]
+
     def isSafeForVariable(self,var):
         """
         A variable, v is safe in a condition formula if and only if ..
@@ -300,6 +303,12 @@ class Uniterm(QNameManager,Atomic):
                 self.nsMgr.bind(k,v)
         self._hash=hash(reduce(lambda x,y:str(x)+str(y),
             len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))
+        self.herbrand_hash=hash(
+            reduce(
+                lambda x,y:str(x)+str(y),
+                filter(lambda i:not isinstance(i,Variable),
+                    self.toRDFTuple() if len(self.arg)==2
+                    else [self.op]+self.arg),None))
 
     def binds(self, var):
         """
@@ -353,12 +362,33 @@ class Uniterm(QNameManager,Atomic):
         >>> x = Variable('X')
         >>> lit = Uniterm(RDF.type,[RDFS.comment,x])
         >>> lit.terms
-        [rdflib.URIRef('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), rdflib.URIRef('http://www.w3.org/2000/01/rdf-schema#comment'), ?X]
+        [rdflib.term.URIRef(u'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#comment'), ?X]
         """
         return [self.op]+self.arg
 
     terms = property(_get_terms)
 
+    def unify(self,otherLit):
+        """
+        Takes another (ground) Uniterm and returns the substitutions that need to be applied
+        to this (non-ground) one to convert to the other (i.e., unifies the two)
+        
+        >>> x = Variable('X')
+        >>> y = Variable('Y')
+        >>> lit1 = Uniterm(RDF.type,[RDFS.comment,x])
+        >>> lit2 = Uniterm(RDF.type,[RDFS.comment,RDF.Property])
+        >>> lit1.unify(lit2)[x] == RDF.Property
+        True
+        """
+        map = {}
+        if isinstance(self.op,Variable) and self.op != otherLit.op:
+            map[self.op] = otherLit.op
+        if isinstance(self.arg[0],Variable) and self.arg[0] != otherLit.arg[0]:
+            map[self.arg[0]] = otherLit.arg[0]
+        if isinstance(self.arg[1],Variable) and self.arg[1] != otherLit.arg[1]:
+            map[self.arg[1]] = otherLit.arg[1]
+        return map        
+            
     def getVarMapping(self,otherLit, reverse=False):
         """
         Takes another Uniterm and in every case where the corresponding term

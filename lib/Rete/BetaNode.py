@@ -375,7 +375,6 @@ class BetaNode(Node):
     >>> aNode2 = AlphaNode((Variable('X'),RDF.type,Variable('Y')))
     >>> aNode3 = AlphaNode((Variable('Z'),URIRef('urn:uuid:Prop1'),Variable('W')))
 
-
     Rete Network
     ------------
 
@@ -432,7 +431,7 @@ class BetaNode(Node):
     >>> class NetworkStub:
     ...     def __init__(self):
     ...         self.firings = 0
-    ...         self.conflictSet = Set()
+    ...         self.conflictSet = set()
     ...     def fireConsequent(self,tokens,termNode,debug):
     ...         self.firings += 1
     ...         self.conflictSet.add(tokens)
@@ -463,7 +462,7 @@ class BetaNode(Node):
     >>> aNode2.activate(token4.unboundCopy())
     >>> list(joinNode3.memories[LEFT_MEMORY])[0]
     <PartialInstantiation (joined on ?X): Set([<ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>
-    >>> aNode3.activate(token5.unboundCopy()))
+    >>> aNode3.activate(token5.unboundCopy())
     Propagated from <AlphaNode: (u'Z', u'urn:uuid:Prop1', u'W'). Feeds 1 beta nodes>
     (u'urn:uuid:Bar', u'urn:uuid:Prop1', u'urn:uuid:Beezle')
     <TerminalNode : CommonVariables: [] (1 in left, 1 in right memories)>.propagate(right,None,<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>)

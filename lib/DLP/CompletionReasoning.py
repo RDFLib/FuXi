@@ -21,7 +21,10 @@ Query fact: rdfs:subClassOf_derived_query_bf(KneeJoint)
 __author__ = 'chimezieogbuji'
 import sys
 from FuXi.Syntax.InfixOWL              import *
-from FuXi.DLP                          import SkolemizeExistentialClasses, SKOLEMIZED_CLASS_NS
+from FuXi.DLP                          import SkolemizeExistentialClasses, \
+                                              SKOLEMIZED_CLASS_NS, \
+                                              LloydToporTransformation, \
+                                              makeRule
 from FuXi.Horn.HornRules               import HornFromN3
 from FuXi.Rete.RuleStore               import SetupRuleStore
 from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
@@ -344,6 +347,22 @@ def createTestOntGraph():
 #        print "################################"
     return graph
 
+def GetELHConsequenceProcedureRules(tBoxGraph,useThingRule=True):
+    owlThingAppears = False
+    if useThingRule and OWL.Thing in tBoxGraph.all_nodes():
+        owlThingAppears = True
+    completionRules = HornFromN3(StringIO(RULES))
+    if owlThingAppears:
+        completionRules.formulae.extend(
+            HornFromN3(StringIO(CONDITIONAL_THING_RULE)))
+    reducedCompletionRules = set()
+    for rule in completionRules:
+        for clause in LloydToporTransformation(rule.formula):
+            rule = makeRule(clause,{})
+            # print rule
+            #            PrettyPrintRule(rule)
+            reducedCompletionRules.add(rule)
+    return reducedCompletionRules
 def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
     from FuXi.LP.BackwardFixpointProcedure    import BackwardFixpointProcedure
     from FuXi.Rete.Magic                      import SetupDDLAndAdornProgram, PrettyPrintRule

@@ -143,7 +143,7 @@ def SetOp(term,value):
         else:
             term.op=value
     else:
-        raise term
+        raise Exception('''SetOp unable to set op of "%s"''' % term)
 
 def GetOp(term):
     if isinstance(term,N3Builtin):
@@ -153,7 +153,7 @@ def GetOp(term):
     elif isinstance(term,Exists):
         return GetOp(term.formula)
     else:
-        raise term
+        raise Exception('''GetOp unable to get op of "%s"''' % term)
 
 def GetVariables(term,secondOrder=False):
     for v in GetArgs(term,secondOrder):
@@ -213,7 +213,7 @@ def findFullSip((rt,vars),right):
     if len(right)==1:
         if set(GetArgs(right[0],secondOrder=True)).intersection(vars):#len(dq)==1:
             #Valid End of recursion, return full SIP order
-            yield rt+right
+            yield rt + list(right) if isinstance(right, And) else right
     else:
         #for every possible combination of left and right, trigger recursive call
         for item in right:
@@ -243,21 +243,21 @@ def BuildNaturalSIP(clause,
     decision about the order in which the predicates of the rule will be evaluated, and how values
     for variables are passed from predicates to other predicates during evaluation
 
-    >>> from FuXi.Rete.RuleStore import SetupRuleStore
-    >>> ruleStore,ruleGraph=SetupRuleStore(StringIO(PROGRAM2))
-    >>> ruleStore._finalize()
-    >>> fg=Graph().parse(StringIO(PROGRAM2),format='n3')
-    >>> rs=Ruleset(n3Rules=ruleGraph.store.rules,nsMapping=ruleGraph.store.nsMgr)
-    >>> for rule in rs: print rule
+    >>> from FuXi.Rete.RuleStore import SetupRuleStore # doctest: +SKIP
+    >>> ruleStore,ruleGraph=SetupRuleStore(StringIO(PROGRAM2)) # doctest: +SKIP
+    >>> ruleStore._finalize() # doctest: +SKIP
+    >>> fg=Graph().parse(StringIO(PROGRAM2),format='n3') # doctest: +SKIP
+    >>> rs=Ruleset(n3Rules=ruleGraph.store.rules,nsMapping=ruleGraph.store.nsMgr) # doctest: +SKIP
+    >>> for rule in rs: print rule # doctest: +SKIP
     Forall ?Y ?X ( ex:sg(?X ?Y) :- ex:flat(?X ?Y) )
     Forall ?Y ?Z4 ?X ?Z1 ?Z2 ?Z3 ( ex:sg(?X ?Y) :- And( ex:up(?X ?Z1) ex:sg(?Z1 ?Z2) ex:flat(?Z2 ?Z3) ex:sg(?Z3 ?Z4) ex:down(?Z4 ?Y) ) )
-    >>> sip=BuildNaturalSIP(list(rs)[-1])
-    >>> for N,x in IncomingSIPArcs(sip,MAGIC.sg): print N.n3(),x.n3()
+    >>> sip=BuildNaturalSIP(list(rs)[-1]) # doctest: +SKIP
+    >>> for N,x in IncomingSIPArcs(sip,MAGIC.sg): print N.n3(),x.n3() # doctest: +SKIP
     ( <http://doi.acm.org/10.1145/28659.28689#up> <http://doi.acm.org/10.1145/28659.28689#sg> <http://doi.acm.org/10.1145/28659.28689#flat> ) ( ?Z3 )
     ( <http://doi.acm.org/10.1145/28659.28689#up> <http://doi.acm.org/10.1145/28659.28689#sg> ) ( ?Z1 )
 
-    >>> sip=BuildNaturalSIP(list(rs)[-1],[MAGIC.sg])
-    >>> list(sip.query('SELECT ?q {  ?prop a magic:SipArc . [] ?prop ?q . }',initNs={u'magic':MAGIC}))
+    >>> sip=BuildNaturalSIP(list(rs)[-1],[MAGIC.sg]) # doctest: +SKIP
+    >>> list(sip.query('SELECT ?q {  ?prop a magic:SipArc . [] ?prop ?q . }',initNs={u'magic':MAGIC})) # doctest: +SKIP
     [rdflib.URIRef('http://doi.acm.org/10.1145/28659.28689#sg'), rdflib.URIRef('http://doi.acm.org/10.1145/28659.28689#sg')]
     """
     from FuXi.Rete.Magic import AdornedUniTerm
@@ -296,7 +296,12 @@ def BuildNaturalSIP(clause,
             foundSip = False
             sips = findFullSip(([clause.head],None), clause.body)
             while not foundSip:
-                sip = sips.next()
+                try:
+                    sip = sips.next()
+                except StopIteration:
+                    #Throw SIP exception if sip isn't found (probably means
+                    #query + rules combination is 'malformed')
+                    raise InvalidSIPException("Unable to find a sip for %s (%s)"%(clause,adornedHead))
                 try:
                     reduce(collectSip,
                            iterCondition(And(sip)))

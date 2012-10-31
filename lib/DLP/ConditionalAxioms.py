@@ -74,7 +74,7 @@ def AdditionalRules(tBox):
     ruleSrc = set()
     addListSemantics = False
     if tBox.query(FUNCTIONAL_PROPERTIES,
-                  initNs={"owl":OWL_NS}).askAnswer:
+                  initNs={"owl": OWL_NS}).askAnswer:
         ruleSrc.add(FUNCTIONAL_SEMANTICS)
     if (None,OWL_NS.oneOf,None) in tBox:
         ruleSrc.add(NOMINAL_SEMANTICS)

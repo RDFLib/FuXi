@@ -109,7 +109,14 @@ def coroutine(func):
     return start
 
 class GoalSolutionAction(object):
+    def getGroundTerms(self,literal):
+        goalGroundTerms = {}
+        for idx,term in enumerate(GetArgs(literal)):
+            if not isinstance(term,Variable):
+                goalGroundTerms[idx] = term
+        return goalGroundTerms
     def __init__(self, bfp, varMap):
+        self.goalGroundTerms = self.getGroundTerms(bfp.goal)
         self.bfp = bfp
         self.varMap = varMap
         self.solutionSet = set()
@@ -124,12 +131,26 @@ class GoalSolutionAction(object):
         Called when the BFP triggers a p-node associated with a goal
         , storing the solutions for later retrieval
         """
-        self.bfp.goalSolutions.add(
-            MakeImmutableDict(
-                dict(
-                    [(self.varMap[key],binding[key])
-                        for key in binding
-                          if key in self.varMap])))
+        if not self.goalGroundTerms or not filter(
+                lambda (i,t): self.goalGroundTerms.get(i,t) != t,
+                enumerate(GetArgs(BuildUnitermFromTuple(inferredTriple)))
+            ):
+            #Only contributes to goal if bound arguments correspond to those
+            #bound in the goal literal
+            if set(self.varMap).intersection(binding):
+                #If there are variables to be mapped only consider those as solutions
+                self.bfp.goalSolutions.add(
+                    MakeImmutableDict(
+                        dict(
+                            [(self.varMap[key],binding[key])
+                                for key in binding
+                                  if key in self.varMap])))
+            else:
+                #If there are no variables to map, then pass on the bindings
+                # as solution
+                self.bfp.goalSolutions.add(MakeImmutableDict(binding))
+            if self.bfp.debug:
+                print "added %s to goal solutions"%binding
 
 class EvaluateExecution(object):
     """Handles the inference of evaluate literals in BFP"""
@@ -169,19 +190,95 @@ class EvaluateExecution(object):
         return "Evaluate(%s %s)"%(
                     self.ruleNo,
                     self.bodyIdx)
+                    
+class ProofDerivationStepAction(object):
+    def __init__(self, bfp, headLiteral,ruleIdx,bodyIdx):
+        self.bfp = bfp
+        self.headLiteral = headLiteral
+        self.ruleIdx = ruleIdx
+        self.bodyIdx = bodyIdx
+        self.subsequentActions = set()
+        
+    def __repr__(self):
+        subsequentTypes = {}
+        for act in self.subsequentActions:
+            clsName = act.__class__.__name__
+            subsequentTypes[clsName] = subsequentTypes.get(clsName,0) + 1
+        return "Goal step for rule %s%s"%(
+                    self.ruleIdx,
+                    ', triggers %s'%(
+                        ','.join([
+                            '%s %ss'%(no,_type) for _type,no in subsequentTypes.items()])) 
+                            if self.subsequentActions else '')
+        
+    def __call__(self, tNode, inferredTriple, token,    binding, debug=False):        
+        #Rule a^k
+        #p(x0,...,xn) :- And(query_p(x0,...,xn) evaluate(ruleNo,n,X))
+        #Need two write into self.bfp.proofTrace: headLiteral, ruleIdx, bodyIdx, 1        
+        for binding in token.bindings:
+            _bindings = dict([(k,v) for k,v in binding.items() 
+                                if v != None])                
+            lit=copy.deepcopy(self.headLiteral)
+            lit.ground(_bindings)     
+            self.bfp.proofTrace.append((lit,self.ruleIdx,self.bodyIdx+1,'G'))
+            self.bfp.derivationMap.setdefault(lit,set()).add((self.ruleIdx,self.bodyIdx+1,'G'))
+        for action in self.subsequentActions:
+            action(tNode, inferredTriple, token, binding, debug)
+
+class ProofAction(object):
+    def __init__(self, bfp, bodyLiteral,ruleIdx,bodyIdx):
+        self.bfp = bfp
+        self.bodyLiteral = bodyLiteral
+        self.ruleIdx = ruleIdx
+        self.bodyIdx = bodyIdx
+        self.subsequentActions = set()
+        
+    def __repr__(self):
+        subsequentTypes = {}
+        for act in self.subsequentActions:
+            clsName = act.__class__.__name__
+            subsequentTypes[clsName] = subsequentTypes.get(clsName,0) + 1
+        return "Lemma step for rule %s%s"%(
+                    self.ruleIdx,
+                    ', triggers %s'%(
+                        ','.join([
+                            '%s %s(s)'%(no,_type) for _type,no in subsequentTypes.items()])) 
+                            if self.subsequentActions else '')
+                
+    def __call__(self, tNode, inferredTriple, token,    binding, debug=False):        
+        #Rule c^k
+        #evaluate(ruleNo,j+1,X) :- evaluate(ruleNo,j,X), bodyLiteral
+        #Need two write into self.bfp.proofTrace: bodyLiteral, ruleIdx, bodyIdx, 0      
+        for binding in token.bindings:
+            _bindings = dict([(k,v) for k,v in binding.items() 
+                                if v != None])                
+            lit=copy.deepcopy(self.bodyLiteral)
+            if isinstance(lit,AdornedUniTerm):
+                lit = lit.convert2NormalUterm()
+            lit.ground(_bindings)        
+            triple=lit.toRDFTuple()
+            self.bfp.proofTrace.append((lit,self.ruleIdx,self.bodyIdx+1,'SG'))
+            if (self.ruleIdx,
+                self.bodyIdx+1,
+                'Q') not in [(step[0],step[1],step[2]) for step in self.bfp.derivationMap.get(triple,set())]:
+                self.bfp.derivationMap.setdefault(lit,set()).add((self.ruleIdx,self.bodyIdx+1,'SG'))
+        for action in self.subsequentActions:
+            action(tNode, inferredTriple, token, binding, debug)            
 
 class QueryExecution(object):
     """
     Called when an evaluate literal is inferred and
     given the relevant bindings
     """
-    def __init__(self, bfp, queryLiteral,conjoinedTokenMem=None,edbConj=None):
+    def __init__(self, bfp, queryLiteral,freeHeadVars,conjoinedTokenMem=None,edbConj=None,originPos=None):
+        self.freeHeadVars = freeHeadVars
         self.factGraph = bfp.factGraph
         self.bfp = bfp
         self.queryLiteral = queryLiteral
         self.bfp.firedEDBQueries = set()
         self.edbConj = edbConj
         self.conjoinedTokenMem = conjoinedTokenMem
+        self.originPos = originPos
 
     def __call__(self, tNode, inferredTriple, token,    binding, debug=False):
         """
@@ -218,10 +315,23 @@ class QueryExecution(object):
                                     specialBNodeHandling=self.bfp.specialBNodeHandling)
                 origQuery = _qLit.copy()
                 _qLit.ground(_bindings)
+
+                #The variables returned by the maximal, connected base component query
+                #should be only for those needed for free variables in the rule head
+                queryVars = reduce(
+                    lambda l,r:l.union(r),
+                    map(lambda item:set(GetVariables(item)),
+                        _qLit.formulae)
+                )
+                #@TODO: Verify we don't always want to limit passing of
+                # intermediate query answers to just those relevant to head solns
+#                _qLit.returnVars = list(set(self.freeHeadVars).intersection(queryVars))
+
                 if self.bfp.debug:
                     print "%sQuery triggered for "%(
                         ' maximal db conjunction '
                             if self.edbConj else ''), tNode.clauseRepresentation()
+                    print _qLit.asSPARQL()
                 self.bfp.edbQueries.add(_qLit)
                 queryVars = origQuery.getOpenVars()
                 # tokens2Propagate=[
@@ -238,13 +348,16 @@ class QueryExecution(object):
                         self.handleQueryAnswer(origQuery,
                                                token,
                                                self.bfp.debug,
+                                               _qLit,
                                                ({},binding))
                 else:
                     for ans in rt:
-                        if self.bfp.debug: pprint(ans)
+                        if self.bfp.debug:
+                            pprint(ans)
                         self.handleQueryAnswer(origQuery,
                                                token,
                                                self.bfp.debug,
+                                               _qLit,
                                                (ans,binding))
 
     @ConjunctiveQueryMemoize()
@@ -256,7 +369,7 @@ class QueryExecution(object):
             for item in rt:
                 yield item
 
-    def handleQueryAnswer(self,literal,token,debug,bindings=None):
+    def handleQueryAnswer(self,literal,token,debug,queryAtom,bindings=None):
         edbResult = literal.copy()
         if self.conjoinedTokenMem:
             assert bindings is not None
@@ -298,16 +411,36 @@ class QueryExecution(object):
 
             queryBindings,tokenBindings = bindings
             # toDo = []
-            for fact in baseAtoms:
+            self.bfp.queryAtom2Answers.setdefault(queryAtom,set()).update(baseAtoms)
+            for idx,fact in enumerate(baseAtoms):
                 queryLiteral = copy.deepcopy(fact)
                 fact.ground(tokenBindings)
                 fact.ground(queryBindings)
-                assert fact.isGround()
+                #If fact is not ground, then it corresponds to ground fact for
+                #with 'intermediate' variables
+                if not fact.isGround(): continue
+                # assert fact.isGround()
+                self.bfp.proofTrace.append((queryAtom,self.originPos[0]-1,self.originPos[-1],'Q'))
+                self.bfp.derivationMap.setdefault(fact,set()
+                    ).add((self.originPos[0],self.originPos[-1],'Q'))
+                self.bfp.queryAnswer2Atom.setdefault(fact,set()).add(queryAtom)
+                self.bfp.queryAtom2Answers.setdefault(queryAtom,set(fact))
+                
                 wme = ReteToken(tuple([ term for term in fact.toRDFTuple() ]),debug=debug)
                 wmeCopy = copy.deepcopy(wme)
                 for termComb,termDict in iteritems(self.bfp.metaInterpNetwork.alphaPatternHash):
                     for alphaNode in termDict.get(wmeCopy.alphaNetworkHash(termComb),[]):
-                        alphaNode.activate(wmeCopy)
+                        validBNodes = []
+                        for bNode in alphaNode.descendentBetaNodes:
+                            _ruleIdx = int(
+                                    list(
+                                        list(
+                                            bNode.rules)[0].formula.body
+                                    )[0].arg[0][-1])
+                            if _ruleIdx == self.originPos[0]:
+                                validBNodes.append(bNode)
+                        alphaNode.activate(wmeCopy,explicitSuccessors2Activate=validBNodes)
+                        wmeCopy = copy.deepcopy(wme)
                 wme.bindVariables(AlphaNode(queryLiteral.toRDFTuple()))
                 tokenClone.tokens.add(wme)
             tokenClone.joinedBindings = dict([(key,token.joinedBindings[key])
@@ -417,23 +550,26 @@ class BackwardFixpointProcedure(object):
                 sipCollection = [],
                 hybridPredicates = None,
                 debug = False,
-                pushDownMDBQ = True,
-                specialBNodeHandling = None):
-        self.specialBNodeHandling = specialBNodeHandling
-        self.debug = debug
-        self.metaRule2Network = {}
-        self.pushDownMDBQ = pushDownMDBQ
-        self.pushDownQueries = {}
-        self.maxEDBFront2End = {}
-        self.queryPredicates = set()
-        self.sipCollection = sipCollection
-        self.goal = BuildUnitermFromTuple(goal)
-        self.factGraph = factGraph
-        self.rules = list(factGraph.adornedProgram)
-        self.discardedRules= set()
-        self.ruleLabels = {}
-        self.bfpLookup = {}
-        self.actionHash = {}
+                specialBNodeHandling = None,
+                proofTrace = None):
+        self.proofTrace            = []
+        self.derivationMap         = {}
+        self.queryAnswer2Atom      = {}
+        self.queryAtom2Answers     = {}
+        self.specialBNodeHandling  = specialBNodeHandling
+        self.debug                 = debug
+        self.metaRule2Network      = {}
+        self.pushDownQueries       = {}
+        self.maxEDBFront2End       = {}
+        self.queryPredicates       = set()
+        self.sipCollection         = sipCollection
+        self.goal                  = BuildUnitermFromTuple(goal)
+        self.factGraph             = factGraph
+        self.rules                 = list(factGraph.adornedProgram)
+        self.discardedRules        = set()
+        self.ruleLabels            = {}
+        self.bfpLookup             = {}
+        self.actionHash            = {}
         self.namespaces = {
             u'bfp'  : BFP_NS,
             u'rule' : BFP_RULE
@@ -441,9 +577,13 @@ class BackwardFixpointProcedure(object):
         self.metaInterpNetwork = network
         self.derivedPredicates = set(derivedPredicates) if \
            isinstance(derivedPredicates,list) else derivedPredicates
-        self.hybridPredicates = hybridPredicates if hybridPredicates else []
-        self.edbQueries = set()
-        self.goalSolutions = set()
+        self.hybridPredicates      = hybridPredicates if hybridPredicates else []
+        self.hybridPredicateRuleNos = set()
+        self.edbQueries            = set()
+        self.goalSolutions         = set()
+        self.evalHash   = {}
+        self.actionHash = {}
+        self.productions= {}
 
     def answers(
         self,
@@ -500,6 +640,99 @@ class BackwardFixpointProcedure(object):
             if self.goal.isGround():
                 #Ground goal, but didn't trigger it, response must be negative
                 return False
+                
+    def extractProof(self,binding,ruleNo,inferredTriple,applyBindings=False):
+        rule              = self.rules[ruleNo]
+        ruleSipGraph      = rule.sip
+        # for stuff in SIPRepresentation(ruleSipGraph): print stuff
+        if not applyBindings:
+            #Need to get bindings by unifying ground fact with head of rule
+            _lit=copy.deepcopy(rule.formula.head)
+            binding = _lit.unify(buildUniTerm(inferredTriple))
+        lemmas=[]
+        
+        nonSipBindings = None
+        #Iterate over subgoals 
+        for idx,lit in enumerate(iterCondition(rule.formula.body)):
+            #Ground subgoal using bindings to determine the ground
+            #subgoal whose proof we need to (recursively) extract
+            lit = copy.deepcopy(lit) 
+            lit.ground(binding)
+            if isinstance(lit,AdornedUniTerm):
+                #A derived goal, so there must be one or more rules that were used to derive
+                #it, so we search for instanciations of rules for this derived goal
+                derivations = [entry for entry in self.derivationMap.get(lit,set()) if entry[2] =='G']
+                if not len(derivations): 
+                    #This doesn't match a Goal (G) step, so we must work the EDB query along
+                    #a 'SIP walk'
+                    from FuXi.DLP import LloydToporTransformation
+                    #Collect a list of rules that match the adornment and predicate of current subgoal
+                    matchingRuleIndices=set()
+                    for _idx,_rule in enumerate(self.rules):
+                        for clause in LloydToporTransformation(_rule.formula):
+                            head=isinstance(clause.head,Exists) and clause.head.formula or clause.head
+                            headPredicate = GetOp(head)
+                            if compareAdornedPredToRuleHead(lit,head,self.hybridPredicates) and (
+                                head.adornment == lit.adornment):
+                                matchingRuleIndices.add(_idx)
+                    validEntries=[]
+                    for _ruleIdx in matchingRuleIndices:
+                        _r = self.rules[_ruleIdx]
+                        #For every (matching) rule, scan
+                        #for rule instanciations 
+                        for entry,value in self.derivationMap.items():
+                            if [i for i in value 
+                                 if i[2] in ['G','Q']] and GetOp(entry) == GetOp(lit):
+                                #Derivation entry corresponds to this rule 
+                                #Extract proof tree
+                                sols = lit.unify(entry)
+                                matches = []
+                                if idx < len(list(iterCondition(rule.formula.body))):
+                                    nextBody = copy.deepcopy(list(iterCondition(rule.formula.body))[idx+1])
+                                    nextBody.ground(sols)
+                                    # _inner = self.extractProof(lit.unify(entry),_ruleIdx,nextBody.toRDFTuple())
+                                    matches = [
+                                        ([arg for argIdx,arg in enumerate(GetArgs(k)) 
+                                            if not isinstance(arg,Variable) and 
+                                               arg == list(GetArgs(nextBody))[argIdx]],
+                                          k,
+                                          v,
+                                          nextBody.unify(k)) 
+                                            for k,v in self.derivationMap.items() 
+                                                if GetOp(k) == GetOp(nextBody)]
+                                    for matchingArgs,provedFact,steps,_sols in matches:
+                                        if matchingArgs:
+                                            validEntries.append((entry,sols,value))
+                    for groundFact,_sols,_proofsInfo in validEntries:
+                        nonSipBindings = _sols
+                        assert len(_proofsInfo)==1
+                        foundSoln = False
+                        for _rIdx,_bodyPos,_stepType in _proofsInfo:
+                            assert not foundSoln
+                            if _stepType == 'Q':
+                                lemmas.append((groundFact,'N/A','EDB Query',[],_sols))
+                            elif derivations:
+                                lemmas.append(self.extractProof(sols,int(derivations[0][0]),lit.toRDFTuple()))
+                            else:
+                                lemmas.append(self.extractProof(sols,int(_rIdx),groundFact.toRDFTuple()))
+                            foundSoln = True
+                else:
+                    #Add to the list of lemmas (each of which correponds to a derived subgoal)
+                    #the proof for the subgoal by calling extractProof recursively on the
+                    #ground subgoal
+                    lemmas.append(self.extractProof(binding,int(derivations[0][0]),lit.toRDFTuple()))
+            else:
+                if nonSipBindings is not None:
+                    lit.ground(nonSipBindings)
+                for subGoal in self.derivationMap.get(lit,set()):
+                    if subGoal[2]=='Q':
+                        lemmas.append((lit,'Via EDB Query',[],binding))
+        assert len(lemmas) == len(list(iterCondition(rule.formula.body)))
+        return (buildUniTerm(inferredTriple),
+                rule,
+                # ', '.join(SIPRepresentation(ruleSipGraph)),
+                lemmas,
+                binding)
 
     def specializeConjuncts(self,rule, idx, evalVars):
         """
@@ -517,7 +750,24 @@ class BackwardFixpointProcedure(object):
             #V_{j} = V_{j-1} UNION vars(Literal(..)) where j <> 0
             evalVars[(idx+1,bodyIdx+1)] = list(GetVariables(bodyLiteral,secondOrder=True)) +\
                                                evalVars[(idx+1,bodyIdx)]
+            pattern = HashablePatternList(
+                [(BFP_RULE[str(idx+1)],
+                  BFP_NS.evaluate,
+                  Literal(bodyIdx))])
+            pattern2 = HashablePatternList(
+                [None,
+                    (BFP_RULE[str(idx+1)],
+                     BFP_NS.evaluate,
+                     Literal(bodyIdx)),
+                 bodyLiteral.toRDFTuple()])
             if skipMDBQCount > 0:
+                #body literals in base connected components have
+                #c^k meta rules with no-op actions
+                termNodeCk = self.metaInterpNetwork.nodes[pattern2]
+                key = (BFP_RULE[str(idx+1)],BFP_NS.evaluate,Literal(bodyIdx+1))
+                assert key not in termNodeCk.executeActions
+                def noOpAction(tNode, inferredTriple, token, binding, debug=False): pass
+                termNodeCk.executeActions[key] = (True,noOpAction)
                 skipMDBQCount -= 1
                 continue
 
@@ -528,17 +778,8 @@ class BackwardFixpointProcedure(object):
                         self.derivedPredicates,
                         self.hybridPredicates)
 
-            lazyBaseConjunct = self.pushDownMDBQ and conjunct
-            pattern = HashablePatternList(
-                                    [(BFP_RULE[str(idx+1)],
-                                      BFP_NS.evaluate,
-                                      Literal(bodyIdx))])
-            pattern2 = HashablePatternList(
-                                  [None,
-                                  (BFP_RULE[str(idx+1)],
-                                   BFP_NS.evaluate,
-                                   Literal(bodyIdx)),
-                                  bodyLiteral.toRDFTuple()])
+            
+            lazyBaseConjunct = conjunct
             aNodeDk = self.metaInterpNetwork.nodes[pattern]
 
             #Rule d^k
@@ -574,25 +815,50 @@ class BackwardFixpointProcedure(object):
                 newAction=QueryExecution(
                         self,
                         bodyLiteral,
+                        list(rule.formula.head.getDistinguishedVariables(
+                            varsOnly=True,
+                            bound=False)),
                         conjoinedTokenMem = self.maxEDBFront2End[(idx+1,bodyIdx+1)]
                             if lazyBaseConjunct else None,
-                        edbConj = conjunct if lazyBaseConjunct else singleConj)
+                        edbConj = conjunct if lazyBaseConjunct else singleConj,
+                        originPos=(idx,bodyIdx+1))
+                        
 
                 self.evalHash.setdefault((idx+1,bodyIdx),[]).append(newEvalMemory)
                 #If the body predicate is a 2nd order predicate, we don't infer the
                 #second order query predicate (since it will trigger a query into
                 #the EDB and thus there is no need to trigger subsequent rules)
-                tNode.executeActions[matchingTriple] = (True,newAction)
+                if matchingTriple in tNode.executeActions: 
+                    existingAction = tNode.executeActions[matchingTriple][-1]
+                    assert isinstance(executeAction,ProofAction)
+                    executeAction.subsequentActions.add(newAction)
+                else:
+                    tNode.executeActions[matchingTriple] = (True,newAction)
             else:
                 self.evalHash.setdefault((idx+1,bodyIdx),[]).append(newEvalMemory)
-            if IsHybridPredicate(bodyLiteral,self.hybridPredicates) or ((GetOp(bodyLiteral) in self.derivedPredicates) and \
-                not (isBase and len(conjunct)>1)):
-                # if pattern2 not in self.metaInterpNetwork.nodes: import pdb;pdb.set_trace()
+            if GetOp(bodyLiteral) not in FILTERS:# IsHybridPredicate(bodyLiteral,self.hybridPredicates) or ((GetOp(bodyLiteral) in self.derivedPredicates) and \
+#                not (isBase and len(conjunct)>1)):
                 assert pattern2 in self.metaInterpNetwork.nodes
                 termNodeCk = self.metaInterpNetwork.nodes[pattern2]
                 #Rule c^k
                 #evaluate(ruleNo,j+1,X) :- evaluate(ruleNo,j,X), bodyLiteral
-                self.actionHash.setdefault((idx+1,bodyIdx+1),set()).add(termNodeCk)
+                if not isBase or not len(conjunct):
+                    #We only associate an evaluate (or proof trace) action
+                    # if this is *not* part of a connected base component
+                    self.actionHash.setdefault((idx+1,bodyIdx+1),set()).add(termNodeCk)
+
+                    #We only associate a evaluate action if this is *not*
+                    #part of a connected base component
+                    proofAction=ProofAction(self,bodyLiteral,idx,bodyIdx)
+
+                    key = (BFP_RULE[str(idx+1)],BFP_NS.evaluate,Literal(bodyIdx+1))
+                    assert key not in termNodeCk.executeActions
+                    termNodeCk.executeActions[key] = (False,proofAction)
+                else:
+                    key = (BFP_RULE[str(idx+1)],BFP_NS.evaluate,Literal(bodyIdx+1))
+                    assert key not in termNodeCk.executeActions
+                    def noOpAction(tNode, inferredTriple, token, binding, debug=False): pass
+                    termNodeCk.executeActions[key] = (True,noOpAction)
 
                 assert isinstance(termNodeCk.rightNode,AlphaNode)
                 termNodeCk.leftVariables = set(evalVars[(idx+1,bodyIdx)])
@@ -676,7 +942,7 @@ class BackwardFixpointProcedure(object):
                         assert executeFn.conjoinedTokenMem[0] == int(ruleIdx),\
                         "%s %s %s"%(termNode,executeFn,key)
 
-    def createTopDownReteNetwork(self,debug=False):
+    def createTopDownReteNetwork(self,debug=False,derivedSuffix='derived',vizNetwork=None,nodes=None,edges=None):
         """
         Uses the specialized BFP meta-interpretation rules to build a RETE-UL decision
         network that is modified to support the propagation of bindings from the evaluate
@@ -684,21 +950,53 @@ class BackwardFixpointProcedure(object):
         The end result is a bottom-up simulation of SLD resolution with complete, sound, and safe
         memoization in the face of recursion
         """
+        for idx,rule in enumerate(self.rules):
+            from FuXi.Rete.Magic import IsHybridPredicateRule
+            if IsHybridPredicateRule(rule,derivedSuffix=derivedSuffix):
+                if idx+1 not in self.hybridPredicateRuleNos:
+                    self.hybridPredicateRuleNos.add(idx+1)
         for rule in set(self.specializeAdornedRuleset(debug)):
             self.metaRule2Network[rule] = \
                self.metaInterpNetwork.buildNetworkFromClause(rule)
         if debug:
+            def ruleIdx(ruleKey):
+                return ruleKey[1]
+            def sortBFPRules(item1,item2):
+                if ruleIdx(item1) != ruleIdx(item2):
+                    return 1 if ruleIdx(item1) > ruleIdx(item2) else -1 if ruleIdx(item1) < ruleIdx(item2) else 0
+                elif len(item1) == len(item2) and len(item1) == 3 and ruleIdx(item1) == ruleIdx(item2) and item1[-1] != item2[-1]:
+                    return 1 if item1[-1] > item2[-1] else -1
+                elif len(item1) > len(item2):
+                    ruleKind,ruleNo = item2
+                    if ruleKind == 'a':
+                        return -1
+                    else:
+                        return  1
+                elif len(item1) < len(item2):
+                    ruleKind,ruleNo = item1
+                    if ruleKind == 'a':
+                        return  1
+                    else:
+                        return -1
+                elif len(item1) == 3:
+                    ruleKind1,bodyIdx1,ruleNo1 = item1
+                    ruleKind2,bodyIdx1,ruleNo2 = item2
+                    if ruleKind1 == 'c' and ruleKind2 == 'd':
+                        return  1
+                    else:
+                        return -1
+                elif len(item1) == 2:
+                    return -1 if item1[0] == 'b' else 1 if item1[0] == 'a' else 0
+                else:
+                    raise Exception(u'problems comparing %s and %s'%(item1,item))
             sortedBFPRules =[
                 str("%s : %s")%(key,self.bfpLookup[key])
                     for key in sorted(self.bfpLookup,
-                                     key=lambda items: str(items[1])+items[0])]
+#                                     key=lambda items: str(items[1])+items[0],
+                                      cmp=sortBFPRules)]
             for _ruleStr in sortedBFPRules:
                 print _ruleStr
-
-        self.evalHash   = {}
-        self.actionHash = {}
         evalVars        = {}
-        self.productions= {}
         for idx,rule in enumerate(self.rules):
             if rule in self.discardedRules:
                 continue
@@ -722,14 +1020,41 @@ class BackwardFixpointProcedure(object):
             newEvalMemory = SetupEvaluationBetaNode(bNode,rule,self.metaInterpNetwork)
             self.evalHash.setdefault((idx+1,conjunctLength),[]).append(newEvalMemory)
 
+            
+            
+            if vizNetwork:
+                existingBetaNode.commonVariables
+                if bNode not in nodes:
+                    _len=len(nodes)
+                    nodes[_len]=bNode
+                    attrs = [
+                        ('shape', 'circle'),
+                        ('label', ','.join([v.n3() 
+                            for v in existingBetaNode.commonVariables]))]
+                    vizNetwork.add_node(_len,attrs)
+                    # if bNode.memories[RIGHT_MEMORY] not in nodes:
+                    #     nodes.add(bNode.memories[RIGHT_MEMORY])
+                    #     attrs = [
+                    #         ('shape', 'circle'),
+                    #         ('label', ','.join([v.n3() 
+                    #             for v in existingBetaNode.commonVariables]))]
+                    #     vizGraph.add_node(bNode.identifier)
             if GetOp(rule.formula.head) == GetOp(self.goal):
                 #This rule matches a goal, add a solution collecting action
+                
                 goalSolutionAction = GoalSolutionAction(
                         self,
                         rule.formula.head.getVarMapping(self.goal))
-                bNode.executeActions[rule.formula.head.toRDFTuple()] = (
-                        False,
-                        goalSolutionAction)
+                        
+                        
+                proofAction=ProofDerivationStepAction(self,rule.formula.head,idx,conjunctLength)
+                proofAction.subsequentActions.add(goalSolutionAction)
+                bNode.executeActions[rule.formula.head.toRDFTuple()] = (False,proofAction)                        
+                bNode.ruleNo = idx
+            else:
+                proofAction=ProofDerivationStepAction(self,rule.formula.head,idx,conjunctLength)
+                bNode.executeActions[rule.formula.head.toRDFTuple()] = (False,proofAction)
+                        
 
             self.productions.setdefault(GetOp(rule.formula.head),[]).append((idx,bNode))
 
@@ -744,6 +1069,16 @@ class BackwardFixpointProcedure(object):
             tNode = first(_bodyAlphaNode.descendentBetaNodes)
             self.actionHash.setdefault((idx+1,0),set()).add(tNode)
 
+            
+            if vizNetwork and tNode not in nodes:
+                _len=len(nodes)
+                nodes[_len]=tNode                
+                attrs = [
+                    ('shape', 'circle'),
+                    ('label', ','.join([v.n3() 
+                        for v in tNode.commonVariables]))]
+                vizNetwork.add_node(_len,attrs)
+            
             #V_{0} = vars(query_p(..))
             headQueryPred = list(iterCondition(_rule.formula.body))[0]
             try:
@@ -763,7 +1098,13 @@ class BackwardFixpointProcedure(object):
                                               tNodes)
             evaluationStmt = (BFP_RULE[str(ruleNo)],BFP_NS.evaluate,Literal(bodyIdx))
             for tNode in tNodes:
-                tNode.executeActions[evaluationStmt] = (True,executeAction)
+                eAct = tNode.executeActions.get(evaluationStmt)
+                if eAct and isinstance(eAct[-1],ProofAction): 
+                    existingAction = eAct[-1]
+                    existingAction.subsequentActions.add(executeAction)
+                    tNode.executeActions[evaluationStmt] = (True,existingAction)
+                else:
+                    tNode.executeActions[evaluationStmt] = (True,executeAction)
                 # executeAction = EvaluateExecution(evalHash,(idx+1,bodyIdx+1),self,termNodeCk)
                 # assert len(termNodeCk.consequent)==1
                 # termNodeCk.executeAction = (None,executeAction)
@@ -783,6 +1124,16 @@ class BackwardFixpointProcedure(object):
                                        ).intersection(
                                            GetVariables(headQueryPred,
                                                         secondOrder=True)))
+                                                        
+            if vizNetwork and termNode not in nodes:
+                _len=len(nodes)
+                nodes[_len]=termNode                
+                attrs = [
+                    ('shape', 'circle'),
+                    ('label', ','.join([v.n3() 
+                        for v in termNode.commonVariables]))]
+                vizNetwork.add_node(_len,attrs)
+                                                        
             skipMDBQCount = 0
             for bodyIdx,bodyLiteral in enumerate(iterCondition(rule.formula.body)):
                 if skipMDBQCount > 0:
@@ -799,7 +1150,16 @@ class BackwardFixpointProcedure(object):
                     termNode2.commonVariables = list(set(evalVars[(idx+1,bodyIdx)]
                                                ).intersection(
                                                    GetVariables(bodyLiteral,
-                                                                secondOrder=True)))
+                                                                secondOrder=True)))                                                                
+                    if vizNetwork and termNode2 not in nodes:
+                        _len=len(nodes)
+                        nodes[_len]=termNode2                        
+                        attrs = [
+                            ('shape', 'circle'),
+                            ('label', ','.join([v.n3() 
+                                for v in termNode2.commonVariables]))]
+                        vizNetwork.add_node(_len,attrs)
+                    
                 if (idx+1,bodyIdx+1) in self.maxEDBFront2End:
                     endIdx = self.maxEDBFront2End[(idx+1,bodyIdx+1)][-1]
                     skipMDBQCount = endIdx - bodyIdx - 1
@@ -852,8 +1212,18 @@ class BackwardFixpointProcedure(object):
             # _len = len(rule.formula.body)
             for bodyIdx,bodyLiteral in enumerate(iterCondition(rule.formula.body)):
                 bodyPredSymbol = GetOp(bodyLiteral)
+                evaluateTerm = Uniterm(BFP_NS.evaluate,[label,Literal(bodyIdx+1)],
+                    newNss=self.namespaces)
+                priorEvaluateTerm = Uniterm(BFP_NS.evaluate,[label,Literal(bodyIdx)],
+                    newNss=self.namespaces)
                 if skipMDBQCount > 0:
                     skipMDBQCount -= 1
+                    newRule = self.makeAdornedRule(
+                        And([priorEvaluateTerm,
+                             bodyLiteral]),
+                        evaluateTerm)
+                    self.bfpLookup[('c',idx+1,bodyIdx+1)] = newRule
+                    rules.add(newRule)
                     continue
                 elif skipMDBQCount == 0:
                     #finished skipping maximal db conjuncts, mark end of skipped
@@ -862,16 +1232,12 @@ class BackwardFixpointProcedure(object):
                     mDBConjFront = None
                     skipMDBQCount = -1
 
-                evaluateTerm = Uniterm(BFP_NS.evaluate,[label,Literal(bodyIdx+1)],
-                                       newNss=self.namespaces)
-                priorEvaluateTerm = Uniterm(BFP_NS.evaluate,[label,Literal(bodyIdx)],
-                                       newNss=self.namespaces)
                 conj = EDBQueryFromBodyIterator(
                             self.factGraph,
                             rule.formula.body.formulae[bodyIdx:],
                             self.derivedPredicates,
                             self.hybridPredicates)
-                if self.pushDownMDBQ and conj:
+                if conj:
                     #There is a maximal db conjunction, indicate skipping of rules involving
                     #conjuncts
                     mDBConjFront = (idx+1,bodyIdx+1)
@@ -890,24 +1256,12 @@ class BackwardFixpointProcedure(object):
                         #maximal db conjunction takes up rest of body
                         #tokens should go into (k,n) - where n is the body length
                         self.maxEDBFront2End[mDBConjFront] = (idx+1,len(rule.formula.body))
-                if (not self.pushDownMDBQ or (
-                        (bodyPredSymbol in FILTERS and len(conj) == 1) or
-                        (bodyPredSymbol in self.derivedPredicates or
-                         IsHybridPredicate(bodyLiteral,
-                                           self.hybridPredicates))# and
-#                         bodyPredSymbol not in self.hybridPredicates) or (
-                         #bodyPredSymbol not in FILTERS and bodyIdx+1 == _len)
-                    )) and skipMDBQCount in (1,-1):
-                    #Either not pushing down or:
-                    # 1. It is a lone filter
-                    # 2. It is a derived predicate (need continuation BFP rule)
-                    #evaluate(ruleNo,j+1,X) :- evaluate(ruleNo,j,X) bodyLiteral(..)
-                    newRule = self.makeAdornedRule(
-                                            And([priorEvaluateTerm,bodyLiteral]),
-                                                 evaluateTerm)
-                    self.bfpLookup[('c',idx+1,bodyIdx+1)] = newRule
-                    rules.add(newRule)
-                elif bodyPredSymbol in FILTERS and len(conj) > 2:
+                newRule = self.makeAdornedRule(
+                                        And([priorEvaluateTerm,bodyLiteral]),
+                                             evaluateTerm)
+                self.bfpLookup[('c',idx+1,bodyIdx+1)] = newRule
+                rules.add(newRule)
+                if bodyPredSymbol in FILTERS and len(conj) > 2:
                     raise NotImplementedError(repr(rule))
                 if bodyPredSymbol not in FILTERS:
                     #query_Literal(x0,...,xj) :- evaluate(ruleNo,j,X)
@@ -923,13 +1277,13 @@ class BackwardFixpointProcedure(object):
     def makeAdornedRule(self,body,head):
         allVars = set()
         #first we identify body variables
-        # bodyVars = set(reduce(lambda x,y:x+y,
-        #                       [ list(extractVariables(i,existential=False))
-        #                                 for i in iterCondition(body) ]))
-        # #then we identify head variables
-        # headVars = set(reduce(lambda x,y:x+y,
-        #                       [ list(extractVariables(i,existential=False))
-        #                                 for i in iterCondition(head) ]))
+        bodyVars = set(reduce(lambda x,y:x+y,
+                              [ list(extractVariables(i,existential=False))
+                                        for i in iterCondition(body) ]))
+        #then we identify head variables
+        headVars = set(reduce(lambda x,y:x+y,
+                              [ list(extractVariables(i,existential=False))
+                                        for i in iterCondition(head) ]))
 
         return AdornedRule(Clause(body,head),declare=allVars)
 

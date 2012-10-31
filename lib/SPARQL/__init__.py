@@ -38,13 +38,16 @@ def normalizeBindingsAndQuery(vars,bindings,conjunct):
     return list(_vars),conjunct, \
            project(bindings,_vars,inverse=True) if appliedBindings else bindings
 
-def tripleToTriplePattern(graph,term):
+def tripleToTriplePattern(graph,term,specialBNodeHandling=None):
    if isinstance(term,N3Builtin):
        template = graph.templateMap[term.uri]
        return "FILTER(%s)"%(template%(term.argument.n3(),
                                       term.result.n3()))
    else:
-       return "%s %s %s"%tuple([renderTerm(graph,term,predTerm=idx==1) 
+       return "%s %s %s"%tuple([renderTerm(graph,
+                                           term,
+                                           predTerm=idx==1,
+                                           specialBNodeHandling=specialBNodeHandling) 
                                    for idx,term in enumerate(term.toRDFTuple())])
 
 @selective_memoize([0])
@@ -80,7 +83,7 @@ def compute_qname(uri,revNsMap):
        revNsMap[namespace]=prefix
    return (prefix, namespace, name)
 
-def renderTerm(graph,term,predTerm=False):
+def renderTerm(graph,term,predTerm=False,specialBNodeHandling=None):
    if term == RDF.type and predTerm:
        return ' a '
    elif isinstance(term,URIRef):
@@ -91,7 +94,12 @@ def renderTerm(graph,term,predTerm=False):
        return term.n3()
    else:
        try:
-           return isinstance(term,BNode) and term.n3() or graph.qname(term)
+           if isinstance(term,BNode):
+               return term.n3(
+                   ) if specialBNodeHandling is None else specialBNodeHandling[0](
+                        term)
+           else:
+               return graph.qname(term)
        except:
            return term.n3()
 
@@ -100,7 +108,8 @@ def RDFTuplesToSPARQL(conjunct,
                      edb, 
                      isGround=False, 
                      vars=[],
-                     symmAtomicInclusion=False):
+                     symmAtomicInclusion=False,
+                     specialBNodeHandling=None):
    """
    Takes a conjunction of Horn literals and returns the 
    corresponding SPARQL query 
@@ -126,7 +135,8 @@ def RDFTuplesToSPARQL(conjunct,
    else: 
        subquery = queryShell%(queryType,' .\n'.join(['\t'+tripleToTriplePattern(
                                                              edb,
-                                                             lit) 
+                                                             lit,
+                                                             specialBNodeHandling) 
                                  for lit in conjunct ]))
    return subquery
 
@@ -136,7 +146,8 @@ def RunQuery(subQueryJoin,
             factGraph,
             vars=None,
             debug = False,
-            symmAtomicInclusion = False):
+            symmAtomicInclusion = False,
+            specialBNodeHandling = None):
    initialNs = hasattr(factGraph,'nsMap') and factGraph.nsMap or \
                dict([(k,v) for k,v in factGraph.namespaces()])
 
@@ -158,7 +169,8 @@ def RunQuery(subQueryJoin,
                                 factGraph,
                                 isGround,
                                 [v for v in vars],
-                                symmAtomicInclusion)
+                                symmAtomicInclusion,
+                                specialBNodeHandling)
    rt = factGraph.query(subquery,
                         initNs = initialNs)#,
                         #DEBUG = debug)
@@ -172,10 +184,17 @@ def RunQuery(subQueryJoin,
                          rt.askAnswer[0])
        return subquery,rt.askAnswer[0]
    else:
-       rt = len(vars)>1 and ( dict([(vars[idx],i) 
+       rt = len(vars)>1 and ( 
+        dict([(vars[idx],
+               specialBNodeHandling[-1](i) 
+               if specialBNodeHandling and isinstance(i,BNode) 
+               else i) 
                                       for idx,i in enumerate(v)]) 
                                            for v in rt ) \
-              or ( dict([(vars[0],v)]) for v in rt )
+              or ( dict([(vars[0],
+                          specialBNodeHandling[-1](v) 
+                          if specialBNodeHandling and isinstance(v,BNode) else v)
+                          ]) for v in rt )
        if debug:
            print >>sys.stderr, "%s%s-> %s"%(
                    subquery,
@@ -233,23 +252,24 @@ class ConjunctiveQueryMemoize(object):
 
     def __call__(self, func):
         def innerHandler(queryExecAction,conjQuery):
-            key = (conjQuery.factGraph,conjQuery)
+            key = (conjQuery.factGraph.identifier,conjQuery)
             try:
                 rt = self._cache.get(key)
-                if rt is not None:
-                    for item in rt:
-                        yield item
-                else:
+                if rt is None:
                     for item in self.produceAnswersAndCache(
                             func(queryExecAction,
                                  conjQuery),
                             key):
-                        yield item
-            except TypeError:
+                        yield item                    
+                else:
+                    for item in rt:
+                        yield item                    
+            except TypeError, e:
+                import pickle
                 try:
                     dump = pickle.dumps(key)
                 except pickle.PicklingError:
-                    for item in func(*args, **kwds):
+                    for item in func(queryExecAction,conjQuery):
                         yield item
                 else:
                     if dump in self._cache:
@@ -282,12 +302,14 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                  bindings={}, 
                  varMap={}, 
                  symIncAxMap = {}, 
-                 symmAtomicInclusion = False):
-        self.factGraph           = factGraph
-        self.varMap              = varMap
-        self.symmAtomicInclusion = symmAtomicInclusion
-        self.formulae            = lst
-        self.naf                 = False
+                 symmAtomicInclusion = False,
+                 specialBNodeHandling = None):
+        self.factGraph            = factGraph
+        self.varMap               = varMap
+        self.symmAtomicInclusion  = symmAtomicInclusion
+        self.formulae             = lst
+        self.naf                  = False
+        self.specialBNodeHandling = specialBNodeHandling
 
         #apply an apriori solutions
         if bool(bindings):
@@ -362,12 +384,48 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                             for k,v in self.bindings.items()])
 
     def evaluate(self,debug = False, symmAtomicInclusion = False):
-        return     RunQuery(self.formulae,
-                            self.bindings,
-                            self.factGraph,
-                            vars=self.returnVars,
-                            debug = debug,
-                            symmAtomicInclusion = symmAtomicInclusion)
+        import time, warnings
+        from urllib2 import HTTPError
+        from BaseHTTPServer import BaseHTTPRequestHandler 
+        from cStringIO import StringIO
+        strBuffer = StringIO()
+        for attempt in range(10):
+            try:
+                rt = RunQuery(self.formulae,
+                              self.bindings,
+                              self.factGraph,
+                              vars=self.returnVars,
+                              debug = debug,
+                              symmAtomicInclusion = symmAtomicInclusion,
+                              specialBNodeHandling=self.specialBNodeHandling)
+                return rt
+            except Exception, e:# HTTPError, e:
+                #responseMsg = BaseHTTPRequestHandler.responses[e.code]
+                # warnings.warn(
+                # "On attempt %s Recieved HTTP response code %s from server: %s"%(
+                #     attempt+1,
+                #     e.code,
+                #     responseMsg),
+                #     RuntimeWarning,2)
+                import pickle, traceback, sys
+                # print "----------"*3
+                traceback.print_exc(file=strBuffer)
+                # print "----------"*3
+                
+                warnings.warn(
+                "Recieved HTTP error from server",
+                    RuntimeWarning,2)                
+                time.sleep(1)
+            else: # we tried, and we had no failure, so
+                break
+        else: # we never broke out of the for loop
+            strBuffer.write(self.asSPARQL())
+            f=open('error-at-endpoint.txt','w')
+            f.write(strBuffer.getvalue())
+            f.close()
+            raise RuntimeError(
+                "Maximum number of unsuccessful attempts to evaluate %s reached."%(
+                    self))        
         
     def asSPARQL(self):
         # initialNs = hasattr(self.factGraph,'nsMap') and self.factGraph.nsMap or \
@@ -376,7 +434,8 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                                  self.factGraph,
                                  not self.returnVars,
                                  self.returnVars,
-                                 self.symmAtomicInclusion)
+                                 self.symmAtomicInclusion,
+                                 specialBNodeHandling=self.specialBNodeHandling)
         
     def __len__(self):
         return len(self.formulae)
@@ -399,9 +458,14 @@ class EDBQuery(QNameManager,SetOperator,Condition):
 
         """
         from FuXi.Rete.Network import HashablePatternList
+        hasBNodes = False
+        for tp in self.formulae:
+            for term in tp.toRDFTuple():
+                if isinstance(term,BNode):
+                    hasBNodes = True 
         conj=HashablePatternList(
                     [term.toRDFTuple() for term in self.formulae],
-                    skipBNodes=True)
+                    skipBNodes=not hasBNodes)
         return hash(conj)
         
     def extend(self, query, newVarMap = None):

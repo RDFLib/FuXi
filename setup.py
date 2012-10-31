@@ -2,6 +2,11 @@
 # -*- coding: utf-8 -*-
 import sys
 import re
+try:
+    import multiprocessing  # atexit exception
+except:
+    pass
+
 
 def setup_python3():
     # Taken from "distribute" setup.py
@@ -30,6 +35,7 @@ def setup_python3():
 
     return tmp_src
 
+
 # Find version. We have to do this because we can't import it in Python 3 until
 # its been automatically converted in the setup process.
 def find_version(filename):
@@ -45,25 +51,29 @@ __version__ = find_version('lib/__init__.py')
 # ez_setup.use_setuptools()
 # from setuptools  import setup
 
-config=dict(
+config = dict(
     name="FuXi",
     version="1.3",
     description="An OWL / N3-based in-memory, logic reasoning system for RDF",
     author="Chime Ogbuji",
     author_email="chimezie@gmail.com",
-    platforms = ["any"],
-    classifiers = ["Programming Language :: Python",
-                   "Programming Language :: Python :: 2",
-                   "Programming Language :: Python :: 3",
-                   "Programming Language :: Python :: 2.6",
-                   "Programming Language :: Python :: 2.7",
-                   "Programming Language :: Python :: 3.2",
-                   "License :: OSI Approved :: BSD License",
-                   "Topic :: Software Development :: Libraries :: Python Modules",
-                   "Operating System :: OS Independent",
-                   "Natural Language :: English",
-                   ],
-    package_dir = {
+    maintainer='RDFLib Team',
+    maintainer_email='rdflib-dev@googlegroups.com',
+    platforms=["any"],
+    classifiers=[
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 2.6",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.2",
+        "Programming Language :: Python :: 3.3",
+        "License :: OSI Approved :: BSD License",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Operating System :: OS Independent",
+        "Natural Language :: English",
+        ],
+    package_dir={
         'FuXi': 'lib',
     },
     packages=[
@@ -73,14 +83,12 @@ config=dict(
         "FuXi.Rete",
         "FuXi.DLP",
         "FuXi.Horn",
-        "FuXi.Syntax",
     ],
-    dependency_links = ['http://github.com/RDFLib/rdfextras/tarball/master#egg=rdfextras-0.2-dev'],
-    install_requires = ['rdflib>2','rdfextras==0.2-dev'],#'telescope'],
-    license = "Apache",
-    keywords = "python logic owl rdf dlp n3 rule reasoner",
-    url = "http://code.google.com/p/python-dlp/wiki/FuXi",
-    entry_points = {
+    install_requires=['rdflib>2', 'rdfextras>0.2'],  # 'telescope'],
+    license="Apache",
+    keywords="python logic owl rdf dlp n3 rule reasoner",
+    url="https://github.com/RDFLib/FuXi",
+    entry_points={
         'console_scripts': [
            'FuXi = FuXi.Rete.CommandLine:main',
         ],

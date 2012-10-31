@@ -1454,7 +1454,7 @@ class Restriction(Class):
         >>> restr1.serialize(g2)
         >>> Individual.factoryGraph = g2
         >>> list(Property(EX.someProp,baseType=None).type)
-        [rdflib.URIRef('http://www.w3.org/2002/07/owl#DatatypeProperty')]
+        [rdflib.term.URIRef(u'http://www.w3.org/2002/07/owl#DatatypeProperty')]
         """
         Property(self.onProperty,graph=self.graph,baseType=None).serialize(graph)
         for s,p,o in self.graph.triples((self.identifier,None,None)):

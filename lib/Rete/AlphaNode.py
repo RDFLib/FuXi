@@ -251,13 +251,19 @@ class AlphaNode(Node):
     def __repr__(self):
         return "<AlphaNode: %s. Feeds %s beta nodes>"%(repr(self.triplePattern),len(self.descendentBetaNodes))
 
-    def activate(self,aReteToken):
+    def activate(self,aReteToken,explicitSuccessors2Activate=None):
         from BetaNode import PartialInstantiation, LEFT_MEMORY, RIGHT_MEMORY, LEFT_UNLINKING
-        #print aReteToken.asTuple()
-        #aReteToken.debug = True
+        explicitSuccessors2Activate = [] if explicitSuccessors2Activate is None\
+                                         else explicitSuccessors2Activate
         aReteToken.bindVariables(self)
         for memory in self.descendentMemory:
-            singleToken = PartialInstantiation([aReteToken],consistentBindings=aReteToken.bindingDict.copy())
+            if explicitSuccessors2Activate and memory.successor not in explicitSuccessors2Activate:
+                if aReteToken.debug:
+                    print "Skipping (per user specification) activation of join node: ", memory.successor
+                continue
+            singleToken = PartialInstantiation(
+                            [aReteToken],
+                            consistentBindings=aReteToken.bindingDict.copy())
 #            print memory
 #            print self
 #            print self.descendentMemory

@@ -68,11 +68,11 @@ def CollapseDictionary(mapping):
     >>> len(a)
     2
     >>> a.values()
-    [rdflib.URIRef('http://example.com/'), rdflib.URIRef('http://example.com/')]
+    [rdflib.term.URIRef(u'http://example.com/'), rdflib.term.URIRef(u'http://example.com/')]
     >>> CollapseDictionary(a)
-    {'ex': rdflib.URIRef('http://example.com/')}
+    {'ex': rdflib.term.URIRef(u'http://example.com/')}
     >>> a
-    {'ex': rdflib.URIRef('http://example.com/'), '_1': rdflib.URIRef('http://example.com/')}
+    {'ex': rdflib.term.URIRef(u'http://example.com/'), '_1': rdflib.term.URIRef(u'http://example.com/')}
     """
     def originalPrefixes(item):
         return item.find('_')+1==1
@@ -195,15 +195,15 @@ def lazyGeneratorPeek(iterable,firstN=1):
     [2, 3]
     >>> a=(i for i in [1,2,3])
     >>> result = lazyGeneratorPeek(a)
-    >>> result  # doctest:+ELLIPSIS
-    <generator object at ...>
     >>> result = list(result)
     >>> result
     [1, 2, 3]
-    >>> lazyGeneratorPeek((i for i in []))
-    >>> lazyGeneratorPeek(result,4)
-    >>> lazyGeneratorPeek(result,3) # doctest:+ELLIPSIS
-    <generator object at ...>
+    >>> lazyGeneratorPeek((i for i in [])) # doctest:+SKIP
+    <FuXi.Rete.Util.InformedLazyGenerator object at  ...>
+    >>> lazyGeneratorPeek(result,4) # doctest:+SKIP
+    <FuXi.Rete.Util.InformedLazyGenerator object at  ...>
+    >>> lazyGeneratorPeek(result,3) # doctest:+SKIP
+    <FuXi.Rete.Util.InformedLazyGenerator object at  ...>
     """
     cnt = firstN
     header = []
