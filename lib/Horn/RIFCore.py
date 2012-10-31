@@ -4,11 +4,12 @@ RIF Core parser for FuXi.
 Parses RIF Core XML (and RIF In RDF) syntaxes into FuXi (converts the former into the latter).
 Supports Frames and atoms with only two positional arguments.  Follows import trail
 """
-
+import os
 import urllib2, warnings
 from cStringIO import StringIO
-from amara.lib import iri, inputsource
-from amara.xslt  import transform
+# from amara.lib import iri, inputsource
+# from amara.xslt  import transform
+from lxml import etree
 from rdflib.graph import Graph
 from rdflib import Namespace, RDF, Variable, URIRef
 from rdflib.util import first
@@ -39,7 +40,10 @@ mimetypes = {
     'text/turtle'         : 'turtle',
 }
 
-TRANSFORM_URI = iri.absolutize('rif-core-rdf.xsl',iri.os_path_to_uri(__file__))
+# TRANSFORM_URI = iri.absolutize('rif-core-rdf.xsl',iri.os_path_to_uri(__file__))
+
+TRANSFORM_URI = 'file://' + os.path.join(os.getcwd(), 'FuXi/Horn/rif-core-rdf.xsl')
+
 
 IMPLIES_PARTS=\
 """
@@ -114,8 +118,9 @@ class RIFCoreParser(object):
                 self.content = urllib2.urlopen(self.location).read()
 #                self.content = open(self.location).read()
             try:
-                rdfContent = transform(self.content,inputsource(TRANSFORM_URI))
-                self.graph = Graph().parse(StringIO(rdfContent))
+                transform = etree.XSLT(etree.parse(TRANSFORM_URI))
+                self.graph = Graph().parse(
+                    data=etree.tostring(transform(etree.fromstring(self.content))))
                 if debug:
                     print "Extracted rules from RIF XML format"
             except ValueError:
@@ -253,5 +258,3 @@ if __name__ == '__main__':
     parser = RIFCoreParser('http://www.w3.org/2005/rules/test/repository/tc/Guards_and_subtypes/Guards_and_subtypes-premise.rif')
     for rule in parser.getRuleset():
         print rule
-
-
