@@ -219,9 +219,9 @@ def manchesterSyntax(thing,store,boolean=None,transientList=False):
             else:
                 return u'( '+ u' AND '.join(children) + u' )'
         elif boolean == OWL_NS.unionOf:
-            return u'( '+ u' OR '.join(children) + u' )'
+            return u'( '+ u' OR '.join([str(c) for c in children]) + u' )'
         elif boolean == OWL_NS.oneOf:
-            return u'{ '+ u' '.join(children) +u' }'
+            return u'{ '+ u' '.join([str(c) for c in children]) +u' }'
         else:
             assert boolean == OWL_NS.complementOf
     elif OWL_NS.Restriction in store.objects(subject=thing, predicate=RDF.type):
@@ -1250,10 +1250,10 @@ class BooleanClassExtentHelper:
     >>> testClass = BooleanClass(members=[fire,water])
     >>> testClass2 = BooleanClass(operator=OWL_NS.unionOf,members=[fire,water])
     >>> for c in BooleanClass.getIntersections():
-    ...     print c
+    ...     print(c)
     ( ex:Fire AND ex:Water )
     >>> for c in BooleanClass.getUnions():
-    ...     print c
+    ...     print(c)
     ( ex:Fire OR ex:Water )
     """
     def __init__(self, operator):
@@ -1347,7 +1347,7 @@ class BooleanClass(OWLRDFListProxy,Class):
         >>> testClass
         ( ex:Fire OR ex:Water )
         >>> try: testClass.changeOperator(OWL_NS.unionOf)
-        ... except Exception, e: print e
+        ... except Exception(e): print(e)
         The new operator is already being used!
 
         """
