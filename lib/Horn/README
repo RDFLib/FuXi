@@ -1,0 +1,2 @@
+The rif-core-rdf.xsl transform makes use of uri.xsl from the XSLT Standard Library sourceforge project [1].  That project is licensed under GNU Library or Lesser General Public License (LGPL) and
+available in its entirety from sourceforge.net 
