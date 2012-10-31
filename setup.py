@@ -53,7 +53,7 @@ __version__ = find_version('lib/__init__.py')
 
 config = dict(
     name="FuXi",
-    version="1.3",
+    version="1.4",
     description="An OWL / N3-based in-memory, logic reasoning system for RDF",
     author="Chime Ogbuji",
     author_email="chimezie@gmail.com",
@@ -84,7 +84,7 @@ config = dict(
         "FuXi.DLP",
         "FuXi.Horn",
     ],
-    install_requires=['rdflib>2', 'rdfextras>0.2'],  # 'telescope'],
+    install_requires=['rdflib>2', 'rdfextras>0.2', 'lxml'],  # 'telescope'],
     license="Apache",
     keywords="python logic owl rdf dlp n3 rule reasoner",
     url="https://github.com/RDFLib/FuXi",
