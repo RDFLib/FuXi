@@ -200,7 +200,7 @@ RHS can only include RDF triples
     >>> g=g.parse(StringIO(src),format='n3')
     >>> try:
     ...   s._finalize()
-    ... except Exception(e):
+    ... except Exception, e:
     ...   print(e)
     Rule RHS must only include RDF triples! (<http://www.w3.org/2000/10/swap/math#lessThan>(3,2))
 
@@ -214,7 +214,7 @@ BuiltIn used out of order
     ... { ?M math:lessThan ?Z.  ?R :value ?M; :value2 ?Z} => { ?R a :Selected.  }.\"\"\"
     >>> try:
     ...   g=g.parse(StringIO(src),format='n3')
-    ... except Exception(e):
+    ... except Exception, e:
     ...   print(e)
     Builtin refers to variables without previous reference! (<http://www.w3.org/2000/10/swap/math#lessThan>(?M,?Z))
 
