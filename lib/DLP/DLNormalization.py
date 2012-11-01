@@ -9,6 +9,7 @@ from rdflib import Namespace, RDFS, BNode
 from rdflib.util import first
 from FuXi.Syntax.InfixOWL import *
 import unittest
+from functools import reduce
 
 class NominalRangeTransformer(object):
     NOMINAL_QUERY=\
@@ -24,7 +25,7 @@ class NominalRangeTransformer(object):
         Individual.factoryGraph = graph
         for restriction,intermediateCl,nominal,prop in graph.query(
                                  self.NOMINAL_QUERY,
-                                 initNs={u'owl':OWL_NS}):
+                                 initNs={'owl':OWL_NS}):
             nominalCollection=Collection(graph,nominal)
             #purge restriction
             restr=Class(restriction)
@@ -59,8 +60,8 @@ class UniversalNominalRangeTransformer(object):
         Individual.factoryGraph = graph
         for restriction,intermediateCl,nominal,prop, partition in graph.query(
                                  self.NOMINAL_QUERY,
-                                 initNs={u'owl':OWL_NS,
-                                         u'rdfs':RDFS}):
+                                 initNs={'owl':OWL_NS,
+                                         'rdfs':RDFS}):
             exceptions = EnumeratedClass()
             partition = Collection(graph,partition)
             nominalCollection=Collection(graph,nominal)
@@ -106,8 +107,8 @@ class DoubleNegativeTransformer(object):
         Individual.factoryGraph = graph
         for compl1,compl2,compl3 in graph.query(
                                  self.UNIVERSAL_QUERY,
-                                 initNs={u'owl':OWL_NS,
-                                         u'rdfs':RDFS}):
+                                 initNs={'owl':OWL_NS,
+                                         'rdfs':RDFS}):
             Individual(compl1).replace(compl3)
             Individual(compl2).delete()
 

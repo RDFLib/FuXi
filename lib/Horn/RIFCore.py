@@ -6,7 +6,7 @@ Supports Frames and atoms with only two positional arguments.  Follows import tr
 """
 import os
 import urllib2, warnings
-from cStringIO import StringIO
+from io import StringIO
 # from amara.lib import iri, inputsource
 # from amara.xslt  import transform
 from lxml import etree
@@ -42,7 +42,12 @@ mimetypes = {
 
 # TRANSFORM_URI = iri.absolutize('rif-core-rdf.xsl',iri.os_path_to_uri(__file__))
 
-TRANSFORM_URI = 'file://' + os.path.join(os.getcwd(), 'FuXi/Horn/rif-core-rdf.xsl')
+location = os.path.split(__file__)[0]
+
+if 'build/src/' in location:
+    location = ''.join(location.split('build/src/'))
+
+TRANSFORM_URI = 'file://' + os.path.join(location, 'rif-core-rdf.xsl')
 
 
 IMPLIES_PARTS=\
@@ -101,11 +106,11 @@ class RIFCoreParser(object):
             assert location is None,"Must supply one of graph or location"
             self.graph = graph
             if debug:
-                print "RIF in RDF graph was provided"
+                print("RIF in RDF graph was provided")
         else:
             assert graph is None,"Must supply one of graph or location"
             if debug:
-                print "RIF document URL provided ", location
+                print("RIF document URL provided ", location)
             if self.location.find('http:')+1:
                 req = urllib2.Request(self.location)
 
@@ -122,23 +127,23 @@ class RIFCoreParser(object):
                 self.graph = Graph().parse(
                     data=etree.tostring(transform(etree.fromstring(self.content))))
                 if debug:
-                    print "Extracted rules from RIF XML format"
+                    print("Extracted rules from RIF XML format")
             except ValueError:
                 try:
                     self.graph = Graph().parse(StringIO(self.content),format='xml')
                 except:
                     self.graph = Graph().parse(StringIO(self.content),format='n3')
                 if debug:
-                    print "Extracted rules from RIF in RDF document"
+                    print("Extracted rules from RIF in RDF document")
 
     def getRuleset(self):
         """
         >>> parser = RIFCoreParser('http://www.w3.org/2005/rules/test/repository/tc/Frames/Frames-premise.rif')
-        >>> for rule in parser.getRuleset(): print rule
+        >>> for rule in parser.getRuleset(): print(rule)
         Forall ?Customer ( ns1:discount(?Customer 10) :- ns1:status(?Customer "gold"^^<http://www.w3.org/2001/XMLSchema#string>) )
         Forall ?Customer ( ns1:discount(?Customer 5) :- ns1:status(?Customer "silver"^^<http://www.w3.org/2001/XMLSchema#string>) )
         >>> parser = RIFCoreParser('http://www.w3.org/2005/rules/test/repository/tc/Guards_and_subtypes/Guards_and_subtypes-premise.rif')
-        >>> for rule in parser.getRuleset(): print rule
+        >>> for rule in parser.getRuleset(): print(rule)
         """
         self.implications = dict([(impl,(body,bodyType,head,headType))
                                     for impl,body,bodyType,head,headType in
@@ -187,13 +192,10 @@ class RIFCoreParser(object):
         allVars = map(self.extractTerm,Collection(self.graph,vars))
         head = first(self.extractPredication(head,headType))
         if bodyType == RIF_NS.And:
-            body = map(
-                   lambda i: first(self.extractPredication(
+            body = [first(self.extractPredication(
                        i,
                        first(self.graph.objects(i,RDF.type)))
-                   ),
-                   Collection(self.graph,first(self.graph.objects(body,RIF_NS.formulas)))
-            )
+                   ) for i in Collection(self.graph,first(self.graph.objects(body,RIF_NS.formulas)))]
 
         else:
             body = self.extractPredication(body,bodyType)
@@ -214,14 +216,14 @@ class RIFCoreParser(object):
             assert predType == RIF_NS.External
 #            N3Builtin(self,uri,func,argument,result)
             args,op = self.externals[predication]
-            args    = map(self.extractTerm,Collection(self.graph,args))
+            args    = list(map(self.extractTerm,Collection(self.graph,args)))
             op      = self.extractTerm(op)
             return [ExternalFunction(Uniterm(op,args))]
 
     def extractAtom(self,atom):
         args,op = self.atoms[atom]
         op      = self.extractTerm(op)
-        args    = map(self.extractTerm,Collection(self.graph,args))
+        args    = list(map(self.extractTerm,Collection(self.graph,args)))
         if len(args) > 2:
             raise NotImplementedError(
                 "FuXi RIF Core parsing only supports subset involving binary/unary Atoms"
@@ -257,4 +259,4 @@ if __name__ == '__main__':
 #    test()
     parser = RIFCoreParser('http://www.w3.org/2005/rules/test/repository/tc/Guards_and_subtypes/Guards_and_subtypes-premise.rif')
     for rule in parser.getRuleset():
-        print rule
+        print(rule)

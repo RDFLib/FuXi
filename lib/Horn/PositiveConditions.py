@@ -6,16 +6,24 @@ The language of positive RIF conditions determines what can appear as a body (th
   bodies of such rules are conjunctions of atomic formulas without negation.
 """
 import itertools
+try:
+    from itertools import izip as zip, ifilter as filter, chain
+except ImportError:
+    from itertools import chain
 from rdflib import Namespace, RDF, RDFS, Variable, BNode, Literal, URIRef
 from rdflib.collection import Collection
 from rdflib.graph import ConjunctiveGraph, QuotedGraph, ReadOnlyGraphAggregate, Graph
 from rdflib.namespace import NamespaceManager
+from rdflib import py3compat
+from functools import reduce
+
 _XSD_NS = Namespace("http://www.w3.org/2001/XMLSchema#")
 from rdflib.util import first
 
 OWL    = Namespace("http://www.w3.org/2002/07/owl#")
 
-def buildUniTerm((s,p,o),newNss=None):
+def buildUniTerm(tpl,newNss=None):
+    (s,p,o) = tpl
     return Uniterm(p,[s,o],newNss=newNss)
 
 def GetUterm(term):
@@ -96,7 +104,7 @@ class And(QNameManager,SetOperator,Condition):
         >>> conj.binds(Variable('Z'))
         False
         """
-        return first(itertools.ifilter(lambda conj: conj.binds(var),
+        return first(filter(lambda conj: conj.binds(var),
                                        self.formulae)) is not None
 
     def __getitem__(self, item):
@@ -121,14 +129,15 @@ class And(QNameManager,SetOperator,Condition):
         True
 
         """
-        return first(itertools.ifilter(lambda conj: conj.isSafeForVariable(var),
+        return first(filter(lambda conj: conj.isSafeForVariable(var),
                                        self.formulae)) is not None
 
+    @py3compat.format_doctest_out
     def n3(self):
         """
         >>> And([Uniterm(RDF.type,[RDFS.comment,RDF.Property]),
         ...      Uniterm(RDF.type,[OWL.Class,RDFS.Class])]).n3()
-        u'rdfs:comment a rdf:Property .\\n owl:Class a rdfs:Class'
+        %(u)s'rdfs:comment a rdf:Property .\\n owl:Class a rdfs:Class'
 
         """
 #        if not [term for term in self if not isinstance(term,Uniterm)]:
@@ -279,7 +288,8 @@ class Equal(QNameManager,Atomic):
         right = self.nsMgr.qname(self.rhs)
         return "%s =  %s"%(left,right)
 
-def BuildUnitermFromTuple((s,p,o),newNss=None):
+def BuildUnitermFromTuple(tpl ,newNss=None):
+    (s,p,o) = tpl
     return Uniterm(p,[s,o],newNss)
 
 class Uniterm(QNameManager,Atomic):
@@ -293,22 +303,27 @@ class Uniterm(QNameManager,Atomic):
     rdf:Property(rdfs:comment)
     """
     def __init__(self,op,arg=None,newNss=None,naf=False):
+        def tmpfn(o):
+            if len(o.arg) == 2:
+                return o.toRDFTuple()
+            else:
+                return [o.op] + o.arg
         self.naf = naf
         self.op = op
         self.arg = arg and arg or []
         QNameManager.__init__(self)
         if newNss is not None:
-            newNss = newNss.items() if isinstance(newNss,dict) else newNss
+            newNss = list(newNss.items()) if isinstance(newNss,dict) else newNss
             for k,v in newNss:
                 self.nsMgr.bind(k,v)
-        self._hash=hash(reduce(lambda x,y:str(x)+str(y),
-            len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))
-        self.herbrand_hash=hash(
+        self._hash=hash(
             reduce(
                 lambda x,y:str(x)+str(y),
-                filter(lambda i:not isinstance(i,Variable),
-                    self.toRDFTuple() if len(self.arg)==2
-                    else [self.op]+self.arg),None))
+                    len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))
+        self.herbrand_hash=hash(
+            reduce(
+                lambda x,y: str(x)+str(y),
+                    [i for i in tmpfn(self) if not isinstance(i,Variable)], None))
 
     def binds(self, var):
         """
@@ -356,13 +371,14 @@ class Uniterm(QNameManager,Atomic):
             len(self.arg)==2 and self.toRDFTuple() or [self.op]+self.arg))
 
 
+    @py3compat.format_doctest_out
     def _get_terms(self):
         """
         Class attribute that returns all the terms of the literal as a lists
         >>> x = Variable('X')
         >>> lit = Uniterm(RDF.type,[RDFS.comment,x])
         >>> lit.terms
-        [rdflib.term.URIRef(u'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#comment'), ?X]
+        [rdflib.term.URIRef(%(u)s'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), rdflib.term.URIRef(%(u)s'http://www.w3.org/2000/01/rdf-schema#comment'), ?X]
         """
         return [self.op]+self.arg
 
@@ -434,7 +450,7 @@ class Uniterm(QNameManager,Atomic):
         return bool(set(mapping).intersection([self.op]+self.arg))
 
     def ground(self,varMapping):
-        appliedKeys = set([self.op]+self.arg).intersection(varMapping.keys())
+        appliedKeys = set([self.op]+self.arg).intersection(list(varMapping.keys()))
         self.op    =varMapping.get(self.op,self.op)
         self.arg[0]=varMapping.get(self.arg[0],self.arg[0])
         self.arg[1]=varMapping.get(self.arg[1],self.arg[1])
@@ -463,12 +479,13 @@ class Uniterm(QNameManager,Atomic):
         else:
             return self.nsMgr.qname(term)
 
+    @py3compat.format_doctest_out
     def n3(self):
         """
         Serialize as N3 (using available namespace managers)
 
         >>> Uniterm(RDF.type,[RDFS.comment,RDF.Property]).n3()
-        u'rdfs:comment a rdf:Property'
+        %(u)s'rdfs:comment a rdf:Property'
 
         """
         return ' '.join([ self.renderTermAsN3(term)
@@ -495,7 +512,10 @@ class Uniterm(QNameManager,Atomic):
     def normalizeTerm(self,term):
         if isinstance(term,Literal):
             if term.datatype == _XSD_NS.integer:
-                return unicode(term)
+                if py3compat.PY3:
+                    return str(term)
+                else:
+                    return unicode(term)
             else:
                 return term.n3()
         else:
@@ -578,7 +598,7 @@ class ExternalFunction(Uniterm):
             Uniterm.__init__(self,builtin.op,builtin.arg)
         QNameManager.__init__(self)
         if newNss is not None:
-            newNss = isinstance(newNss,dict) and newNss.items() or newNss
+            newNss = isinstance(newNss,dict) and list(newNss.items()) or newNss
             for k,v in newNss:
                 self.nsMgr.bind(k,v)
 

@@ -73,12 +73,12 @@ def ComplementExpansion(owlClass,debug=False):
                 oldList.append(classOrIdentifier(allowedClasses))
             owlClass.changeOperator(OWL_NS.unionOf)
             if debug:
-                print "Incoming boolean class: ", oldRepr
-                print "Expanded boolean class: ", owlClass.__repr__()
+                print("Incoming boolean class: ", oldRepr)
+                print("Expanded boolean class: ", owlClass.__repr__())
             return owlClass
         else:
             if debug:
-                print "There were no negative classes!"
+                print("There were no negative classes!")
 
 class ComplementExpansionTestSuite(unittest.TestCase):
     def setUp(self):
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     owlGraph = Graph()
     for input in args[0:]:
         if options.verbose:
-            print "Parsing ", input, " as ", options.format
+            print("Parsing %s as %s" % (input, options.format))
         owlGraph.parse(input,format=options.format)
 
     Individual.factoryGraph = owlGraph
@@ -161,5 +161,5 @@ if __name__ == '__main__':
                                              OWL_NS.unionOf],
                                              prevLink)):
             _class = Class(s)
-#            print _class.__repr__(True,True)
+            # print(_class.__repr__(True,True))
             ComplementExpansion(_class,debug=options.verbose)

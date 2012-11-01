@@ -22,6 +22,7 @@ from rdflib.graph import ReadOnlyGraphAggregate
 from rdflib.namespace import split_uri
 from FuXi.Rete.SidewaysInformationPassing import *
 from FuXi.SPARQL import EDBQuery, normalizeBindingsAndQuery
+from functools import reduce
 
 def makeMD5Digest(value):
     return md5(
@@ -185,7 +186,7 @@ def mergeMappings1To2(mapping1,mapping2,makeImmutable=False):
     An immutable mapping can be returned if requested
     """
     newMap = {}
-    for k,v in mapping1.items():
+    for k,v in list(mapping1.items()):
         val2 = mapping2.get(k)
         if val2:
             assert v == val2,"Failure merging %s to %s"%(mapping1,mapping2)
@@ -261,7 +262,8 @@ def invokeRule(priorAnswers,
                               buildProof = buildProof):
                     if rt:
                         yield rt,_step
-            except RuleFailure, e: pass
+            except RuleFailure:
+                pass
         if not success:
             #None of prior answers were successful
             #indicate termination of rule processing
@@ -301,8 +303,7 @@ def invokeRule(priorAnswers,
             #builtins to SPARQL FILTER templates ..
             basePredicateVars = set(
                     reduce(lambda x,y:x+y,
-                           map(lambda arg:list(GetVariables(arg,secondOrder=True)),
-                               conjGroundLiterals)))
+                           [list(GetVariables(arg,secondOrder=True)) for arg in conjGroundLiterals]))
             if projectedBindings:
                 openVars = basePredicateVars.intersection(projectedBindings)
             else:
@@ -360,7 +361,7 @@ def invokeRule(priorAnswers,
             #Continue processing rule body condition
             #one literal at a time
             try:
-                bodyLiteral = bodyLiteralIterator.next()
+                bodyLiteral = next(bodyLiteralIterator)
 
                 #if a N3 builtin, execute it using given bindings for boolean answer
                 #builtins are moved to end of rule when evaluating rules via sip
@@ -372,10 +373,10 @@ def invokeRule(priorAnswers,
                     assert lhs is not None and rhs is not None
                     if bodyLiteral.func(lhs,rhs):
                         if debug:
-                            print >> sys.stderr, "Invoked %s(%s,%s) -> True"%(
+                            print("Invoked %s(%s,%s) -> True"%(
                                              bodyLiteral.uri,
                                              lhs,
-                                             rhs)
+                                             rhs))
                         #positive answer means we can continue processing the rule body
                         if buildProof:
                              ns=NodeSet(bodyLiteral.toRDFTuple(),
@@ -393,10 +394,10 @@ def invokeRule(priorAnswers,
                             yield rt,_step
                     else:
                         if debug:
-                            print >> sys.stderr, "Successfully invoked %s(%s,%s) -> False"%(
+                            print("Successfully invoked %s(%s,%s) -> False"%(
                                              bodyLiteral.uri,
                                              lhs,
-                                             rhs)
+                                             rhs))
                         raise RuleFailure("Failed builtin invokation %s(%s,%s)"%
                                           (bodyLiteral.uri,
                                            lhs,
@@ -538,7 +539,7 @@ def refactorMapping(keyMapping,origMapping):
     """
     if keyMapping:
         refactoredMapping = {}
-        for inKey,outKey in keyMapping.items():
+        for inKey,outKey in list(keyMapping.items()):
             if inKey in origMapping:
                 refactoredMapping[outKey]=origMapping[inKey]
         return refactoredMapping
@@ -577,27 +578,27 @@ def SipStrategy(query,
         queryLiteral.ground(bindings)
 
     if debug:
-        print >> sys.stderr, "%sSolving"%('\t'*proofLevel), queryLiteral, bindings
+        print("%sSolving"%('\t'*proofLevel), queryLiteral, bindings)
     #Only consider ground triple pattern isomorphism with matching bindings
     goalRDFStatement = queryLiteral.toRDFTuple()
 
     if queryLiteral in memoizeMemory:
         if debug:
-            print >> sys.stderr, "%sReturning previously calculated results for "%\
-                        ('\t'*proofLevel), queryLiteral
+            print("%sReturning previously calculated results for " % \
+                        ('\t'*proofLevel, queryLiteral))
         for answers in memoizeMemory[queryLiteral]:
             yield answers
     elif AlphaNode(goalRDFStatement).alphaNetworkHash(
                                       True,
-                                      skolemTerms=bindings.values()) in\
+                                      skolemTerms=list(bindings.values())) in\
         [AlphaNode(r.toRDFTuple()).alphaNetworkHash(True,
-                                                    skolemTerms=bindings.values())
+                                                    skolemTerms=list(bindings.values()))
             for r in processedRules
                 if AdornLiteral(goalRDFStatement).adornment == \
                    r.adornment]:
         if debug:
-            print >> sys.stderr, "%s Goal already processed..."%\
-                ('\t'*proofLevel)
+            print("%s Goal already processed..." % \
+                    ('\t'*proofLevel))
     else:
         isGround = literalIsGround(queryLiteral)
         if buildProof:
@@ -648,10 +649,10 @@ def SipStrategy(query,
                    len(bodyList) == 1 and \
                    body.op == RDF.type
 
-        atomicInclusionAxioms = list(ifilter(IsAtomicInclusionAxiomRHS,rules))
+        atomicInclusionAxioms = list(filter(IsAtomicInclusionAxiomRHS,rules))
         if atomicInclusionAxioms and len(atomicInclusionAxioms) > 1:
             if debug:
-                print >> sys.stderr, "\tCombining atomic inclusion axioms: "
+                print("\tCombining atomic inclusion axioms: ")
                 pprint(atomicInclusionAxioms,sys.stderr)
             if buildProof:
                 factStep = InferenceStep(ns,source='some RDF graph')
@@ -700,7 +701,7 @@ def SipStrategy(query,
                 memoizeMemory.setdefault(queryLiteral,set()).add(
                                          (prepMemiozedAns(rt),ns))
                 yield rt,ns
-            rules = ifilter(lambda i:not IsAtomicInclusionAxiomRHS(i),rules)
+            rules = filter(lambda i:not IsAtomicInclusionAxiomRHS(i),rules)
         for rule in rules:
             #An exception is the special predicate ph; it is treated as a base
             #predicate and the tuples in it are those supplied for qb by unification.
@@ -717,13 +718,12 @@ def SipStrategy(query,
             # dontStop = True
             # projectedBindings = comboBindings.copy()
             if debug:
-                print >> sys.stderr, "%sProcessing rule"%\
-                ('\t'*proofLevel), rule.formula
+                print("%sProcessing rule" % ('\t'*proofLevel, rule.formula))
                 if debug and sipCollection:
-                    print >>sys.stderr,"Sideways Information Passing (sip) graph for %s: "%queryLiteral
-                    print >>sys.stdout, sipCollection.serialize(format='n3')
+                    print("Sideways Information Passing (sip) graph for %s: " % queryLiteral)
+                    print(sipCollection.serialize(format='n3'))
                     for sip in SIPRepresentation(sipCollection):
-                        print >>sys.stderr,sip
+                        print(sip)
             try:
                 #Invoke the rule
                 if buildProof:
@@ -768,7 +768,7 @@ def SipStrategy(query,
                                                       ns))
                             yield rt, ns
 
-            except RuleFailure, e:
+            except RuleFailure:
                 #Clean up failed antecedents
                 if buildProof:
                     if ns in step.antecedents:

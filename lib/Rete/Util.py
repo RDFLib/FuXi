@@ -8,6 +8,8 @@ from rdflib.util import first
 from rdflib.graph import Graph
 from rdflib.collection import Collection
 from rdflib.namespace import NamespaceManager
+from rdflib import py3compat
+
 try:
     import boost.graph as bgl
     bglGraph = bgl.Digraph()
@@ -46,7 +48,7 @@ def permu(xs):
     http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/496819
     "A recursive function to get permutation of a list"
 
-    >>> print list(permu([1,2,3]))
+    >>> print(list(permu([1,2,3])))
     [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]
 
     """
@@ -57,6 +59,8 @@ def permu(xs):
             for p in permu(xs[:i] + xs[i + 1:]):
                 yield [xs[i]] + p
 
+
+@py3compat.format_doctest_out
 def CollapseDictionary(mapping):
     """
     Takes a dictionary mapping prefixes to URIs
@@ -68,19 +72,19 @@ def CollapseDictionary(mapping):
     >>> len(a)
     2
     >>> a.values()
-    [rdflib.term.URIRef(u'http://example.com/'), rdflib.term.URIRef(u'http://example.com/')]
+    [rdflib.term.URIRef(%(u)s'http://example.com/'), rdflib.term.URIRef(%(u)s'http://example.com/')]
     >>> CollapseDictionary(a)
-    {'ex': rdflib.term.URIRef(u'http://example.com/')}
+    {'ex': rdflib.term.URIRef(%(u)s'http://example.com/')}
     >>> a
-    {'ex': rdflib.term.URIRef(u'http://example.com/'), '_1': rdflib.term.URIRef(u'http://example.com/')}
+    {'ex': rdflib.term.URIRef(%(u)s'http://example.com/'), '_1': rdflib.term.URIRef(%(u)s'http://example.com/')}
     """
     def originalPrefixes(item):
         return item.find('_')+1==1
     revDict = {}
-    for k,v in mapping.items():
+    for k,v in list(mapping.items()):
         revDict.setdefault(v,set()).add(k)
     prefixes2Collapse = []
-    for k,v in revDict.items():
+    for k,v in list(revDict.items()):
         origPrefixes=[]
         dupePrefixes=[]
         #group prefixes for a single URI by whether or not
@@ -95,7 +99,7 @@ def CollapseDictionary(mapping):
             #given a prefix
             assert len(origPrefixes)==1
             prefixes2Collapse.extend(dupePrefixes)
-    return dict([(k,v) for k,v in mapping.items() if k not in prefixes2Collapse])
+    return dict([(k,v) for k,v in list(mapping.items()) if k not in prefixes2Collapse])
 
 class selective_memoize(object):
     """Decorator that caches a function's return value each time it is called.
@@ -105,7 +109,7 @@ class selective_memoize(object):
 
     >>> @selective_memoize([0,1])
     ... def addition(l,r,other):
-    ...     print "calculating.."
+    ...     print("calculating..")
     ...     return l+r
     >>> addition(1,2,3)
     calculating..
@@ -114,7 +118,7 @@ class selective_memoize(object):
     3
     >>> @selective_memoize()
     ... def addition(l,r,other):
-    ...     print "calculating.."
+    ...     print("calculating..")
     ...     return l+r
     >>> addition(1,2,3)
     calculating..
@@ -124,7 +128,7 @@ class selective_memoize(object):
     3
     >>> @selective_memoize([0,1],'baz')
     ... def addition(l,r,baz=False, bar=False):
-    ...     print "calculating.."
+    ...     print("calculating..")
     ...     return l+r
     >>> addition(1,2,baz=True)
     calculating..
@@ -151,7 +155,7 @@ class selective_memoize(object):
                 key = args
             if kwds:
                 if self.cacheableArgKey:
-                    items = [(k,v) for k,v in kwds.items()
+                    items = [(k,v) for k,v in list(kwds.items())
                                 if k in self.cacheableArgKey]
                 else:
                     items = []
@@ -262,9 +266,9 @@ def call_with_filtered_args(args, _callable):
     the callable with them.
     '''
     try:
-        argnames = _callable.func_code.co_varnames
+        argnames = _callable.__code__.co_varnames
     except AttributeError:
-        argnames = _callable.__init__.func_code.co_varnames
+        argnames = _callable.__init__.__code__.co_varnames
 
     args = setdict(**args) & argnames
 
@@ -285,7 +289,7 @@ def generateTokenSet(graph,debugTriples=[],skipImplies=True):
     for s,p,o in graph:
 
         if not skipImplies or p != LOG.implies:
-            #print s,p,o
+            #print(s,p,o)
             debug = debugTriples and (s,p,o) in debugTriples
             rt.add(ReteToken((normalizeGraphTerms(s),
                               normalizeGraphTerms(p),
@@ -294,7 +298,7 @@ def generateTokenSet(graph,debugTriples=[],skipImplies=True):
 
 def generateBGLNode(dot,node,namespace_manager,identifier):
     from FuXi.Rete import ReteNetwork,BetaNode,BuiltInAlphaNode,AlphaNode
-    from BetaNode import LEFT_MEMORY, RIGHT_MEMORY
+    from .BetaNode import LEFT_MEMORY, RIGHT_MEMORY
     vertex = Node(identifier)
 
     shape = 'circle'
@@ -379,19 +383,19 @@ def renderNetwork(network,nsMap = {}):
     # from BetaNode import LEFT_MEMORY, RIGHT_MEMORY, LEFT_UNLINKING
     dot = Dot(graph_type='digraph')
     namespace_manager = NamespaceManager(Graph())
-    for prefix,uri in nsMap.items():
+    for prefix,uri in list(nsMap.items()):
         namespace_manager.bind(prefix, uri, override=False)
 
     visitedNodes = {}
     edges = []
     idx = 0
-    for node in network.nodes.values():
+    for node in list(network.nodes.values()):
         if not node in visitedNodes:
             idx += 1
             visitedNodes[node] = generateBGLNode(dot,node,namespace_manager,str(idx))
             dot.add_node(visitedNodes[node])
     nodeIdxs = {}
-    for node in network.nodes.values():
+    for node in list(network.nodes.values()):
         for mem in node.descendentMemory:
             if not mem:
                 continue

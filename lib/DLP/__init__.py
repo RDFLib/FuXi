@@ -42,7 +42,7 @@ T(owl:TransitiveProperty(P))   -> P(x,z) :- P(x,y) ^ P(y,z)
 
 """
 
-from __future__ import generators
+
 from rdflib.collection import Collection
 # from rdflib.graph import Graph
 from rdflib.namespace import Namespace, RDF, RDFS
@@ -52,8 +52,9 @@ from rdflib.util import first
 import copy, itertools
 from FuXi.Horn.PositiveConditions import And, Or, Uniterm, Condition, Atomic,SetOperator,Exists
 from FuXi.Horn import DATALOG_SAFETY_NONE,DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
-from LPNormalForms import NormalizeDisjunctions
+from .LPNormalForms import NormalizeDisjunctions
 from FuXi.Horn.HornRules import Clause as OriginalClause, Rule
+from functools import reduce
 
 SKOLEMIZED_CLASS_NS=Namespace('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')
 
@@ -129,7 +130,7 @@ def NormalizeClause(clause):
         clause.head.formulae = reduce(reduceAnd,clause.head,[])
     if isinstance(clause.body,And):
         clause.body.formulae = reduce(reduceAnd,clause.body)
-#    print "Normalized clause: ", clause
+#    print("Normalized clause: ", clause)
 #    assert clause.body is not None and clause.head is not None,repr(clause)
     return clause
 
@@ -181,7 +182,7 @@ class Clause(OriginalClause):
         return "%r :- %r"%(self.head,self.body)
 
     def n3(self):
-        return u'{ %s } => { %s }'%(self.body.n3(),self.head.n3())
+        return '{ %s } => { %s }'%(self.body.n3(),self.head.n3())
 
 def makeRule(clause,nsMap):
     from FuXi.Horn.HornRules import Rule
@@ -225,7 +226,7 @@ def DisjunctiveNormalForm(program,safety = DATALOG_SAFETY_NONE, network = None):
             if len(disj)>0:
                 NormalizeDisjunctions(disj,tx_horn_clause,program,network)
             elif isinstance(tx_horn_clause.head,(And,Uniterm)):
-        #                print "No Disjunction in the body"
+        #                print("No Disjunction in the body")
                     for hc in ExtendN3Rules(network,NormalizeClause(tx_horn_clause)):
                         yield makeRule(hc,network and network.nsMap or {})
 
@@ -240,8 +241,8 @@ def MapDLPtoNetwork(network,
     ruleset=set()
     negativeStratus=[]
     for horn_clause in T(factGraph,complementExpansions=complementExpansions,derivedPreds=derivedPreds):
-#        print "## RIF BLD Horn Rules: Before LloydTopor: ##\n",horn_clause
-#        print "## RIF BLD Horn Rules: After LloydTopor: ##"
+#        print("## RIF BLD Horn Rules: Before LloydTopor: ##\n",horn_clause)
+#        print("## RIF BLD Horn Rules: After LloydTopor: ##")
         fullReduce=True
         for tx_horn_clause in LloydToporTransformation(horn_clause,fullReduce):
             tx_horn_clause = NormalizeClause(tx_horn_clause)
@@ -256,7 +257,7 @@ def MapDLPtoNetwork(network,
                                       negativeStratus,
                                       ignoreNegativeStratus)
             elif isinstance(tx_horn_clause.head,(And,Uniterm)):
-    #                print "No Disjunction in the body"
+    #                print("No Disjunction in the body")
                     for hc in ExtendN3Rules(network,NormalizeClause(tx_horn_clause),constructNetwork):
                         if safety in [DATALOG_SAFETY_LOOSE, DATALOG_SAFETY_STRICT]:
                             rule = Rule(hc,nsMapping=network.nsMap)
@@ -275,8 +276,8 @@ def MapDLPtoNetwork(network,
                         if _rule is not None and (not _rule.negativeStratus or not ignoreNegativeStratus):
                             ruleset.add(_rule)
             #Extract free variables anre add rule to ruleset
-#        print "#######################"
-#    print "########## Finished Building decision network from DLP ##########"
+#        print("#######################")
+#    print("########## Finished Building decision network from DLP ##########")
     #renderNetwork(network).write_graphviz('out.dot')
     if ignoreNegativeStratus:
         return ruleset,negativeStratus
@@ -305,7 +306,7 @@ def IsaFactFormingConclusion(head):
     elif isinstance(head,OriginalClause):
         return False
     else:
-        print head
+        print(head)
         raise
 
 def traverseClause(condition):
@@ -375,7 +376,7 @@ def ExtendN3Rules(network,horn_clause,constructNetwork=False):
         rhs = BNode()
     assert isinstance(horn_clause.body,(And,Uniterm)),list(horn_clause.body)
     assert len(list(horn_clause.body))
-#    print horn_clause
+#    print(horn_clause)
     if constructNetwork:
         for term in horn_clause.body:
             ruleStore.formulae.setdefault(lhs,Formula(lhs)).append(term.toRDFTuple())
@@ -394,12 +395,12 @@ def ExtendN3Rules(network,horn_clause,constructNetwork=False):
             network.buildNetwork(iter(ruleStore.formulae[lhs]),
                                  iter(ruleStore.formulae[rhs]),
                                  Rule(horn_clause))
-            network.alphaNodes = [node for node in network.nodes.values() if isinstance(node,AlphaNode)]
+            network.alphaNodes = [node for node in list(network.nodes.values()) if isinstance(node,AlphaNode)]
         rt.append(horn_clause)
     else:
         for hC in LloydToporTransformation(horn_clause,fullReduction=True):
             rt.append(hC)
-            #print "normalized clause: ", hC
+            #print("normalized clause: ", hC)
             for i in ExtendN3Rules(network,hC,constructNetwork):
                 rt.append(hC)
     return rt
@@ -407,7 +408,7 @@ def ExtendN3Rules(network,horn_clause,constructNetwork=False):
 def PrepareHeadExistential(clause):
     from FuXi.Rete.SidewaysInformationPassing import GetArgs
     skolemsInHead=[
-                   list(itertools.ifilter(
+                   list(filter(
                              lambda term:isinstance(term,
                                                     BNode),
                                  GetArgs(lit)))
@@ -451,7 +452,7 @@ def PrepareHornClauseForRETE(horn_clause):
         horn_clause.head = newHead
 
     skolemsInBody=[
-                   list(itertools.ifilter(
+                   list(filter(
                              lambda term:isinstance(term,
                                                     BNode),
                                  GetArgs(lit)))
@@ -471,11 +472,11 @@ def generatorFlattener(gen):
     i = len(i)>1 and [hasattr(i2,'next') and generatorFlattener(i2) or i2 for i2 in i] or i[0]
     if hasattr(i,'next'):
         i=listOrThingGenerator(i)
-        #print i
+        #print(i)
         return i
     elif isinstance(i,SetOperator):
         i.formulae = [hasattr(i2,'next') and generatorFlattener(i2) or i2 for i2 in i.formulae]
-        #print i
+        #print(i)
         return i
     else:
         return i

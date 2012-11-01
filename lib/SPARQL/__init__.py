@@ -12,6 +12,7 @@ from FuXi.Rete.SidewaysInformationPassing import iterCondition, GetOp, GetVariab
 from FuXi.Rete.Util import selective_memoize
 
 from FuXi.Rete.RuleStore import *
+from functools import reduce
 
 
 def normalizeBindingsAndQuery(vars,bindings,conjunct):
@@ -177,11 +178,11 @@ def RunQuery(subQueryJoin,
    projectedBindings = vars and project(bindings,vars) or bindings
    if isGround:
        if debug:
-           print >>sys.stderr, "%s%s-> %s"%(
+           print("%s%s-> %s" % (
                          subquery,
                          projectedBindings and 
                          " %s apriori binding(s)"%len(projectedBindings) or '',
-                         rt.askAnswer[0])
+                         rt.askAnswer[0]))
        return subquery,rt.askAnswer[0]
    else:
        rt = len(vars)>1 and ( 
@@ -196,11 +197,12 @@ def RunQuery(subQueryJoin,
                           if specialBNodeHandling and isinstance(v,BNode) else v)
                           ]) for v in rt )
        if debug:
-           print >>sys.stderr, "%s%s-> %s"%(
+           print("%s%s-> %s"%(
                    subquery,
                    projectedBindings and 
                    " %s apriori binding(s)"%len(projectedBindings) or '',                                
                    rt and '[]')# .. %s answers .. ]'%len(rt) or '[]')
+                )
        return subquery,rt
 
 def EDBQueryFromBodyIterator(factGraph,remainingBodyList,derivedPreds,hybridPredicates=None):
@@ -260,11 +262,11 @@ class ConjunctiveQueryMemoize(object):
                             func(queryExecAction,
                                  conjQuery),
                             key):
-                        yield item                    
+                        yield item
                 else:
                     for item in rt:
-                        yield item                    
-            except TypeError, e:
+                        yield item
+            except TypeError:
                 import pickle
                 try:
                     dump = pickle.dumps(key)
@@ -374,20 +376,19 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                  set(
                    reduce(
                      lambda x,y:x+y,
-                     map(lambda arg:list(GetVariables(arg,secondOrder=True)),
-                         self.formulae))))
+                     [list(GetVariables(arg,secondOrder=True)) for arg in self.formulae])))
 
     def applyMGU(self,substitutions):
         for term in self.formulae:
             term.renameVariables(substitutions)
         self.bindings = dict([(substitutions.get(k,k),v) 
-                            for k,v in self.bindings.items()])
+                            for k,v in list(self.bindings.items())])
 
     def evaluate(self,debug = False, symmAtomicInclusion = False):
         import time, warnings
         from urllib2 import HTTPError
         from BaseHTTPServer import BaseHTTPRequestHandler 
-        from cStringIO import StringIO
+        from io import StringIO
         strBuffer = StringIO()
         for attempt in range(10):
             try:
@@ -399,7 +400,7 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                               symmAtomicInclusion = symmAtomicInclusion,
                               specialBNodeHandling=self.specialBNodeHandling)
                 return rt
-            except Exception, e:# HTTPError, e:
+            except Exception:# HTTPError, e:
                 #responseMsg = BaseHTTPRequestHandler.responses[e.code]
                 # warnings.warn(
                 # "On attempt %s Recieved HTTP response code %s from server: %s"%(
@@ -408,12 +409,12 @@ class EDBQuery(QNameManager,SetOperator,Condition):
                 #     responseMsg),
                 #     RuntimeWarning,2)
                 import pickle, traceback, sys
-                # print "----------"*3
+                # print("----------"*3)
                 traceback.print_exc(file=strBuffer)
-                # print "----------"*3
+                # print("----------"*3)
                 
                 warnings.warn(
-                "Recieved HTTP error from server",
+                "Received HTTP error from server",
                     RuntimeWarning,2)                
                 time.sleep(1)
             else: # we tried, and we had no failure, so

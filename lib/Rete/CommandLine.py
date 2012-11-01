@@ -24,7 +24,7 @@ from rdfextras.sparql.parser import parse as ParseSPARQL
 from rdfextras.sparql.algebra import ReduceGraphPattern
 from rdflib import plugin, RDF, RDFS, URIRef, Literal, Variable, Namespace
 from rdflib.store import Store
-from cStringIO import StringIO
+from io import StringIO
 
 import unittest, time, warnings,sys
 
@@ -270,7 +270,7 @@ def main():
     for fileN in options.rules:
         if options.ruleFacts and not options.sparqlEndpoint:
             factGraph.parse(fileN,format='n3')
-            print >>sys.stderr,"Parsing RDF facts from ", fileN
+            print("Parsing RDF facts from %s" % fileN)
         if options.builtins:
             import imp
             userFuncs = imp.load_source('builtins', options.builtins)
@@ -294,7 +294,7 @@ def main():
 
     ruleSet.nsMapping = nsBinds
 
-    for prefix,uri in nsBinds.items():
+    for prefix,uri in list(nsBinds.items()):
         namespace_manager.bind(prefix, uri, override=False)
     closureDeltaGraph = Graph()
     closureDeltaGraph.namespace_manager = namespace_manager
@@ -306,7 +306,7 @@ def main():
             if options.imports:
                 for owlImport in factGraph.objects(predicate=OWL_NS.imports):
                     factGraph.parse(owlImport)
-                    print >>sys.stderr, "Parsed Semantic Web Graph.. ", owlImport
+                    print("Parsed Semantic Web Graph.. %s" % owlImport)
 
     if not options.sparqlEndpoint and facts:
         for pref,uri in factGraph.namespaces():
@@ -320,8 +320,8 @@ def main():
     #prune redundant, rdflib-allocated namespace prefix mappings
     newNsMgr = NamespaceManager(factGraph)
     from FuXi.Rete.Util import CollapseDictionary
-    for k,v in CollapseDictionary(dict([(k,v)
-                                    for k,v in factGraph.namespaces()])).items():
+    for k,v in list(CollapseDictionary(dict([(k,v)
+                                    for k,v in factGraph.namespaces()])).items()):
         newNsMgr.bind(k,v)
     factGraph.namespace_manager = newNsMgr
 
@@ -364,10 +364,10 @@ def main():
         ruleSet.formulae.extend(dlp)
     if options.output == 'rif' and not options.why:
         for rule in ruleSet:
-            print rule
+            print(rule)
         if options.negation:
             for nRule in network.negRules:
-                print nRule
+                print(nRule)
 
     elif options.output == 'man-owl':
         cGraph = network.closureGraph(factGraph,readOnly=False)
@@ -377,16 +377,16 @@ def main():
             mapping = dict(namespace_manager.namespaces())
             for c in options.classes:
                 pref,uri=c.split(':')
-                print Class(URIRef(mapping[pref]+uri)).__repr__(True)
+                print(Class(URIRef(mapping[pref]+uri)).__repr__(True))
         elif options.properties:
             mapping = dict(namespace_manager.namespaces())
             for p in options.properties:
                 pref,uri=p.split(':')
-                print Property(URIRef(mapping[pref]+uri))
+                print(Property(URIRef(mapping[pref]+uri)))
         else:
             for p in AllProperties(cGraph):
-                print p.identifier, first(p.label)
-                print repr(p)
+                print(p.identifier, first(p.label))
+                print(repr(p))
             for c in AllClasses(cGraph):
                 if options.normalize:
                     if c.isPrimitive():
@@ -405,7 +405,7 @@ def main():
                                       Class(child).qname,
                                       Class(otherChild).qname),UserWarning,1)
 #                if not isinstance(c.identifier,BNode):
-                print c.__repr__(True)
+                print(c.__repr__(True))
 
     if not options.why:
         #Niave construction of graph
@@ -436,7 +436,7 @@ def main():
                 query.prolog = Prolog(None, [])
                 query.prolog.prefixBindings.update(nsBinds)
         else:
-            for prefix, nsInst in nsBinds.items():
+            for prefix, nsInst in list(nsBinds.items()):
                 if prefix not in query.prolog.prefixBindings:
                     query.prolog.prefixBindings[prefix] = nsInst
         goals.extend([(s,p,o) for s,p,o,c in ReduceGraphPattern(
@@ -476,12 +476,12 @@ def main():
         if options.method == 'gms':
             for goal in goals:
                 goalSeed=AdornLiteral(goal).makeMagicPred()
-                print >>sys.stderr,"Magic seed fact (used in bottom-up evaluation)",goalSeed
+                print("Magic seed fact (used in bottom-up evaluation) %s" % goalSeed)
                 magicSeeds.append(goalSeed.toRDFTuple())
             if noMagic:
-                print >>sys.stderr,"Predicates whose magic sets will not be calculated"
+                print("Predicates whose magic sets will not be calculated")
                 for p in noMagic:
-                    print >>sys.stderr,"\t", factGraph.qname(p)
+                    print("\t%s" % factGraph.qname(p))
             for rule in MagicSetTransformation(
                                        factGraph,
                                        ruleSet,
@@ -494,10 +494,10 @@ def main():
                 magicRuleNo+=1
                 network.buildNetworkFromClause(rule)
             if len(list(ruleSet)):
-                print >>sys.stderr,"reduction in size of program: %s (%s -> %s clauses)"%(
+                print("reduction in size of program: %s (%s -> %s clauses)"%(
                                            100-(float(magicRuleNo)/float(len(list(ruleSet))))*100,
                                            len(list(ruleSet)),
-                                           magicRuleNo)
+                                           magicRuleNo))
             start = time.time()
             network.feedFactsToAdd(generateTokenSet(magicSeeds))
             if not [rule for rule in factGraph.adornedProgram if len(rule.sip)]:
@@ -511,16 +511,16 @@ def main():
             else:
                 sTime = sTime * 1000
                 sTimeStr = "%s milli seconds"%sTime
-            print >>sys.stderr, "Time to calculate closure on working memory: ",sTimeStr
+            print("Time to calculate closure on working memory: %s" % sTimeStr)
 
             if options.output == 'rif':
-                print >>sys.stderr,"Rules used for bottom-up evaluation"
+                print("Rules used for bottom-up evaluation")
                 if network.rules:
                     for clause in network.rules:
-                        print >>sys.stderr,clause
+                        print(clause)
                 else:
                     for clause in factGraph.adornedProgram:
-                        print >>sys.stderr,clause
+                        print(clause)
             if options.output == 'conflict':
                 network.reportConflictSet()
 
@@ -549,7 +549,7 @@ def main():
                             options.hybrid if options.method == 'bfp' else False,
                             hybridPredicates = hybridPredicates)
             targetGraph = Graph(topDownStore)
-            for pref,nsUri in network.nsMap.items():
+            for pref,nsUri in list(network.nsMap.items()):
                 targetGraph.bind(pref,nsUri)
             start = time.time()
             # queryLiteral = EDBQuery([BuildUnitermFromTuple(goal) for goal in goals],
@@ -565,8 +565,8 @@ def main():
                 else:
                     sTime = sTime * 1000
                     sTimeStr = "%s milli seconds"%sTime
-                print >>sys.stderr,\
-    "Time to reach answer ground goal answer of %s: %s"%(result.askAnswer[0],sTimeStr)
+                print("Time to reach answer ground goal answer of %s: %s" % (
+                      result.askAnswer[0],sTimeStr))
             else:
                 for rt in result:
                     sTime = time.time() - start
@@ -577,14 +577,14 @@ def main():
                         sTimeStr = "%s milli seconds"%sTime
                     if options.firstAnswer:
                         break
-                    print >>sys.stderr,\
-        "Time to reach answer %s via top-down SPARQL sip strategy: %s"%(rt,sTimeStr)
+                    print("Time to reach answer %s via top-down SPARQL sip strategy: %s" % (
+                        rt,sTimeStr))
             if options.output == 'conflict' and options.method == 'bfp':
                 for _network,_goal in topDownStore.queryNetworks:
-                    print >>sys.stderr, _network, _goal
+                    print(_network, _goal)
                     _network.reportConflictSet(options.debug)
                 for query in topDownStore.edbQueries:
-                    print >>sys.stderr,query.asSPARQL()
+                    print(query.asSPARQL())
 
     elif options.method == 'naive':
         start = time.time()
@@ -595,8 +595,8 @@ def main():
         else:
             sTime = sTime * 1000
             sTimeStr = "%s milli seconds"%sTime
-        print >>sys.stderr,"Time to calculate closure on working memory: ",sTimeStr
-        print >>sys.stderr, network
+        print("Time to calculate closure on working memory: %s" % sTimeStr)
+        print(network)
         if options.output == 'conflict':
             network.reportConflictSet()
 
@@ -608,25 +608,25 @@ def main():
                                                                     'bottomUp']:
         now=time.time()
         rt=network.calculateStratifiedModel(factGraph)
-        print >>sys.stderr,\
-        "Time to calculate stratified, stable model (inferred %s facts): %s"%(
+        print("Time to calculate stratified, stable model (inferred %s facts): %s" % (
                                     rt,
-                                    time.time()-now)
+                                    time.time()-now))
     if options.filter:
-        print >>sys.stderr,"Applying filter to entailed facts"
+        print("Applying filter to entailed facts")
         network.inferredFacts = network.filteredFacts
 
 
     if options.closure and options.output in RDF_SERIALIZATION_FORMATS:
         cGraph = network.closureGraph(factGraph)
         cGraph.namespace_manager = namespace_manager
-        print cGraph.serialize(destination=None,
+        print(cGraph.serialize(destination=None,
                                format=options.output,
-                               base=None)
+                               base=None))
     elif options.output and options.output in RDF_SERIALIZATION_FORMATS:
-        print network.inferredFacts.serialize(destination=None,
+        print(network.inferredFacts.serialize(destination=None,
                                               format=options.output,
-                                              base=None)
+                                              base=None))
+
 if __name__ == '__main__':
     from hotshot import Profile, stats
 #    import pycallgraph

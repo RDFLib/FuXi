@@ -34,7 +34,7 @@ from FuXi.Syntax.InfixOWL import OWL_NS
 from FuXi.Horn.PositiveConditions import *
 from FuXi.Rete.Proof import *
 from FuXi.Syntax.InfixOWL import OWL_NS
-from cStringIO import StringIO
+from io import StringIO
 from rdflib import URIRef, RDF, RDFS, Namespace, Variable, Literal
 from rdflib.util import first
 from rdflib.collection import Collection
@@ -213,7 +213,7 @@ def MagicSetTransformation(factGraph,
                         #We combine all incoming arcs into a single list of (body) conditions for the magic set
                         PrettyPrintRule(rule)
                         SIPRepresentation(rule.sip)
-                        print pred, magicPred
+                        print(pred, magicPred)
                         _body=[]
                         additionalRules=[]
                         for idxSip,(N,x) in enumerate(inArcs):
@@ -230,7 +230,7 @@ def MagicSetTransformation(factGraph,
                         additionalRules.append(Rule(Clause(And(_body),magicPred)))
                         newRules.extend(additionalRules)
                         for i in additionalRules:
-                            print i
+                            print(i)
                         raise NotImplementedError()
                     else:
                         for idxSip,(N,x) in enumerate(inArcs):
@@ -250,7 +250,7 @@ def MagicSetTransformation(factGraph,
         #If there are no bound arguments in the head, we don't modify the rule
         idxIncrement=0
         newRule=copy.deepcopy(rule)
-        for idx,(magicPred,origPred) in magicPositions.items():
+        for idx,(magicPred,origPred) in list(magicPositions.items()):
             newRule.formula.body.formulae.insert(idx+idxIncrement,magicPred)
             idxIncrement+=1
         if 'b' in rule.formula.head.adornment and GetOp(rule.formula.head) not in noMagic:
@@ -741,13 +741,13 @@ def buildMagicBody(N,prevPredicates,adornedHead,derivedPreds,noMagic=[]):
 
 def PrettyPrintRule(rule):
     if isinstance(rule.formula.body,And):
-        print rule.formula.head
-        print "    :- %s"%rule.formula.body.formulae[0]
+        print(rule.formula.head)
+        print("    :- %s"%rule.formula.body.formulae[0])
         for idx,literal in enumerate(rule.formula.body.formulae[1:]):
-            print "       %s%s"%(literal,
-                                 literal == rule.formula.body.formulae[-1] and '' or ', ')
+            print("       %s%s" % (literal,
+                literal == rule.formula.body.formulae[-1] and '' or ', '))
     else:
-        print rule.formula
+        print(rule.formula)
 
 OWL_PROPERTIES_QUERY=\
 """

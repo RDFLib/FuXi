@@ -30,7 +30,7 @@ from FuXi.Rete.RuleStore               import SetupRuleStore
 from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
 from rdflib                            import RDF, RDFS, OWL, URIRef, Variable, BNode, Namespace
 from rdflib.graph                      import Graph
-from cStringIO                         import StringIO
+from io                         import StringIO
 
 LIST_NS = Namespace('http://www.w3.org/2000/10/swap/list#')
 KOR_NS  = Namespace('http://korrekt.org/')
@@ -148,10 +148,10 @@ def WhichSubsumptionOperand(term,owlGraph):
     targetGraph = Graph(topDownStore)
     appearsLeft  = targetGraph.query(
             "ASK { <%s> rdfs:subClassOf [] } ",
-            initNs={u'rdfs':RDFS})
+            initNs={'rdfs':RDFS})
     appearsRight = targetGraph.query(
             "ASK { [] rdfs:subClassOf <%s> } ",
-            initNs={u'rdfs':RDFS})
+            initNs={'rdfs':RDFS})
     if appearsLeft and appearsRight:
         return BOTH_SUBSUMPTION_OPERAND
     elif appearsLeft:
@@ -188,9 +188,9 @@ def StructuralTransformation(owlGraph,newOwlGraph):
     >>> newGraph.bind('ex',EX,True)
     >>> Individual.factoryGraph = newGraph
     >>> for c in AllClasses(newGraph):
-    ...     if c.identifier in revDict: print "## New concept for %s ##"%revDict[c.identifier]
-    ...     print c.__repr__(True)
-    ...     print "################################"
+    ...     if c.identifier in revDict: print("## New concept for %s ##"%revDict[c.identifier])
+    ...     print(c.__repr__(True))
+    ...     print("################################")
 
     """
     FreshConcept = {}
@@ -220,29 +220,29 @@ def ProcessConcept(klass,owlGraph,FreshConcept,newOwlGraph):
     #determine if the concept is the left, right (or both)
     #operand of a subsumption axiom in the ontology
     location = WhichSubsumptionOperand(iD,owlGraph)
-    print repr(cls)
+    print(repr(cls))
     if isinstance(iD,URIRef):
         #An atomic concept?
         if location in [LEFT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-            print "Original (atomic) concept appears in the left HS of a subsumption axiom"
+            print("Original (atomic) concept appears in the left HS of a subsumption axiom")
             #If class is left operand of subsumption operator,
             #assert (in new OWL graph) that A_c subsumes the concept
             _cls   = Class(cls.identifier,graph=newOwlGraph)
             newCls += _cls
-            print "%s subsumes %s"%(newCls,_cls)
+            print("%s subsumes %s"%(newCls,_cls))
         if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-            print "Original (atomic) concept appears in the right HS of a subsumption axiom"
+            print("Original (atomic) concept appears in the right HS of a subsumption axiom")
             #If class is right operand of subsumption operator,
             #assert that it subsumes A_c
             _cls = Class(cls.identifier,graph=newOwlGraph)
             _cls += newCls
-            print "%s subsumes %s"%(_cls,newCls)
+            print("%s subsumes %s"%(_cls,newCls))
     elif isinstance(cls,Restriction):
         if location != NEITHER_SUBSUMPTION_OPERAND:
             #appears in at least one subsumption operator
 
             #An existential role restriction
-            print "Original (role restriction) appears in a subsumption axiom"
+            print("Original (role restriction) appears in a subsumption axiom")
             role      = Property(cls.onProperty,graph=newOwlGraph)
 
             fillerCls = ProcessConcept(
@@ -252,20 +252,20 @@ def ProcessConcept(klass,owlGraph,FreshConcept,newOwlGraph):
                             newOwlGraph)
             #leftCls is (role SOME fillerCls)
             leftCls  = role|some|fillerCls
-            print "let leftCls be %s"%leftCls
+            print("let leftCls be %s"%leftCls)
             if location in [LEFT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
                 #if appears as the left operand, we say A_c subsumes
                 #leftCls
                 newCls   += leftCls
-                print "%s subsumes leftCls"%newCls
+                print("%s subsumes leftCls"%newCls)
             if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
                 #if appears as right operand, we say left Cls subsumes A_c
                 leftCls  += newCls
-                print "leftCls subsumes %s"%newCls
+                print("leftCls subsumes %s"%newCls)
     else:
         assert isinstance(cls,BooleanClass),"Not ELH ontology: %r"%cls
         assert cls._operator == OWL_NS.intersectionOf,"Not ELH ontology"
-        print "Original conjunction (or boolean operator wlog ) appears in a subsumption axiom"
+        print("Original conjunction (or boolean operator wlog ) appears in a subsumption axiom")
         #A boolean conjunction
         if location != NEITHER_SUBSUMPTION_OPERAND:
             members = [ProcessConcept(Class(c),
@@ -279,12 +279,12 @@ def ProcessConcept(klass,owlGraph,FreshConcept,newOwlGraph):
                 #if appears as the left operand, we say the new conjunction
                 #is subsumed by A_c
                 newCls     += newBoolean
-                print "%s subsumes %s"%(newCls,newBoolean)
+                print("%s subsumes %s"%(newCls,newBoolean))
             if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
                 #if appears as the right operand, we say A_c is subsumed by
                 #the new conjunction
                 newBoolean += newCls
-                print "%s subsumes %s"%(newBoolean,newCls)
+                print("%s subsumes %s"%(newBoolean,newCls))
     return newCls
 
 def createTestOntGraph():
@@ -311,7 +311,7 @@ def createTestOntGraph():
     locatedInLeg += knee
 
 
-    # print graph.serialize(format='n3')
+    # print(graph.serialize(format='n3'))
 
     # newGraph = Graph()
     # newGraph.bind('ex',EX_NS,True)
@@ -327,24 +327,24 @@ def createTestOntGraph():
 #                oldConceptRepr = manchesterSyntax(
 #                    oldConceptId,
 #                    graph)
-#            print "%s -> %s"%(
+#            print("%s -> %s"%()
 #                oldConceptRepr,
 #                newConceptId
 #            )
 #
 #        else:
-#            print "%s -> %s"%(
+#            print("%s -> %s"%()
 #                oldConceptId,
 #                newConceptId
 #            )
 #
 #    for c in AllClasses(newGraph):
 #        if isinstance(c.identifier,BNode) and c.identifier in conceptMap.values():
-#            print "## %s ##"%c.identifier
+#            print("## %s ##"%c.identifier)
 #        else:
-#            print "##" * 10
-#        print c.__repr__(True)
-#        print "################################"
+#            print("##" * 10)
+#        print(c.__repr__(True))
+#        print("################################")
     return graph
 
 def GetELHConsequenceProcedureRules(tBoxGraph,useThingRule=True):
@@ -359,7 +359,7 @@ def GetELHConsequenceProcedureRules(tBoxGraph,useThingRule=True):
     for rule in completionRules:
         for clause in LloydToporTransformation(rule.formula):
             rule = makeRule(clause,{})
-            # print rule
+            # print(rule)
             #            PrettyPrintRule(rule)
             reducedCompletionRules.add(rule)
     return reducedCompletionRules
@@ -382,7 +382,7 @@ def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
     for rule in completionRules:
         for clause in LloydToporTransformation(rule.formula):
             rule = makeRule(clause,{})
-            # print rule
+            # print(rule)
 #            PrettyPrintRule(rule)
             reducedCompletionRules.add(rule)
 
@@ -397,7 +397,7 @@ def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
 
     lit = BuildUnitermFromTuple(goal)
     op = GetOp(lit)
-    lit.setOperator(URIRef(op+u'_derived'))
+    lit.setOperator(URIRef(op+'_derived'))
     goal = lit.toRDFTuple()
 
     sipCollection=PrepareSipCollection(reducedCompletionRules)
@@ -414,10 +414,10 @@ def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
     pprint(reducedCompletionRules)
     rt=bfp.answers(debug=True)
     pprint(rt)
-    print >>sys.stderr, bfp.metaInterpNetwork
+    print(bfp.metaInterpNetwork)
     bfp.metaInterpNetwork.reportConflictSet(True,sys.stderr)
     for query in bfp.edbQueries:
-        print >>sys.stderr, "Dispatched query against dataset: ", query.asSPARQL()
+        print("Dispatched query against dataset: %s" % query.asSPARQL())
     pprint(list(bfp.goalSolutions))
 
 def NormalizeSubsumption(owlGraph):
@@ -447,7 +447,7 @@ if __name__ == '__main__':
     #               EX_NS.KneeJoint))
     NormalizeSubsumption(ontGraph)
     for c in AllClasses(ontGraph):
-        print c.__repr__(True)
+        print(c.__repr__(True))
     SetupMetaInterpreter(ontGraph,goal)
 #    test()
 #    import doctest

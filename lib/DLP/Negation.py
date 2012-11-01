@@ -10,8 +10,9 @@ from FuXi.Horn.PositiveConditions import And
 from FuXi.Rete.Util import generateTokenSet
 from FuXi.Syntax.InfixOWL import *
 from FuXi.DLP import MapDLPtoNetwork
-from DLNormalization import NormalFormReduction
+from .DLNormalization import NormalFormReduction
 import sys, unittest, copy, itertools
+from functools import reduce
 
 EX_NS = Namespace('http://example.com/')
 EX    = ClassNamespaceFactory(EX_NS)
@@ -150,9 +151,9 @@ def StratifiedSPARQL(rule,nsMapping={EX_NS: 'ex'}):
     # vars={}
     # varExprs={}
     # copyPatterns=[]
-    print >> sys.stderr, "%s =: { %s MINUS %s} "%(rule.formula.head,
-                                                  posLiterals,
-                                                  toDo)
+    print("%s =: { %s MINUS %s} " % (
+            rule.formula.head, posLiterals, toDo))
+
     def collapseMINUS(left,right):
         negVars=set()
         for pred in iterCondition(right):
@@ -163,13 +164,13 @@ def StratifiedSPARQL(rule,nsMapping={EX_NS: 'ex'}):
         if innerCopyPatternNeeded:
             innerCopyPatterns,innerVars,innerVarExprs=createCopyPattern([right])
             #We use an arbitrary new variable as for the outer FILTER(!BOUND(..))
-            outerFilterVariable=innerVars.values()[0]
+            outerFilterVariable=list(innerVars.values())[0]
             optionalPatterns=[right] +innerCopyPatterns
             negatedBGP=optional(*[formula.toRDFTuple()
                                 for formula in optionalPatterns])
-            negatedBGP.filter(*[k==v for k,v in innerVarExprs.items()])
-            positiveVars.update([Variable(k.value[0:]) for k in innerVarExprs.keys()])
-            positiveVars.update(innerVarExprs.values())
+            negatedBGP.filter(*[k==v for k,v in list(innerVarExprs.items())])
+            positiveVars.update([Variable(k.value[0:]) for k in list(innerVarExprs.keys())])
+            positiveVars.update(list(innerVarExprs.values()))
         else:
             #We use an arbitrary, 'independent' variable for the outer FILTER(!BOUND(..))
             outerFilterVariable=negVars.difference(positiveVars).pop()

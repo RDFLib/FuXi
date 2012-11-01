@@ -11,29 +11,33 @@ The network :
     - stores inferred triples in provided triple source (an RDFLib graph) or a temporary IOMemory Graph by default
 
 """
-from itertools import izip, ifilter, chain
+try:
+    from itertools import izip as zip, ifilter as filter, chain
+except ImportError:
+    from itertools import chain
 import time,sys
 from pprint import pprint
-from cStringIO import StringIO
-from Util import xcombine
-from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstantiation
-from AlphaNode import AlphaNode, ReteToken, SUBJECT, PREDICATE, OBJECT, BuiltInAlphaNode
-from BuiltinPredicates import FILTERS
+from io import StringIO
+from .Util import xcombine
+from .BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstantiation
+from .AlphaNode import AlphaNode, ReteToken, SUBJECT, PREDICATE, OBJECT, BuiltInAlphaNode
+from .BuiltinPredicates import FILTERS
 from FuXi.Horn import ComplementExpansion, DATALOG_SAFETY_NONE, \
                       DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from FuXi.Syntax.InfixOWL import Class, Property, Individual
 from FuXi.Horn.PositiveConditions import Uniterm, SetOperator, Exists, Or, GetUterm
 from FuXi.DLP import MapDLPtoNetwork,non_DHL_OWL_Semantics,IsaFactFormingConclusion
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
-from Util import generateTokenSet,renderNetwork
+from .Util import generateTokenSet,renderNetwork
 from rdflib import __version__ as rdf__version__
 from rdflib.collection import Collection
 from rdflib.graph import ConjunctiveGraph, QuotedGraph, ReadOnlyGraphAggregate, Graph
 from rdflib.namespace import NamespaceManager
 from rdflib import Namespace, RDF, RDFS, BNode, Variable, URIRef, Literal
 from rdflib.util import first
-from ReteVocabulary import RETE_NS
-from RuleStore import N3RuleStore,N3Builtin, Formula
+from .ReteVocabulary import RETE_NS
+from .RuleStore import N3RuleStore,N3Builtin, Formula
+from functools import reduce
 
 OWL_NS    = Namespace("http://www.w3.org/2002/07/owl#")
 Any = None
@@ -41,11 +45,11 @@ LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 
 #From itertools recipes
 def iteritems(mapping):
-    return izip(mapping.iterkeys(),mapping.itervalues())
+    return list(zip(iter(list(mapping.keys())),iter(list(mapping.values()))))
 
 def any(seq,pred=None):
     """Returns True if pred(x) is true for at least one element in the iterable"""
-    for elem in ifilter(pred,seq):
+    for elem in filter(pred,seq):
         return True
     return False
 
@@ -177,7 +181,7 @@ class ReteNetwork:
         if inferredTarget is None:
             self.inferredFacts = Graph()
             namespace_manager = NamespaceManager(self.inferredFacts)
-            for k,v in nsMap.items():
+            for k,v in list(nsMap.items()):
                 namespace_manager.bind(k, v)
             self.inferredFacts.namespace_manager = namespace_manager
         else:
@@ -211,15 +215,15 @@ class ReteNetwork:
           " self.buildNetworkClause(HornFromN3(n3graph)) for instance",
                           DeprecationWarning,2)
             self.buildNetworkFromClause(rule)
-        self.alphaNodes = [node for node in self.nodes.values() if isinstance(node,AlphaNode)]
-        self.alphaBuiltInNodes = [node for node in self.nodes.values() if isinstance(node,BuiltInAlphaNode)]
+        self.alphaNodes = [node for node in list(self.nodes.values()) if isinstance(node,AlphaNode)]
+        self.alphaBuiltInNodes = [node for node in list(self.nodes.values()) if isinstance(node,BuiltInAlphaNode)]
         self._setupDefaultRules()
         if initialWorkingMemory:
             start = time.time()
             self.feedFactsToAdd(initialWorkingMemory)
-            print >>sys.stderr,"Time to calculate closure on working memory: %s m seconds"%((time.time() - start) * 1000)
+            print("Time to calculate closure on working memory: %s m seconds"%((time.time() - start) * 1000))
         if graphVizOutFile:
-            print >>sys.stderr,"Writing out RETE network to ", graphVizOutFile
+            print("Writing out RETE network to %s" % graphVizOutFile)
             renderNetwork(self,nsMap=nsMap).write(graphVizOutFile)
 
     def getNsBindings(self,nsMgr):
@@ -252,7 +256,7 @@ class ReteNetwork:
                              iter(self.ruleStore.formulae[rhs]),
                              rule,
                              aFilter=True)
-        self.alphaNodes = [node for node in self.nodes.values() if isinstance(node,AlphaNode)]
+        self.alphaNodes = [node for node in list(self.nodes.values()) if isinstance(node,AlphaNode)]
         self.rules.add(rule)
         return tNode
 
@@ -286,7 +290,7 @@ class ReteNetwork:
         tNode = self.buildNetwork(iter(self.ruleStore.formulae[lhs]),
                              iter(self.ruleStore.formulae[rhs]),
                              rule)
-        self.alphaNodes = [node for node in self.nodes.values() if isinstance(node,AlphaNode)]
+        self.alphaNodes = [node for node in list(self.nodes.values()) if isinstance(node,AlphaNode)]
         self.rules.add(rule)
         return tNode
 
@@ -303,7 +307,7 @@ class ReteNetwork:
         for i in self.negRules:
             #Evaluate the Graph pattern, and instanciate the head of the rule with
             #the solutions returned
-            nsMapping = dict([(v,k) for k,v in self.nsMap.items()])
+            nsMapping = dict([(v,k) for k,v in list(self.nsMap.items())])
             sel,compiler=StratifiedSPARQL(i,nsMapping)
             query=compiler.compile(sel)
             i.stratifiedQuery=query
@@ -380,19 +384,17 @@ class ReteNetwork:
         # noRules=len(rules)
         if classifyTBox:
             self.feedFactsToAdd(generateTokenSet(owlN3Graph))
-#        print "##### DLP rules fired against OWL/RDF TBOX",self
+        # print("##### DLP rules fired against OWL/RDF TBOX",self)
         return rules
 
     def reportSize(self,tokenSizeThreshold=1200,stream=sys.stdout):
-        for pattern,node in self.nodes.items():
+        for pattern,node in list(self.nodes.items()):
             if isinstance(node,BetaNode):
-                for largeMem in itertools.ifilter(
-                                   lambda i:len(i) > tokenSizeThreshold,
-                                   node.memories.itervalues()):
+                for largeMem in [i for i in iter(list(node.memories.values())) if len(i) > tokenSizeThreshold]:
                     if largeMem:
-                        print >>stream, "Large apha node memory extent: "
+                        print("Large apha node memory extent: ")
                         pprint(pattern)
-                        print >>stream, len(largeMem)
+                        print(len(largeMem))
 
     def reportConflictSet(self,closureSummary=False,stream=sys.stdout):
         tNodeOrder = [tNode
@@ -400,11 +402,11 @@ class ReteNetwork:
                             if self.instantiations.get(tNode,0)]
         tNodeOrder.sort(key=lambda x:self.instantiations[x],reverse=True)
         for termNode in tNodeOrder:
-            print >>stream,termNode
-            print >>stream,"\t", termNode.clauseRepresentation()
-            print >>stream,"\t\t%s instantiations"%self.instantiations[termNode]
+            print(termNode)
+            print("\t%s" % termNode.clauseRepresentation())
+            print("\t\t%s instantiations" % self.instantiations[termNode])
         if closureSummary:
-            print >>stream ,self.inferredFacts.serialize(destination=stream,format='turtle')
+            print(self.inferredFacts.serialize(destination=stream,format='turtle'))
 
     def parseN3Logic(self,src):
         store=N3RuleStore(additionalBuiltins=self.ruleStore.filters)
@@ -418,12 +420,12 @@ class ReteNetwork:
                               iter(rule.formula.head),
                               rule)
             self.rules.add(rule)
-        self.alphaNodes = [node for node in self.nodes.values() if isinstance(node,AlphaNode)]
-        self.alphaBuiltInNodes = [node for node in self.nodes.values() if isinstance(node,BuiltInAlphaNode)]
+        self.alphaNodes = [node for node in list(self.nodes.values()) if isinstance(node,AlphaNode)]
+        self.alphaBuiltInNodes = [node for node in list(self.nodes.values()) if isinstance(node,BuiltInAlphaNode)]
 
     def __repr__(self):
         total = 0
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if isinstance(node,BetaNode):
                 total+=len(node.memories[LEFT_MEMORY])
                 total+=len(node.memories[RIGHT_MEMORY])
@@ -452,7 +454,7 @@ class ReteNetwork:
         """
         Checks every alpha node to see if it may match against a 'universal truth' (one w/out a LHS)
         """
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if isinstance(node,AlphaNode):
                 node.checkDefaultRule(self.universalTruths)
 
@@ -471,7 +473,7 @@ class ReteNetwork:
 
     def reset(self,newinferredFacts=None):
         "Reset the network by emptying the memory associated with all Beta Nodes nodes"
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if isinstance(node,BetaNode):
                 node.memories[LEFT_MEMORY].reset()
                 node.memories[RIGHT_MEMORY].reset()
@@ -498,7 +500,7 @@ class ReteNetwork:
         or already exist in the working memory are not asserted
         """
         if debug:
-            print "%s from %s"%(tokens,termNode)
+            print("%s from %s"%(tokens,termNode))
 
         # newTokens = []
         termNode.instanciatingTokens.add(tokens)
@@ -530,7 +532,7 @@ class ReteNetwork:
             if debug:
                 if not tokens.bindings:
                     tokens._generateBindings()
-            key = tuple(map(lambda item: None if isinstance(item,BNode) else item,rhsTriple))
+            key = tuple([None if isinstance(item,BNode) else item for item in rhsTriple])
             override,executeFn = termNode.executeActions.get(key,(None,None))
 
             if override:
@@ -559,7 +561,7 @@ class ReteNetwork:
                         # if (rhsTriple == (Variable('A'), RDFS.RDFSNS['subClassOf_derived'], Variable('B'))):
                         #     import pdb;pdb.set_trace()
                         if debug:
-                            print "Inferred triple: ", inferredTriple, " from ",termNode.clauseRepresentation()
+                            print("Inferred triple: ", inferredTriple, " from ",termNode.clauseRepresentation())
                             inferredToken.debug = True
                         self.inferredFacts.add(inferredTriple)
                         self.addWME(inferredToken)
@@ -575,7 +577,7 @@ class ReteNetwork:
                             raise InferredGoal("Proved goal " + repr(self.goal))
                     else:
                         if debug:
-                            print "Inferred triple skipped: ", inferredTriple
+                            print("Inferred triple skipped: ", inferredTriple)
                         if executeFn:
                             #The indicated execute action is supposed to be triggered
                             #when the indicates RHS triple is inferred for the
@@ -597,15 +599,13 @@ class ReteNetwork:
             if alpha-mem then alpha-memory-activation (alpha-mem, w)
         end
         """
-#        print wme.asTuple()
+        # print(wme.asTuple())
         #If the user provided a function that enforces an ordering in the
         # evaluation of alpha nodes, then we use this ordering or the 'natural'
         # ordering otherwise
         aNodes = reduce(
             lambda l,r:l+r,
-            filter(lambda i:i,
-                   map(lambda (termComb,termDict): termDict.get(wme.alphaNetworkHash(termComb),[]) ,
-                       iteritems(self.alphaPatternHash))),[])
+            [i for i in [termComb_termDict[1].get(wme.alphaNetworkHash(termComb_termDict[0]),[]) for termComb_termDict in iteritems(self.alphaPatternHash)] if i],[])
         sortedANodes = self.alphaNodePrioritizer(aNodes) if self.alphaNodePrioritizer else aNodes
         for alphaNode in sortedANodes:
 #            print "\t## Activated AlphaNode ##"
@@ -626,7 +626,7 @@ class ReteNetwork:
     def _findPatterns(self,patternList):
         rt = []
         for betaNodePattern, alphaNodePatterns in \
-            [(patternList[:-i],patternList[-i:]) for i in xrange(1,len(patternList))]:
+            [(patternList[:-i],patternList[-i:]) for i in range(1,len(patternList))]:
             assert isinstance(betaNodePattern,HashablePatternList)
             assert isinstance(alphaNodePatterns,HashablePatternList)
             if betaNodePattern in self.nodes:
@@ -678,8 +678,7 @@ class ReteNetwork:
                     continue
                 headTriple = GetUterm(rule.formula.head).toRDFTuple()
                 headTriple = tuple(
-                    map(lambda item: None if isinstance(item,BNode) else item,
-                        headTriple))
+                    [None if isinstance(item,BNode) else item for item in headTriple])
                 tNode.executeActions[headTriple] = (override,executeFn)
 
     def buildNetwork(self,lhsIterator,rhsIterator,rule,aFilter=False):
@@ -694,7 +693,7 @@ class ReteNetwork:
         LHS = []
         while True:
             try:
-                currentPattern = lhsIterator.next()
+                currentPattern = next(lhsIterator)
                 #The LHS isn't done yet, stow away the current pattern
                 #We need to convert the Uniterm into a triple
                 if isinstance(currentPattern,Uniterm):
@@ -792,7 +791,7 @@ class ReteNetwork:
         for the rule.  This root / terminal node is returned
         """
         try:
-            nextPattern = patternIterator.next()
+            nextPattern = next(patternIterator)
         except StopIteration:
             assert lastBetaNodePattern
             if lastBetaNodePattern:
@@ -821,7 +820,7 @@ class ReteNetwork:
             else:
                 newfirstNode = oldAnchor
             firstNode = newfirstNode
-            secondPattern = patternIterator.next()
+            secondPattern = next(patternIterator)
             secondNode = self.nodes[secondPattern]
             newBetaNode = BetaNode(firstNode,secondNode)
             newBNodePattern = HashablePatternList([None]) + nextPattern + secondPattern
@@ -847,7 +846,7 @@ def ComplementExpand(tBoxGraph,complementAnnotation):
                     continue
                 _class = Class(s)
                 complementExpanded.append(s)
-                print "Added %s to complement expansion"%_class
+                print("Added %s to complement expansion" % _class)
                 ComplementExpansion(_class)
 
 

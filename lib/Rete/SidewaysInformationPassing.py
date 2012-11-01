@@ -17,12 +17,13 @@ from rdflib import Namespace, BNode, Variable
 from rdflib.util import first
 
 from FuXi.Rete.Util import selective_memoize
-from cStringIO import StringIO
+from io import StringIO
 from pprint import pprint;
+from functools import reduce
 
 def makeMD5Digest(value):
     return md5(
-            isinstance(value, unicode) and value.encode('utf-8')
+            isinstance(value, str) and value.encode('utf-8')
             or value).hexdigest()
 
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
@@ -75,7 +76,7 @@ def RenderSIPCollection(sipGraph,dot=None):
         markedEdgeLabel = ''
         if nodeLabel in dot.leftNodesLookup:
             bNode,leftNode,markedEdgeLabel = dot.leftNodesLookup[nodeLabel]
-#            print "\t",nodeLabel,edgeLabel, markedEdgeLabel,not edgeLabel == markedEdgeLabel
+            # print("\t",nodeLabel,edgeLabel, markedEdgeLabel,not edgeLabel == markedEdgeLabel)
         else:
             leftNode=Node(makeMD5Digest(bNode),label=nodeLabel,shape='plaintext')
             dot.leftNodesLookup[nodeLabel] = (bNode,leftNode,edgeLabel)
@@ -203,7 +204,8 @@ def getOccurrenceId(uniterm,lookup={}):
     lookup[pO]=GetOp(uniterm)
     return pO
 
-def findFullSip((rt,vars),right):
+def findFullSip(rtvars,right):
+    (rt,vars) = rtvars
     if not vars:
         if len(rt)==1:
             vars=GetArgs(rt[0],secondOrder=True)
@@ -250,7 +252,7 @@ def BuildNaturalSIP(clause,
     >>> rs=Ruleset(n3Rules=ruleGraph.store.rules,nsMapping=ruleGraph.store.nsMgr) # doctest: +SKIP
     >>> for rule in rs: print rule # doctest: +SKIP
     Forall ?Y ?X ( ex:sg(?X ?Y) :- ex:flat(?X ?Y) )
-    Forall ?Y ?Z4 ?X ?Z1 ?Z2 ?Z3 ( ex:sg(?X ?Y) :- And( ex:up(?X ?Z1) ex:sg(?Z1 ?Z2) ex:flat(?Z2 ?Z3) ex:sg(?Z3 ?Z4) ex:down(?Z4 ?Y) ) )
+    Forall ?Y ?X ?Z4 ?Z1 ?Z2 ?Z3 ( ex:sg(?X ?Y) :- And( ex:up(?X ?Z1) ex:sg(?Z1 ?Z2) ex:flat(?Z2 ?Z3) ex:sg(?Z3 ?Z4) ex:down(?Z4 ?Y) ) )
     >>> sip=BuildNaturalSIP(list(rs)[-1]) # doctest: +SKIP
     >>> for N,x in IncomingSIPArcs(sip,MAGIC.sg): print N.n3(),x.n3() # doctest: +SKIP
     ( <http://doi.acm.org/10.1145/28659.28689#up> <http://doi.acm.org/10.1145/28659.28689#sg> <http://doi.acm.org/10.1145/28659.28689#flat> ) ( ?Z3 )
@@ -297,7 +299,7 @@ def BuildNaturalSIP(clause,
             sips = findFullSip(([clause.head],None), clause.body)
             while not foundSip:
                 try:
-                    sip = sips.next()
+                    sip = next(sips)
                 except StopIteration:
                     #Throw SIP exception if sip isn't found (probably means
                     #query + rules combination is 'malformed')
@@ -310,12 +312,12 @@ def BuildNaturalSIP(clause,
                 except InvalidSIPException:
                     foundSip = False
         else:
-            if first(itertools.ifilter(lambda i:isinstance(i,Uniterm) and i.naf or False,
+            if first(filter(lambda i:isinstance(i,Uniterm) and i.naf or False,
                                        clause.body)):
                 #There are negative literals in body, ensure
                 #the given sip order puts negated literals at the end
                 bodyOrder=first(
-                        itertools.ifilter(ProperSipOrderWithNegation,
+                        filter(ProperSipOrderWithNegation,
                                           findFullSip(([clause.head],None),
                                                         clause.body)))
             else:

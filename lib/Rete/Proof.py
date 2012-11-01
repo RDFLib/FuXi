@@ -18,11 +18,14 @@ except:
         warnings.warn("Missing pydot library",ImportWarning)
 #        raise NotImplementedError("Boost Graph Library & Python bindings (or pydot) not installed.  See: see: http://www.osl.iu.edu/~dgregor/bgl-python/")
 
-from itertools import izip, ifilter, ifilterfalse
+try:
+    from itertools import izip as zip, ifilter as filter, ifilterfalse as filterfalse, chain
+except ImportError:
+    from itertools import chain
 from FuXi.Syntax.InfixOWL import *
 from FuXi.Horn.HornRules import Clause, Ruleset
 from FuXi.Horn.PositiveConditions import Uniterm, buildUniTerm, SetOperator, Exists
-from BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstantiation, project
+from .BetaNode import BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstantiation, project
 from FuXi.Rete.RuleStore import N3Builtin
 from FuXi.Rete.AlphaNode import AlphaNode, ReteToken
 from FuXi.Rete.Network import _mulPatternWithSubstitutions
@@ -30,6 +33,7 @@ from rdflib.graph import Graph
 from rdflib.namespace import NamespaceManager
 from rdflib import Namespace, BNode, Variable
 from pprint import pprint, pformat
+from functools import reduce
 
 #From itertools recipes
 def iteritems(mapping):
@@ -78,19 +82,19 @@ class ImmutableDict(dict):
         self._items.sort()
         self._items=tuple(self._items)
     def __setitem__(self,key,value):
-        raise NotImplementedError, "dict is immutable"
+        raise NotImplementedError("dict is immutable")
     def __delitem__(self,key):
-        raise NotImplementedError, "dict is immutable"
+        raise NotImplementedError("dict is immutable")
     def clear(self):
-        raise NotImplementedError, "dict is immutable"
+        raise NotImplementedError("dict is immutable")
     def setdefault(self,k,default=None):
-        raise NotImplementedError, "dict is immutable"
+        raise NotImplementedError("dict is immutable")
     def popitem(self):
-        raise NotImplementedError, "dict is immutable"
+        raise NotImplementedError("dict is immutable")
     def update(self,other):
-        raise NotImplementedError, "dict is immutable"
+        raise NotImplementedError("dict is immutable")
     def normalize(self):
-        return dict([(k,v) for k,v in self.items()])
+        return dict([(k,v) for k,v in list(self.items())])
     def __hash__(self):
         return hash(self._items)
 
@@ -99,7 +103,7 @@ def MakeImmutableDict(regularDict):
     Takes a regular dicitonary and makes an immutable dictionary out of it
     """
     return ImmutableDict([(k,v)
-                           for k,v in regularDict.items()])
+                           for k,v in list(regularDict.items())])
 
 def fetchRETEJustifications(goal,nodeset,builder,antecedent=None):
     """
@@ -137,7 +141,7 @@ def fetchRETEJustifications(goal,nodeset,builder,antecedent=None):
                                   tuple(fillBindings(x.toRDFTuple(),
                                                      antecedent.bindings)) == goal):
                             yield tNode
-                    except Exception,e:
+                    except Exception:
                         pass
     else:
         for tNode in justificationForGoal:
@@ -215,7 +219,7 @@ class ProofBuilder(object):
         # edges = []
         idx = 0
         #register the step nodes
-        for nodeset in self.goals.values():
+        for nodeset in list(self.goals.values()):
             if not nodeset in visitedNodes:
                 idx += 1
                 visitedNodes[nodeset] = nodeset.generateGraphNode(str(idx),nodeset is proof)
@@ -228,9 +232,9 @@ class ProofBuilder(object):
                         if ant not in visitedNodes:
                             idx += 1
                             visitedNodes[ant] = ant.generateGraphNode(str(idx))
-        for node in visitedNodes.values():
+        for node in list(visitedNodes.values()):
             dot.add_node(node)
-        for nodeset in self.goals.values():
+        for nodeset in list(self.goals.values()):
             for justification in nodeset.steps:
                 edge = Edge(visitedNodes[nodeset],
                             visitedNodes[justification],
@@ -284,7 +288,7 @@ class ProofBuilder(object):
                     binds=[]
                     for t in tNode.instanciatingTokens:
                         binds.extend([project(binding,a) for binding in t.bindings])
-                    binds=set([ImmutableDict([(k,v) for k,v in bind.items()]) for bind in binds])
+                    binds=set([ImmutableDict([(k,v) for k,v in list(bind.items())]) for bind in binds])
                     assert len(binds)<2
                     for b in binds:
                         step.bindings.update(b)
@@ -464,7 +468,7 @@ class InferenceStep(object):
         for ant in self.antecedents:
             proofGraph.add((self.identifier,PML.hasAntecedent,ant.identifier))
             ant.serialize(builder,proofGraph)
-        for k,v in self.bindings.items():
+        for k,v in list(self.bindings.items()):
             mapping=BNode()
             proofGraph.add((self.identifier,PML.hasVariableMapping,mapping))
             proofGraph.add((mapping,RDF.type,PML.Mapping))

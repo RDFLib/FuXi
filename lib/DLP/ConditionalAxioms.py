@@ -1,4 +1,4 @@
-from cStringIO import StringIO
+from io import StringIO
 from rdflib import RDF
 from FuXi.Syntax.InfixOWL import OWL_NS
 from FuXi.Horn.HornRules import HornFromN3

@@ -22,7 +22,7 @@ already been generated.
 """
 
 import sys, unittest, copy
-from cStringIO import StringIO
+from io import StringIO
 from pprint import pprint
 
 from rdflib.graph import ReadOnlyGraphAggregate
@@ -43,6 +43,7 @@ from FuXi.Rete.Util import generateTokenSet, selective_memoize
 from FuXi.Horn.HornRules import extractVariables, Clause
 from FuXi.Rete.RuleStore import N3Builtin, FILTERS
 from FuXi.Horn.PositiveConditions import *
+from functools import reduce
 
 BFP_NS   = Namespace('http://dx.doi.org/10.1016/0169-023X(90)90017-8#')
 BFP_RULE = Namespace('http://code.google.com/p/python-dlp/wiki/BFPSpecializedRule#')
@@ -104,7 +105,7 @@ class MalformedQeryPredicate(Exception):
 def coroutine(func):
     def start(*args,**kwargs):
         cr = func(*args,**kwargs)
-        cr.next()
+        next(cr)
         return cr
     return start
 
@@ -131,10 +132,7 @@ class GoalSolutionAction(object):
         Called when the BFP triggers a p-node associated with a goal
         , storing the solutions for later retrieval
         """
-        if not self.goalGroundTerms or not filter(
-                lambda (i,t): self.goalGroundTerms.get(i,t) != t,
-                enumerate(GetArgs(BuildUnitermFromTuple(inferredTriple)))
-            ):
+        if not self.goalGroundTerms or not [i_t for i_t in enumerate(GetArgs(BuildUnitermFromTuple(inferredTriple))) if self.goalGroundTerms.get(i_t[0],i_t[1]) != i_t[1]]:
             #Only contributes to goal if bound arguments correspond to those
             #bound in the goal literal
             if set(self.varMap).intersection(binding):
@@ -150,11 +148,12 @@ class GoalSolutionAction(object):
                 # as solution
                 self.bfp.goalSolutions.add(MakeImmutableDict(binding))
             if self.bfp.debug:
-                print "added %s to goal solutions"%binding
+                print("added %s to goal solutions"%binding)
 
 class EvaluateExecution(object):
     """Handles the inference of evaluate literals in BFP"""
-    def __init__(self, (ruleNo,bodyIdx),bfp,termNodes):
+    def __init__(self, rnbi, bfp, termNodes):
+        (ruleNo,bodyIdx) = rnbi
         self.ruleNo        = ruleNo
         self.bodyIdx       = bodyIdx
         self.bfp           = bfp
@@ -208,7 +207,7 @@ class ProofDerivationStepAction(object):
                     self.ruleIdx,
                     ', triggers %s'%(
                         ','.join([
-                            '%s %ss'%(no,_type) for _type,no in subsequentTypes.items()])) 
+                            '%s %ss'%(no,_type) for _type,no in list(subsequentTypes.items())])) 
                             if self.subsequentActions else '')
         
     def __call__(self, tNode, inferredTriple, token,    binding, debug=False):        
@@ -216,7 +215,7 @@ class ProofDerivationStepAction(object):
         #p(x0,...,xn) :- And(query_p(x0,...,xn) evaluate(ruleNo,n,X))
         #Need two write into self.bfp.proofTrace: headLiteral, ruleIdx, bodyIdx, 1        
         for binding in token.bindings:
-            _bindings = dict([(k,v) for k,v in binding.items() 
+            _bindings = dict([(k,v) for k,v in list(binding.items()) 
                                 if v != None])                
             lit=copy.deepcopy(self.headLiteral)
             lit.ground(_bindings)     
@@ -242,7 +241,7 @@ class ProofAction(object):
                     self.ruleIdx,
                     ', triggers %s'%(
                         ','.join([
-                            '%s %s(s)'%(no,_type) for _type,no in subsequentTypes.items()])) 
+                            '%s %s(s)'%(no,_type) for _type,no in list(subsequentTypes.items())])) 
                             if self.subsequentActions else '')
                 
     def __call__(self, tNode, inferredTriple, token,    binding, debug=False):        
@@ -250,7 +249,7 @@ class ProofAction(object):
         #evaluate(ruleNo,j+1,X) :- evaluate(ruleNo,j,X), bodyLiteral
         #Need two write into self.bfp.proofTrace: bodyLiteral, ruleIdx, bodyIdx, 0      
         for binding in token.bindings:
-            _bindings = dict([(k,v) for k,v in binding.items() 
+            _bindings = dict([(k,v) for k,v in list(binding.items()) 
                                 if v != None])                
             lit=copy.deepcopy(self.bodyLiteral)
             if isinstance(lit,AdornedUniTerm):
@@ -290,7 +289,7 @@ class QueryExecution(object):
         if key not in self.bfp.firedEDBQueries:
             self.bfp.firedEDBQueries.add(key)
             for binding in token.bindings:
-                _bindings = dict([(k,v) for k,v in binding.items()
+                _bindings = dict([(k,v) for k,v in list(binding.items())
                                     if v != None])
 
                 closure = ReadOnlyGraphAggregate([self.factGraph,
@@ -320,18 +319,17 @@ class QueryExecution(object):
                 #should be only for those needed for free variables in the rule head
                 queryVars = reduce(
                     lambda l,r:l.union(r),
-                    map(lambda item:set(GetVariables(item)),
-                        _qLit.formulae)
+                    [set(GetVariables(item)) for item in _qLit.formulae]
                 )
                 #@TODO: Verify we don't always want to limit passing of
                 # intermediate query answers to just those relevant to head solns
 #                _qLit.returnVars = list(set(self.freeHeadVars).intersection(queryVars))
 
                 if self.bfp.debug:
-                    print "%sQuery triggered for "%(
+                    print("%sQuery triggered for "%(
                         ' maximal db conjunction '
-                            if self.edbConj else ''), tNode.clauseRepresentation()
-                    print _qLit.asSPARQL()
+                            if self.edbConj else ''), tNode.clauseRepresentation())
+                    print(_qLit.asSPARQL())
                 self.bfp.edbQueries.add(_qLit)
                 queryVars = origQuery.getOpenVars()
                 # tokens2Propagate=[
@@ -621,7 +619,7 @@ class BackwardFixpointProcedure(object):
         adornedQuery = AdornedUniTerm(self.goal,adornment)
         bfpTopQuery = self.makeDerivedQueryPredicate(adornedQuery)
         if debug:
-            print >>sys.stderr, "Asserting initial BFP query ", bfpTopQuery
+            print("Asserting initial BFP query %s" % bfpTopQuery)
 
         assert bfpTopQuery.isGround()
         #Add BFP query atom to working memory, triggering procedure
@@ -634,7 +632,7 @@ class BackwardFixpointProcedure(object):
                                     ))
         except InferredGoal:
             if debug:
-                print >>sys.stderr, "Reached ground goal. Terminated BFP!"
+                print("Reached ground goal. Terminated BFP!")
             return True
         else:
             if self.goal.isGround():
@@ -680,7 +678,7 @@ class BackwardFixpointProcedure(object):
                         _r = self.rules[_ruleIdx]
                         #For every (matching) rule, scan
                         #for rule instanciations 
-                        for entry,value in self.derivationMap.items():
+                        for entry,value in list(self.derivationMap.items()):
                             if [i for i in value 
                                  if i[2] in ['G','Q']] and GetOp(entry) == GetOp(lit):
                                 #Derivation entry corresponds to this rule 
@@ -698,7 +696,7 @@ class BackwardFixpointProcedure(object):
                                           k,
                                           v,
                                           nextBody.unify(k)) 
-                                            for k,v in self.derivationMap.items() 
+                                            for k,v in list(self.derivationMap.items()) 
                                                 if GetOp(k) == GetOp(nextBody)]
                                     for matchingArgs,provedFact,steps,_sols in matches:
                                         if matchingArgs:
@@ -870,7 +868,7 @@ class BackwardFixpointProcedure(object):
 
 
     def checkNetworkWellformedness(self):
-        for key,rule in self.bfpLookup.items():
+        for key,rule in list(self.bfpLookup.items()):
             if len(key) == 2:
                 ruleType,ruleIdx = key
                 bodyIdx = None
@@ -988,14 +986,14 @@ class BackwardFixpointProcedure(object):
                 elif len(item1) == 2:
                     return -1 if item1[0] == 'b' else 1 if item1[0] == 'a' else 0
                 else:
-                    raise Exception(u'problems comparing %s and %s'%(item1,item))
+                    raise Exception('problems comparing %s and %s'%(item1,item))
             sortedBFPRules =[
                 str("%s : %s")%(key,self.bfpLookup[key])
                     for key in sorted(self.bfpLookup,
 #                                     key=lambda items: str(items[1])+items[0],
                                       cmp=sortBFPRules)]
             for _ruleStr in sortedBFPRules:
-                print _ruleStr
+                print(_ruleStr)
         evalVars        = {}
         for idx,rule in enumerate(self.rules):
             if rule in self.discardedRules:
@@ -1090,7 +1088,7 @@ class BackwardFixpointProcedure(object):
 
             self.specializeConjuncts(rule, idx, evalVars)
 
-        for (ruleNo,bodyIdx),tNodes in self.actionHash.items():
+        for (ruleNo,bodyIdx),tNodes in list(self.actionHash.items()):
             #Attach evaluate action to p-node that propagates
             #token to beta memory associated with evaluate(ruleNo,bodyIdx)
             executeAction = EvaluateExecution((ruleNo,bodyIdx),
@@ -1196,9 +1194,9 @@ class BackwardFixpointProcedure(object):
             #         print "Skipping second order rule (%s): %s"%(idx+1,rule)
             #     continue
             if debug:
-                print "\t%s. %s"%(idx+1,rule)
+                print("\t%s. %s"%(idx+1,rule))
                 for _sip in SIPRepresentation(rule.sip):
-                    print "\t\t",_sip
+                    print("\t\t%s" % _sip)
             newRule1 =self.rule1(rule,label,ruleBodyLen)
             self.bfpLookup[('a',idx+1)] = newRule1
             rules.add(newRule1)
@@ -1249,9 +1247,9 @@ class BackwardFixpointProcedure(object):
                     else:
                         self.maxEDBFront2End[mDBConjFront] = (idx+1,bodyIdx+1)
                     if debug and skipMDBQCount>0:
-                        print "maximal db query: ", self.pushDownQueries[mDBConjFront]
-                        print "skipping %s literals, starting from the %s"%(
-                            bodyIdx+1,skipMDBQCount)
+                        print("maximal db query: %s" % self.pushDownQueries[mDBConjFront])
+                        print("skipping %s literals, starting from the %s" % (
+                            bodyIdx+1,skipMDBQCount))
                     if len(conj)+bodyIdx == len(rule.formula.body):
                         #maximal db conjunction takes up rest of body
                         #tokens should go into (k,n) - where n is the body length

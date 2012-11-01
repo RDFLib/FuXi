@@ -2,7 +2,7 @@
 See: http://www.w3.org/2000/10/swap/doc/CwmBuiltins
 """
 import unittest
-from cStringIO import StringIO
+from io import StringIO
 from rdflib.graph import Graph, ReadOnlyGraphAggregate, ConjunctiveGraph
 from rdflib.util import first
 

@@ -8,7 +8,7 @@ Copyright (c) 2010 __MyCompanyName__. All rights reserved.
 
 import unittest
 from rdflib import Literal, RDF, Variable
-from BackwardFixpointProcedure import BFP_RULE, BFP_NS
+from .BackwardFixpointProcedure import BFP_RULE, BFP_NS
 from FuXi.Horn.PositiveConditions import Uniterm
 from FuXi.Horn.HornRules import Rule, Clause
 

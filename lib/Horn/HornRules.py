@@ -9,6 +9,7 @@ from FuXi.Horn.PositiveConditions import *
 from FuXi.Horn import DATALOG_SAFETY_NONE,DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from rdflib.graph import ConjunctiveGraph, Graph
 from rdflib import Variable, BNode, Namespace, RDF, RDFS, URIRef, Literal
+from rdflib import py3compat
 
 def NetworkFromN3(n3Source,additionalBuiltins=None):
     """
@@ -92,7 +93,8 @@ class Ruleset(object):
                     for stmt in ruleCondition:
                         if isinstance(stmt,N3Builtin):
                             ExternalFunction(stmt,newNss=self.nsMapping)
-#                            print stmt;raise
+                            # print stmt
+                            # raise
                         allVars.update([term for term in stmt if isinstance(term,(BNode,Variable))])
                 body = [isinstance(term,N3Builtin) and term or
                          Uniterm(list(term)[1],[list(term)[0],list(term)[-1]],
@@ -204,6 +206,7 @@ class Rule(object):
                 return False
         return True
 
+    @py3compat.format_doctest_out
     def n3(self):
         """
         Render a rule as N3 (careful to use e:tuple (_: ?X) skolem functions for existentials in the head)
@@ -212,7 +215,7 @@ class Rule(object):
         ...                      Uniterm(RDF.type,[Variable('M'),Variable('C')])]),
         ...                 Uniterm(RDF.type,[Variable('M'),Variable('SC')]))
         >>> Rule(clause,[Variable('M'),Variable('SC'),Variable('C')]).n3()
-        u'{ ?C rdfs:subClassOf ?SC .\\n ?M a ?C } => { ?M a ?SC }'
+        %(u)s'{ ?C rdfs:subClassOf ?SC .\\n ?M a ?C } => { ?M a ?SC }'
 
         """
         return u'{ %s } => { %s }'%(self.formula.body.n3(),

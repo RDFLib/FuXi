@@ -62,11 +62,11 @@ def ApplyDemorgans(clause):
                         if isinstance(i,Or) and i.naf]:
         replacementList = []
         for innerTerm in negDisj:
-            assert isinstance(i,Uniterm)
+            assert isinstance(negDisj,Uniterm), negDisj
             innerTerm.naf = not innerTerm.naf
             replacementList.append(innerTerm)
         replacementMap[negDisj] = And(replacementList)
-    for old,new in replacementMap.items():
+    for old,new in list(replacementMap.items()):
         list(breadth_first_replace(clause.body,candidate=old,replacement=new))
 
 def HandleNonDisjunctiveClauses(ruleset, network, constructNetwork, negativeStratus, ignoreNegativeStratus, clause):
