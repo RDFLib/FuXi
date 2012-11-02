@@ -5,73 +5,108 @@ BackwardFixpointProcedure.py
 .. A sound and complete query answering method for recursive databases
 based on meta-interpretation called Backward Fixpoint Procedure ..
 
-Uses RETE-UL as the RIF PRD implementation of
-a meta-interpreter of an adorned ruleset that builds large, conjunctive (BGPs) SPARQL queries.
+Uses RETE-UL as the RIF PRD implementation of a meta-interpreter of an
+adorned ruleset that builds large, conjunctive (BGPs) SPARQL queries.
 
-Facts are only generated in a bottom up evaluation of the interpreter if a query has been issued
-for that fact or if an appropriate sub-query has been generated. Sub-queries for rule bodies are generated
-if a sub-query for the corresponding rule head already exists. Sub-queries for conjuncts
-are generated from sub-queries of conjunctions they appear in
+Facts are only generated in a bottom up evaluation of the interpreter if a
+query has been issued for that fact or if an appropriate sub-query has been
+generated.
+
+Sub-queries for rule bodies are generated if a sub-query for the corresponding
+rule head already exists. Sub-queries for conjuncts are generated from
+sub-queries of conjunctions they appear in
 
 Evaluate condition and ACTION:
 
-Evaluate consults the already generated facts, and may take a single
-atom or a conjunction as its argument, returning true if all of the conjuncts have
+Evaluate consults the already generated facts, and may take a single atom or a
+conjunction as its argument, returning true if all of the conjuncts have
 already been generated.
 
 """
 
-import sys, unittest, copy
+import copy
+import unittest
 from io import StringIO
 from pprint import pprint
 
 from rdflib.graph import ReadOnlyGraphAggregate
-from rdflib.namespace import NamespaceManager
-from rdflib import Literal, Namespace, RDF, Variable, URIRef
+from rdflib import (
+    Literal,
+    Namespace,
+    RDF,
+    Variable,
+    URIRef,
+    )
 from rdflib.util import first
 
-from FuXi.SPARQL import EDBQuery, EDBQueryFromBodyIterator, ConjunctiveQueryMemoize
-from FuXi.Rete.SidewaysInformationPassing import GetArgs, GetVariables, SIPRepresentation
-from FuXi.Rete.SidewaysInformationPassing import iterCondition, GetOp
+from FuXi.SPARQL import (
+    ConjunctiveQueryMemoize,
+    EDBQuery,
+    EDBQueryFromBodyIterator,
+    )
+from FuXi.Rete.SidewaysInformationPassing import (
+    GetArgs,
+    GetVariables,
+    SIPRepresentation,
+    iterCondition,
+    GetOp,
+    )
 from FuXi.Rete.BetaNode import ReteMemory, BetaNode, RIGHT_MEMORY, LEFT_MEMORY
 from FuXi.Rete.AlphaNode import AlphaNode, ReteToken, BuiltInAlphaNode
-from FuXi.Rete.Network import HashablePatternList, InferredGoal, iteritems
+from FuXi.Rete.Network import HashablePatternList, InferredGoal
 from FuXi.Rete.Proof import MakeImmutableDict
-from FuXi.DLP import breadth_first
-from FuXi.Rete.Magic import AdornedRule, AdornedUniTerm, IsHybridPredicate
-from FuXi.Rete.Util import generateTokenSet, selective_memoize
+from FuXi.Rete.Magic import AdornedRule, AdornedUniTerm  # , IsHybridPredicate
+from FuXi.Rete.Util import generateTokenSet
 from FuXi.Horn.HornRules import extractVariables, Clause
 from FuXi.Rete.RuleStore import N3Builtin, FILTERS
-from FuXi.Horn.PositiveConditions import *
+from FuXi.Horn.PositiveConditions import (
+    buildUniTerm,
+    BuildUnitermFromTuple,
+    And,
+    Exists,
+    Uniterm
+    )
 from functools import reduce
 
-BFP_NS   = Namespace('http://dx.doi.org/10.1016/0169-023X(90)90017-8#')
-BFP_RULE = Namespace('http://code.google.com/p/python-dlp/wiki/BFPSpecializedRule#')
+
+# From itertools recipes
+def _iteritems(mapping):
+    return zip(mapping.iterkeys(), mapping.itervalues())
+
+BFP_NS = Namespace(
+        'http://dx.doi.org/10.1016/0169-023X(90)90017-8#')
+BFP_RULE = Namespace(
+        'http://code.google.com/p/python-dlp/wiki/BFPSpecializedRule#')
 HIGHER_ORDER_QUERY = BFP_RULE.SecondOrderPredicateQuery
+
 
 class EvaluateConjunctiveQueryMemory(ReteMemory):
     """
     The extension of the evaluate predicate for a particular specialized rule
 
-    "Whenever a new WME is filtered through the alpha network and reaches an alpha memory, we
-    simply add it to the list of other WMEs in that memory, and inform each of the attached join
-    nodes"
+    "Whenever a new WME is filtered through the alpha network and reaches an
+    alpha memory, we simply add it to the list of other WMEs in that memory,
+    and inform each of the attached join nodes"
 
-    A beta memory node stores a list of the tokens it contains, plus a list of its children (other
-    nodes in the beta part of the network). Before we give its data structure, though, recall that
-    we were going to do our procedure calls for left and right activations through a switch or case
-    statement or a jumptable indexed according to the type of node being activated. Thus, given
-    a (pointer to a) node, we need to be able to determine its type. This is straightforward if we
-    use variant records to represent nodes. (A variant record is a record that can contain any one
-    of several dierent sets ofelds.) Each node in the beta part of the net will be represented by
+    A beta memory node stores a list of the tokens it contains, plus a list of
+    its children (other nodes in the beta part of the network). Before we give
+    its data structure, though, recall that we were going to do our procedure
+    calls for left and right activations through a switch or case statement or
+    a jumptable indexed according to the type of node being activated. Thus,
+    given a (pointer to a) node, we need to be able to determine its type. This
+    is straightforward if we use variant records to represent nodes. (A variant
+    record is a record that can contain any one of several different sets of
+    fields.) Each node in the beta part of the net will be represented by
     a rete-node structure:
 
-    Whenever a beta memory is informed of a new match (consisting of an existing token and some
-    WME), we build a token, add it to the list in the beta memory, and inform each of the beta
-    memory's children:
+    Whenever a beta memory is informed of a new match (consisting of an
+    existing token and some WME), we build a token, add it to the list in the
+    beta memory, and inform each of the beta memory's children:
     """
-    def __init__(self,betaNode,memoryPos,_filter=None):
-        super(EvaluateConjunctiveQueryMemory, self).__init__(betaNode,memoryPos,_filter)
+
+    def __init__(self, betaNode, memoryPos, _filter=None):
+        super(EvaluateConjunctiveQueryMemory, self).__init__(
+                                        betaNode, memoryPos, _filter)
 
     # def union(self, other):
     #     """Return the union of two sets as a new set.
@@ -83,13 +118,14 @@ class EvaluateConjunctiveQueryMemory(ReteMemory):
     #     return result
 
     def __repr__(self):
-        return "<Evaluate Memory: %s item(s)>"%(len(self))
+        return "<Evaluate Memory: %s item(s)>" % (len(self))
 
     # def addToken(self,token,debug=False): pass
 
     # def reset(self):
     #     self.clear()
     #     self.substitutionDict = {}
+
 
 class MalformedQeryPredicate(Exception):
     """An exception raised when a malformed quer predicate is created"""
@@ -103,19 +139,21 @@ class MalformedQeryPredicate(Exception):
 # automatically on call.
 
 def coroutine(func):
-    def start(*args,**kwargs):
-        cr = func(*args,**kwargs)
+    def start(*args, **kwargs):
+        cr = func(*args, **kwargs)
         next(cr)
         return cr
     return start
 
+
 class GoalSolutionAction(object):
-    def getGroundTerms(self,literal):
+    def getGroundTerms(self, literal):
         goalGroundTerms = {}
-        for idx,term in enumerate(GetArgs(literal)):
-            if not isinstance(term,Variable):
+        for idx, term in enumerate(GetArgs(literal)):
+            if not isinstance(term, Variable):
                 goalGroundTerms[idx] = term
         return goalGroundTerms
+
     def __init__(self, bfp, varMap):
         self.goalGroundTerms = self.getGroundTerms(bfp.goal)
         self.bfp = bfp
@@ -426,7 +464,7 @@ class QueryExecution(object):
                 
                 wme = ReteToken(tuple([ term for term in fact.toRDFTuple() ]),debug=debug)
                 wmeCopy = copy.deepcopy(wme)
-                for termComb,termDict in iteritems(self.bfp.metaInterpNetwork.alphaPatternHash):
+                for termComb,termDict in _iteritems(self.bfp.metaInterpNetwork.alphaPatternHash):
                     for alphaNode in termDict.get(wmeCopy.alphaNetworkHash(termComb),[]):
                         validBNodes = []
                         for bNode in alphaNode.descendentBetaNodes:
@@ -1272,18 +1310,19 @@ class BackwardFixpointProcedure(object):
         return rules
 
 
-    def makeAdornedRule(self,body,head):
+    def makeAdornedRule(self, body, head):
         allVars = set()
-        #first we identify body variables
+        # first we identify body variables
+        # @FIXME: unused variables
         bodyVars = set(reduce(lambda x,y:x+y,
                               [ list(extractVariables(i,existential=False))
                                         for i in iterCondition(body) ]))
-        #then we identify head variables
+        # then we identify head variables
         headVars = set(reduce(lambda x,y:x+y,
                               [ list(extractVariables(i,existential=False))
                                         for i in iterCondition(head) ]))
 
-        return AdornedRule(Clause(body,head),declare=allVars)
+        return AdornedRule(Clause(body, head), declare=allVars)
 
 
     def rule1(self,rule,label,bodyLen):
@@ -1444,4 +1483,4 @@ class BackwardFixpointProcedureTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-	unittest.main()
+    unittest.main()

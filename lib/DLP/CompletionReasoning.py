@@ -20,22 +20,53 @@ Query fact: rdfs:subClassOf_derived_query_bf(KneeJoint)
 """
 __author__ = 'chimezieogbuji'
 import sys
-from FuXi.Syntax.InfixOWL              import *
-from FuXi.DLP                          import SkolemizeExistentialClasses, \
-                                              SKOLEMIZED_CLASS_NS, \
-                                              LloydToporTransformation, \
-                                              makeRule
-from FuXi.Horn.HornRules               import HornFromN3
-from FuXi.Rete.RuleStore               import SetupRuleStore
+from io import StringIO
+from rdflib import (
+    RDF,
+    RDFS,
+    OWL,
+    URIRef,
+    Variable,
+    BNode,
+    Namespace,
+    )
+from rdflib.graph import Graph
+from FuXi.Syntax.InfixOWL import (
+    OWL_NS,
+    some,
+    AllClasses,
+    BooleanClass,
+    CastClass,
+    Class,
+    ClassNamespaceFactory,
+    Individual,
+    Property,
+    Restriction,
+    )
+from FuXi.DLP import (
+    SkolemizeExistentialClasses,
+    SKOLEMIZED_CLASS_NS,
+    LloydToporTransformation,
+    makeRule,
+    non_DHL_OWL_Semantics as SUBSUMPTION_SEMANTICS,
+    )
+from FuXi.Horn.HornRules import HornFromN3
+from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
-from rdflib                            import RDF, RDFS, OWL, URIRef, Variable, BNode, Namespace
-from rdflib.graph                      import Graph
-from io                         import StringIO
+import logging
+
+
+def _debug(*args, **kw):
+    logging.basicConfig(level=logging.ERROR, format="%(message)s")
+    logger = logging.getLogger(__name__)
+    # _logger.setLevel(logging.DEBUG)
+    logger.debug(*args, **kw)
+
 
 LIST_NS = Namespace('http://www.w3.org/2000/10/swap/list#')
-KOR_NS  = Namespace('http://korrekt.org/')
-EX_NS   = Namespace('http://example.com/')
-EX_CL   = ClassNamespaceFactory(EX_NS)
+KOR_NS = Namespace('http://korrekt.org/')
+EX_NS = Namespace('http://example.com/')
+EX_CL = ClassNamespaceFactory(EX_NS)
 
 derivedPredicates = [
     LIST_NS['in'],
@@ -51,7 +82,7 @@ hybridPredicates = [
     OWL.someValuesFrom
 ]
 
-CONDITIONAL_THING_RULE=\
+CONDITIONAL_THING_RULE = \
 """
 @prefix kor:    <http://korrekt.org/>.
 @prefix owl:    <http://www.w3.org/2002/07/owl#>.
@@ -62,7 +93,7 @@ CONDITIONAL_THING_RULE=\
 #Rule 4 (needs to be added conditionally - only if owl:Thing appears in the ontology)
 { ?C rdfs:subClassOf ?C } => { ?C rdfs:subClassOf owl:Thing }."""
 
-RULES=\
+RULES = \
 """
 @prefix kor:    <http://korrekt.org/>.
 @prefix owl:    <http://www.w3.org/2002/07/owl#>.
@@ -137,14 +168,15 @@ RIGHT_SUBSUMPTION_OPERAND   = 1
 BOTH_SUBSUMPTION_OPERAND    = 2
 NEITHER_SUBSUMPTION_OPERAND = 3
 
+
 def WhichSubsumptionOperand(term,owlGraph):
     topDownStore=TopDownSPARQLEntailingStore(
                     owlGraph.store,
                     owlGraph,
                     idb=HornFromN3(StringIO(SUBSUMPTION_SEMANTICS)),
                     DEBUG=False,
-                    derivedPredicates = [OWL_NS.sameAs],
-                    hybridPredicates = [OWL_NS.sameAs])
+                    derivedPredicates=[OWL_NS.sameAs],
+                    hybridPredicates=[OWL_NS.sameAs])
     targetGraph = Graph(topDownStore)
     appearsLeft  = targetGraph.query(
             "ASK { <%s> rdfs:subClassOf [] } ",
@@ -220,29 +252,29 @@ def ProcessConcept(klass,owlGraph,FreshConcept,newOwlGraph):
     #determine if the concept is the left, right (or both)
     #operand of a subsumption axiom in the ontology
     location = WhichSubsumptionOperand(iD,owlGraph)
-    print(repr(cls))
+    _debug(repr(cls))
     if isinstance(iD,URIRef):
         #An atomic concept?
         if location in [LEFT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-            print("Original (atomic) concept appears in the left HS of a subsumption axiom")
+            _debug("Original (atomic) concept appears in the left HS of a subsumption axiom")
             #If class is left operand of subsumption operator,
             #assert (in new OWL graph) that A_c subsumes the concept
             _cls   = Class(cls.identifier,graph=newOwlGraph)
             newCls += _cls
-            print("%s subsumes %s"%(newCls,_cls))
+            _debug("%s subsumes %s"%(newCls,_cls))
         if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-            print("Original (atomic) concept appears in the right HS of a subsumption axiom")
+            _debug("Original (atomic) concept appears in the right HS of a subsumption axiom")
             #If class is right operand of subsumption operator,
             #assert that it subsumes A_c
             _cls = Class(cls.identifier,graph=newOwlGraph)
             _cls += newCls
-            print("%s subsumes %s"%(_cls,newCls))
+            _debug("%s subsumes %s"%(_cls,newCls))
     elif isinstance(cls,Restriction):
         if location != NEITHER_SUBSUMPTION_OPERAND:
             #appears in at least one subsumption operator
 
             #An existential role restriction
-            print("Original (role restriction) appears in a subsumption axiom")
+            _debug("Original (role restriction) appears in a subsumption axiom")
             role      = Property(cls.onProperty,graph=newOwlGraph)
 
             fillerCls = ProcessConcept(
@@ -252,20 +284,20 @@ def ProcessConcept(klass,owlGraph,FreshConcept,newOwlGraph):
                             newOwlGraph)
             #leftCls is (role SOME fillerCls)
             leftCls  = role|some|fillerCls
-            print("let leftCls be %s"%leftCls)
+            _debug("let leftCls be %s"%leftCls)
             if location in [LEFT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
                 #if appears as the left operand, we say A_c subsumes
                 #leftCls
                 newCls   += leftCls
-                print("%s subsumes leftCls"%newCls)
+                _debug("%s subsumes leftCls"%newCls)
             if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
                 #if appears as right operand, we say left Cls subsumes A_c
                 leftCls  += newCls
-                print("leftCls subsumes %s"%newCls)
+                _debug("leftCls subsumes %s"%newCls)
     else:
         assert isinstance(cls,BooleanClass),"Not ELH ontology: %r"%cls
         assert cls._operator == OWL_NS.intersectionOf,"Not ELH ontology"
-        print("Original conjunction (or boolean operator wlog ) appears in a subsumption axiom")
+        _debug("Original conjunction (or boolean operator wlog ) appears in a subsumption axiom")
         #A boolean conjunction
         if location != NEITHER_SUBSUMPTION_OPERAND:
             members = [ProcessConcept(Class(c),
@@ -279,12 +311,12 @@ def ProcessConcept(klass,owlGraph,FreshConcept,newOwlGraph):
                 #if appears as the left operand, we say the new conjunction
                 #is subsumed by A_c
                 newCls     += newBoolean
-                print("%s subsumes %s"%(newCls,newBoolean))
+                _debug("%s subsumes %s"%(newCls,newBoolean))
             if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
                 #if appears as the right operand, we say A_c is subsumed by
                 #the new conjunction
                 newBoolean += newCls
-                print("%s subsumes %s"%(newBoolean,newCls))
+                _debug("%s subsumes %s"%(newBoolean,newCls))
     return newCls
 
 def createTestOntGraph():
@@ -364,9 +396,10 @@ def GetELHConsequenceProcedureRules(tBoxGraph,useThingRule=True):
             reducedCompletionRules.add(rule)
     return reducedCompletionRules
 def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
+    from pprint import pprint
     from FuXi.LP.BackwardFixpointProcedure    import BackwardFixpointProcedure
-    from FuXi.Rete.Magic                      import SetupDDLAndAdornProgram, PrettyPrintRule
-    from FuXi.Horn.PositiveConditions         import BuildUnitermFromTuple, Exists
+    from FuXi.Rete.Magic                      import SetupDDLAndAdornProgram  # , PrettyPrintRule
+    from FuXi.Horn.PositiveConditions         import BuildUnitermFromTuple  # , Exists
     from FuXi.Rete.TopDown                    import PrepareSipCollection
     from FuXi.DLP                             import LloydToporTransformation, makeRule
     from FuXi.Rete.SidewaysInformationPassing import GetOp
@@ -383,7 +416,7 @@ def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
         for clause in LloydToporTransformation(rule.formula):
             rule = makeRule(clause,{})
             # print(rule)
-#            PrettyPrintRule(rule)
+            # PrettyPrintRule(rule)
             reducedCompletionRules.add(rule)
 
     network = SetupRuleStore(makeNetwork=True)[-1]

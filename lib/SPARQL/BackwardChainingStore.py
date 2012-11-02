@@ -1,35 +1,54 @@
 try:
-    from itertools import izip as zip, ifilter as filter, ifilterfalse as filterfalse, chain
+    from itertools import (
+        izip as zip,
+        ifilter as filter,
+        ifilterfalse as filterfalse,
+        chain
+        )
 except ImportError:
     from itertools import chain
+import copy
 import itertools
-from FuXi.Rete.Proof import *
-from rdflib import RDFS, RDF, Variable
-from rdflib.util import first
+import sys
+from pprint import pprint
+from rdflib import py3compat, RDF, URIRef, Variable
+from rdflib.graph import ConjunctiveGraph, Graph
 from rdflib.store import Store
-from rdfextras.sparql.algebra import *
-from rdfextras.sparql.graph import BasicGraphPattern
-from rdfextras.sparql.query import Query
-from rdflib.graph import Graph
+from rdflib.util import first
+from rdfextras.sparql.algebra import (
+    RenderSPARQLAlgebra,
+    NonSymmetricBinaryOperator,
+    BasicGraphPattern,
+    )
+# from rdfextras.sparql.query import Query
 from rdfextras.store.REGEXMatching import NATIVE_REGEX
-from FuXi.DLP import DisjunctiveNormalForm
-from FuXi.Rete.Magic import *
-from FuXi.Rete.TopDown import *
-from FuXi.Rete.Network import ReteNetwork
-from FuXi.Rete.SidewaysInformationPassing import *
+
+# from FuXi.DLP import DisjunctiveNormalForm
+from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
 from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
 from FuXi.LP import IdentifyHybridPredicates
-from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
-from FuXi.Rete.Util import lazyGeneratorPeek
+from FuXi.Rete.Magic import (
+    ReplaceHybridPredcates,
+    SetupDDLAndAdornProgram,
+    CreateHybridPredicateRule,
+    DerivedPredicateIterator
+    )
+from FuXi.Rete.Network import LOG
+from FuXi.Rete.SidewaysInformationPassing import GetOp
+from FuXi.Rete.SidewaysInformationPassing import SIPRepresentation
+from FuXi.Rete.TopDown import PrepareSipCollection
+from FuXi.Rete.TopDown import RDFTuplesToSPARQL
+from FuXi.Rete.TopDown import mergeMappings1To2
+# from FuXi.Rete.Util import lazyGeneratorPeek
 from FuXi.SPARQL import EDBQuery
 
+
 TOP_DOWN_METHOD = 0
-BFP_METHOD      = 1
+BFP_METHOD = 1
+DEFAULT_BUILTIN_MAP = {LOG.equal: "%s  = %s",
+                       LOG.notEqualTo: "%s != %s"}
 
-DEFAULT_BUILTIN_MAP = { LOG.equal:       "%s  = %s",
-                        LOG.notEqualTo:  "%s != %s" }
-
-RIF_REFERENCE_QUERY=\
+RIF_REFERENCE_QUERY = \
 """
 PREFIX  rif: <http://www.w3.org/2007/rif#>
 PREFIX ent: <http://www.w3.org/ns/entailment/>
@@ -37,6 +56,7 @@ SELECT DISTINCT ?rifUri {
     ?rifUri rif:usedWithProfile ent:Simple
 }
 """
+
 class TopDownSPARQLEntailingStore(Store):
     """
     A Store which uses FuXi's magic set "sip strategies" and the in-memory SPARQL Algebra
@@ -53,7 +73,7 @@ class TopDownSPARQLEntailingStore(Store):
     batch_unification = True
 
     def getDerivedPredicates(self, expr, prolog):
-        if isinstance(expr,BasicGraphPattern):
+        if isinstance(expr, BasicGraphPattern):
             for s,p,o,func in expr.patterns:
                 derivedPred = self.derivedPredicateFromTriple((s,p,o))
                 if derivedPred is not None:
@@ -85,9 +105,9 @@ class TopDownSPARQLEntailingStore(Store):
         >>> isinstance(rt,(BasicGraphPattern,AlgebraExpression)) # doctest: +SKIP
         True
         """
-        from rdflib.sparql.bison.Query import Prolog
-        from rdflib.sparql.parser import parse
-        from rdflib import sparql as sparqlModule
+        from rdfextras.sparql.query import Prolog
+        from rdfextras.sparql.parser import parse
+        from rdfextras import sparql as sparqlModule
         if queryObj:
             query = queryObj
         else:
@@ -176,6 +196,7 @@ class TopDownSPARQLEntailingStore(Store):
             self.edb.nsMap[key]    = uri
 
     def invokeDecisionProcedure(self,tp,factGraph,bindings,debug,sipCollection):
+        from FuXi.Rete.RuleStore import SetupRuleStore
         isNotGround = first(filter(lambda i:isinstance(i,Variable),
                                               tp))
         rule_store, rule_graph, network = SetupRuleStore(makeNetwork=True)
@@ -215,6 +236,7 @@ class TopDownSPARQLEntailingStore(Store):
             return tp
 
     def hybridPredicatePreparation(self,nsMapping=None):
+        from FuXi.Horn.HornRules import Ruleset
         new_rules = list(map(copy.deepcopy,self.idb))
         ReplaceHybridPredcates(new_rules,self.hybridPredicates)
         for hybrid_predicate in self.hybridPredicates:
@@ -565,8 +587,17 @@ class TopDownSPARQLEntailingStore(Store):
         self.dataset.rollback()
 
 def test():
-     import doctest
-     doctest.testmod()
+    import doctest
+    doctest.testmod()
 
 if __name__ == '__main__':
     test()
+
+__all__ = ['TOP_DOWN_METHOD', 'BFP_METHOD', 'DEFAULT_BUILTIN_MAP',
+           'RIF_REFERENCE_QUERY', 'TopDownSPARQLEntailingStore']
+
+# from FuXi.SPARQL.BackwardChainingStore import TOP_DOWN_METHOD
+# from FuXi.SPARQL.BackwardChainingStore import BFP_METHOD
+# from FuXi.SPARQL.BackwardChainingStore import DEFAULT_BUILTIN_MAP
+# from FuXi.SPARQL.BackwardChainingStore import RIF_REFERENCE_QUERY
+# from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore

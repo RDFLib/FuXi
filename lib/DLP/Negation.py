@@ -2,24 +2,35 @@
 """
 Stratified Negation Semantics for DLP using SPARQL to handle the negation
 """
-from rdflib.graph import Graph
-from rdflib import Namespace, RDF, Variable, BNode
-from rdflib.util import first
+import copy
+import itertools
+import unittest
+from functools import reduce
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Horn.PositiveConditions import And
 from FuXi.Rete.Util import generateTokenSet
-from FuXi.Syntax.InfixOWL import *
+from FuXi.Syntax.InfixOWL import OWL_NS
+from FuXi.Syntax.InfixOWL import some
+from FuXi.Syntax.InfixOWL import only
+from FuXi.Syntax.InfixOWL import Class
+from FuXi.Syntax.InfixOWL import ClassNamespaceFactory
+from FuXi.Syntax.InfixOWL import EnumeratedClass
+from FuXi.Syntax.InfixOWL import Individual
+from FuXi.Syntax.InfixOWL import Property
 from FuXi.DLP import MapDLPtoNetwork
 from .DLNormalization import NormalFormReduction
-import sys, unittest, copy, itertools
-from functools import reduce
+from rdflib.graph import Graph
+from rdflib import Namespace, RDF, Variable, BNode
+from rdflib.util import first
 
 EX_NS = Namespace('http://example.com/')
-EX    = ClassNamespaceFactory(EX_NS)
+EX = ClassNamespaceFactory(EX_NS)
+
 
 def GetVars(atom):
     from FuXi.Rete.SidewaysInformationPassing import GetArgs
     return [term for term in GetArgs(atom) if isinstance(term,Variable)]
+
 
 def CalculateStratifiedModel(network,ontGraph,derivedPreds,edb=None):
     posRules,ignored=MapDLPtoNetwork(network,

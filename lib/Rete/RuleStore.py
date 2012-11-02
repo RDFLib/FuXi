@@ -1,15 +1,9 @@
 
-import sys
-from rdflib import Namespace, RDF, BNode, Literal, URIRef, Variable
-from rdflib.store import Store,VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
+# import sys
+from rdflib import Namespace, RDF, BNode, URIRef, Variable
+from rdflib.store import Store
 from rdflib.graph import QuotedGraph, Graph
 from rdflib.namespace import NamespaceManager
-from rdfextras.utils.termutils import *
-from rdfextras.store.REGEXMatching import REGEXTerm, NATIVE_REGEX, PYTHON_REGEX
-
-from pprint import pprint
-from io import StringIO
-
 from .BuiltinPredicates import FILTERS
 from rdflib import py3compat
 from functools import reduce
@@ -37,7 +31,7 @@ class N3Builtin(object):
     def ground(self,varMapping):
         appliedKeys = set([self.argument,self.result]).intersection(list(varMapping.keys()))
         self.argument = varMapping.get(self.argument,self.argument)
-        self.result   = varMapping.get(self.result,self.result)
+        self.result = varMapping.get(self.result,self.result)
         return appliedKeys
 
     def isGround(self):
@@ -48,22 +42,24 @@ class N3Builtin(object):
 
     def renameVariables(self,varMapping):
         if varMapping:
-            self.argument=varMapping.get(self.argument,self.argument)
-            self.result  =varMapping.get(self.result  ,self.result)
+            self.argument = varMapping.get(self.argument,self.argument)
+            self.result = varMapping.get(self.result, self.result)
 
     def binds(self,var):
         return True
 
     def toRDFTuple(self):
         return (self.argument,self.uri,self.result)
+
     def render(self,argument,result):
-        return "<%s>(%s,%s)"%(self.uri,argument,result)
+        return "<%s>(%s,%s)" % (self.uri,argument,result)
+
     def __iter__(self):
         for f in [self.uri,self.argument,self.result]:
             yield f
 
     def __repr__(self):
-        return "<%s>(%s,%s)"%(self.uri,
+        return "<%s>(%s,%s)" % (self.uri,
                               isinstance(self.argument,Variable) and '?%s'%self.argument or self.argument,
                               isinstance(self.result,Variable) and '?%s'%self.result or self.result)
 
@@ -75,19 +71,26 @@ class Formula(object):
     def __init__(self,identifier):
         self.identifier = identifier
         self.triples = []
+
     def __len__(self):
         return len(self.triples)
+
     def __repr__(self):
         return "{%s}"%(repr(self.triples))
+
     def __getitem__(self, key):
         return self.triples[key]
+
     def __iter__(self):
         for item in self.triples:
             yield item
+
     def extend(self,other):
         self.triples.extend(other)
+
     def append(self,other):
         self.triples.append(other)
+
 
 class Rule(object):
     """
@@ -100,21 +103,22 @@ class Rule(object):
     def __repr__(self):
         return "{%s} => {%s}"%(self.lhs,self.rhs)
 
-def SetupRuleStore(n3Stream=None,additionalBuiltins=None,makeNetwork=False):
+
+def SetupRuleStore(n3Stream=None, additionalBuiltins=None, makeNetwork=False):
     """
     Sets up a N3RuleStore, a Graph (that uses it as a store, and )
     """
     ruleStore = N3RuleStore(additionalBuiltins=additionalBuiltins)
     nsMgr = NamespaceManager(Graph(ruleStore))
-    ruleGraph = Graph(ruleStore,namespace_manager=nsMgr)
+    ruleGraph = Graph(ruleStore, namespace_manager=nsMgr)
     if n3Stream:
-        ruleGraph.parse(n3Stream,format='n3')
+        ruleGraph.parse(n3Stream, format='n3')
     if makeNetwork:
         from FuXi.Rete.Network import ReteNetwork
         closureDeltaGraph = Graph()
-        network = ReteNetwork(ruleStore,inferredTarget = closureDeltaGraph)
-        return ruleStore,ruleGraph,network
-    return ruleStore,ruleGraph
+        network = ReteNetwork(ruleStore, inferredTarget=closureDeltaGraph)
+        return ruleStore, ruleGraph, network
+    return ruleStore, ruleGraph
 
 
 class N3RuleStore(Store):
@@ -123,8 +127,8 @@ class N3RuleStore(Store):
     and creates N3Filters, Rules, Formula objects, and other facts
     Ensures builtin filters refer to variables that have preceded
 
-    >>> s=N3RuleStore()
-    >>> g=Graph(s)
+    >>> s = N3RuleStore()
+    >>> g = Graph(s)
     >>> src = """
     ... @prefix : <http://metacognition.info/FuXi/test#>.
     ... @prefix str:   <http://www.w3.org/2000/10/swap/string#>.
@@ -142,7 +146,7 @@ class N3RuleStore(Store):
     ...    m:prop2 4,1,5.
     ... (1 2) :relatedTo (3 4).
     ... { ?X a owl:Class. ?X :prop1 ?M. ?X :prop2 ?N. ?N math:equalTo 3 } => { [] :selected (?M ?N) }."""
-    >>> g=g.parse(data=src, format='n3')
+    >>> g = g.parse(data=src, format='n3')
     >>> s._finalize()
     >>> len([pred for subj,pred,obj in s.facts if pred == %(u)s'http://metacognition.info/FuXi/test#relatedTo'])
     1
@@ -160,8 +164,8 @@ class N3RuleStore(Store):
 Description Rule Patterns Compilation
     ''')
     __doc__ += '''
-    >>> s=N3RuleStore()
-    >>> g=Graph(s)
+    >>> s = N3RuleStore()
+    >>> g = Graph(s)
     >>> src = """
     ... @prefix math: <http://www.w3.org/2000/10/swap/math#>.
     ... @prefix : <http://metacognition.info/FuXi/test#>.
@@ -169,7 +173,7 @@ Description Rule Patterns Compilation
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
     ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
     ... { ?S a [ rdfs:subClassOf ?C ] } => { ?S a ?C }."""
-    >>> g=g.parse(data=src ,format='n3')
+    >>> g = g.parse(data=src, format='n3')
     >>> s._finalize()
     >>> assert s.rules
     >>> assert [pattern for pattern in s.rules[0][RULE_LHS] if isinstance(pattern,tuple) and [term for term in pattern if isinstance(term,BNode) ]],repr(s.rules[0][RULE_LHS])
@@ -177,8 +181,8 @@ Description Rule Patterns Compilation
 
 Test single fact with collection
 
-    >>> s=N3RuleStore()
-    >>> g=Graph(s)
+    >>> s = N3RuleStore()
+    >>> g = Graph(s)
     >>> src = """
     ... @prefix math: <http://www.w3.org/2000/10/swap/math#>.
     ... @prefix : <http://metacognition.info/FuXi/test#>.
@@ -186,15 +190,15 @@ Test single fact with collection
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
     ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
     ... (1 2) :relatedTo owl:Class."""
-    >>> g=g.parse(data=src ,format='n3')
+    >>> g = g.parse(data=src ,format='n3')
     >>> s._finalize()
     >>> print(len(s.facts))
     5
 
 RHS can only include RDF triples
 
-    >>> s=N3RuleStore()
-    >>> g=Graph(s)
+    >>> s = N3RuleStore()
+    >>> g = Graph(s)
     >>> src = """
     ... @prefix math: <http://www.w3.org/2000/10/swap/math#>.
     ... @prefix : <http://metacognition.info/FuXi/test#>.
@@ -202,7 +206,7 @@ RHS can only include RDF triples
     ... @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
     ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
     ... {} => { 3 math:lessThan 2}."""
-    >>> g=g.parse(data=src ,format='n3')
+    >>> g = g.parse(data=src ,format='n3')
     >>> try:
     ...   s._finalize()
     ... except Exception%(x)s:
@@ -210,21 +214,21 @@ RHS can only include RDF triples
     Rule RHS must only include RDF triples! (<http://www.w3.org/2000/10/swap/math#lessThan>(3,2))
 
 BuiltIn used out of order
-    >>> s=N3RuleStore()
-    >>> g=Graph(s)
+    >>> s = N3RuleStore()
+    >>> g = Graph(s)
     >>> src = """
     ... @prefix math: <http://www.w3.org/2000/10/swap/math#>.
     ... @prefix : <http://metacognition.info/FuXi/test#>.
     ... { ?M math:lessThan ?Z.  ?R :value ?M; :value2 ?Z} => { ?R a :Selected.  }."""
     >>> try:
-    ...   g=g.parse(data=src,format='n3')
+    ...   g = g.parse(data=src,format='n3')
     ... except Exception%(x)s:
     ...   print(e)
     Builtin refers to variables without previous reference! (<http://www.w3.org/2000/10/swap/math#lessThan>(?M,?Z))
 
     Empty LHS & RHS
-    >>> s=N3RuleStore()
-    >>> g=Graph(s)
+    >>> s = N3RuleStore()
+    >>> g = Graph(s)
     >>> src = """
     ... @prefix math: <http://www.w3.org/2000/10/swap/math#>.
     ... @prefix : <http://metacognition.info/FuXi/test#>.
@@ -233,7 +237,7 @@ BuiltIn used out of order
     ... @prefix owl: <http://www.w3.org/2002/07/owl#>.
     ... {} => {rdf:nil :allClasses ?C}.
     ... {?C owl:oneOf ?L. ?X a ?C. ?L :notItem ?X} => {}."""
-    >>> g=g.parse(data=src,format='n3')
+    >>> g = g.parse(data=src,format='n3')
     >>> len(s.formulae)
     2
     >>> s._finalize()
@@ -242,6 +246,7 @@ BuiltIn used out of order
     >>> len(s.rules[1][-1])
     0
     ''' % {'x': ' as e' if py3compat.PY3 else ', e'}
+
     context_aware = True
     formula_aware = True
 
@@ -255,7 +260,7 @@ BuiltIn used out of order
         self.rules = []
         self.referencedVariables = set()
         self.nsMgr = {'skolem':URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')}
-        self.filters={}
+        self.filters = {}
         self.filters.update(FILTERS)
         if additionalBuiltins:
             self.filters.update(additionalBuiltins)
@@ -395,8 +400,8 @@ def test():
 def test2():
     from nose.exc import SkipTest
     raise SkipTest("n3 parser fails to parse test graph.")
-    s=N3RuleStore()
-    g=Graph(s)
+    s = N3RuleStore()
+    g = Graph(s)
     src = """
     @prefix math: <http://www.w3.org/2000/10/swap/math#>.
     @prefix : <http://metacognition.info/FuXi/test#>.
@@ -405,10 +410,24 @@ def test2():
     @prefix owl: <http://www.w3.org/2002/07/owl#>.
     :subj :pred obj .
     {} => { 3 math:lessThan 2 } ."""
-    g=g.parse(StringIO(src),format='n3')
+    g = g.parse(data=src, format='n3')
     s._finalize()
 
 if __name__ == '__main__':
 #    pass
     test()
     #test2()
+
+__all__ = ['LOG', 'Any', 'RULE_LHS', 'RULE_RHS', 'Formula',
+           'N3Builtin', 'N3RuleStore', 'Rule', 'SetupRuleStore']
+
+
+# from FuXi.Rete.RuleStore import LOG
+# from FuXi.Rete.RuleStore import Any
+# from FuXi.Rete.RuleStore import RULE_LHS
+# from FuXi.Rete.RuleStore import RULE_RHS
+# from FuXi.Rete.RuleStore import Formula
+# from FuXi.Rete.RuleStore import N3Builtin
+# from FuXi.Rete.RuleStore import N3RuleStore
+# from FuXi.Rete.RuleStore import Rule
+# from FuXi.Rete.RuleStore import SetupRuleStore

@@ -67,7 +67,7 @@ def collectVariables(node):
 
 #From itertools recipes
 def iteritems(mapping):
-    return izip(mapping.iterkeys(),mapping.itervalues())
+    return zip(mapping.iterkeys(),mapping.itervalues())
 
 def any(seq,pred=None):
     """Returns True if pred(x) is true for at least one element in the iterable"""
@@ -137,8 +137,8 @@ def project(orig_dict, attributes,inverse=False):
     """
     Dictionary projection: http://jtauber.com/blog/2005/11/17/relational_python:_projection
 
-    >>> a = {'one' : 1, 'two' : 2, 'three' : 3 } #doctest: +SKIP
-    >>> project(a,['one','two'])
+    >>> a = {'one' : 1, 'two' : 2, 'three' : 3 }
+    >>> project(a,['one','two']) #doctest: +SKIP
     {'two': 2, 'one': 1}
     >>> project(a,['four'])
     {}
@@ -367,7 +367,7 @@ class PartialInstantiation(object):
         return newPInst
 
 class BetaNode(Node):
-    """
+    __doc__ = py3compat.format_doctest_out("""
     Performs a rete network join between partial instantiations in its left memory and tokens in its memories
 
     "The data structure for a join node, therefore, must contain pointers to its two memory
@@ -484,7 +484,7 @@ class BetaNode(Node):
     2
     >>> pprint(testHelper.conflictSet)
     Set([<PartialInstantiation (joined on ?X): Set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>, <PartialInstantiation (joined on ?X): Set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Bundle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>])
-    """
+    """)
     def __init__(self,
                  leftNode,
                  rightNode,

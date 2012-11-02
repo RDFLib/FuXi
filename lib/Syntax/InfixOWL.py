@@ -2090,3 +2090,81 @@ def test():
 
 if __name__ == '__main__':
     test()
+
+# from FuXi.Syntax.InfixOWL import (
+#     OWL_NS,
+#     nsBinds,
+#     ACE_NS,
+#     CLASS_RELATIONS,
+#     some,
+#     only,
+#     max,
+#     min,
+#     exactly,
+#     value,
+#     PropertyAbstractSyntax,
+#     AllClasses,
+#     AllDifferent,
+#     AllProperties,
+#     AnnotatableTerms,
+#     BooleanClass,
+#     Callable,
+#     CastClass,
+#     Class,
+#     ClassNamespaceFactory,
+#     classOrIdentifier,
+#     classOrTerm,
+#     CommonNSBindings,
+#     ComponentTerms,
+#     DeepClassClear,
+#     EnumeratedClass,
+#     generateQName,
+#     GetIdentifiedClasses,
+#     Individual,
+#     MalformedClass,
+#     manchesterSyntax,
+#     Ontology,
+#     OWLRDFListProxy,
+#     Property,
+#     propertyOrIdentifier,
+#     Restriction,
+#     termDeletionDecorator,
+#     )
+
+# from FuXi.Syntax.InfixOWL import OWL_NS
+# from FuXi.Syntax.InfixOWL import nsBinds
+# from FuXi.Syntax.InfixOWL import ACE_NS
+# from FuXi.Syntax.InfixOWL import CLASS_RELATIONS
+# from FuXi.Syntax.InfixOWL import some
+# from FuXi.Syntax.InfixOWL import only
+# from FuXi.Syntax.InfixOWL import max
+# from FuXi.Syntax.InfixOWL import min
+# from FuXi.Syntax.InfixOWL import exactly
+# from FuXi.Syntax.InfixOWL import value
+# from FuXi.Syntax.InfixOWL import PropertyAbstractSyntax
+# from FuXi.Syntax.InfixOWL import AllClasses
+# from FuXi.Syntax.InfixOWL import AllDifferent
+# from FuXi.Syntax.InfixOWL import AllProperties
+# from FuXi.Syntax.InfixOWL import AnnotatableTerms
+# from FuXi.Syntax.InfixOWL import BooleanClass
+# from FuXi.Syntax.InfixOWL import Callable
+# from FuXi.Syntax.InfixOWL import CastClass
+# from FuXi.Syntax.InfixOWL import Class
+# from FuXi.Syntax.InfixOWL import ClassNamespaceFactory
+# from FuXi.Syntax.InfixOWL import classOrIdentifier
+# from FuXi.Syntax.InfixOWL import classOrTerm
+# from FuXi.Syntax.InfixOWL import CommonNSBindings
+# from FuXi.Syntax.InfixOWL import ComponentTerms
+# from FuXi.Syntax.InfixOWL import DeepClassClear
+# from FuXi.Syntax.InfixOWL import EnumeratedClass
+# from FuXi.Syntax.InfixOWL import generateQName
+# from FuXi.Syntax.InfixOWL import GetIdentifiedClasses
+# from FuXi.Syntax.InfixOWL import Individual
+# from FuXi.Syntax.InfixOWL import MalformedClass
+# from FuXi.Syntax.InfixOWL import manchesterSyntax
+# from FuXi.Syntax.InfixOWL import Ontology
+# from FuXi.Syntax.InfixOWL import OWLRDFListProxy
+# from FuXi.Syntax.InfixOWL import Property
+# from FuXi.Syntax.InfixOWL import propertyOrIdentifier
+# from FuXi.Syntax.InfixOWL import Restriction
+# from FuXi.Syntax.InfixOWL import termDeletionDecorator

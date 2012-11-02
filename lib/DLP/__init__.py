@@ -59,7 +59,7 @@ from functools import reduce
 SKOLEMIZED_CLASS_NS=Namespace('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')
 
 non_DHL_OWL_Semantics=\
-"""
+u"""
 @prefix log: <http://www.w3.org/2000/10/swap/log#>.
 @prefix math: <http://www.w3.org/2000/10/swap/math#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.

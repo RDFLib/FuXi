@@ -56,8 +56,8 @@ class test_sameAs(unittest.TestCase):
         # pprint(list(self.graph.adornedProgram))
 
     def testTransitivity(self):
-        from nose.exc import SkipTest
-        raise SkipTest("fails with Exception in SidewaysInformationPassing")
+        # from nose.exc import SkipTest
+        # raise SkipTest("fails with Exception in SidewaysInformationPassing")
         nsBindings = {u'owl': OWL_NS, u'ex': EX}
         topDownStore = TopDownSPARQLEntailingStore(
                         self.graph.store,

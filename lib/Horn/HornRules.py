@@ -5,13 +5,25 @@ This section defines Horn rules for RIF Phase 1. The syntax and semantics
 incorporates RIF Positive Conditions defined in Section Positive Conditions
 """
 import itertools
-from FuXi.Horn.PositiveConditions import *
-from FuXi.Horn import DATALOG_SAFETY_NONE,DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
-from rdflib.graph import ConjunctiveGraph, Graph
-from rdflib import Variable, BNode, Namespace, RDF, RDFS, URIRef, Literal
+from rdflib.graph import ConjunctiveGraph
+from rdflib import Variable, BNode
 from rdflib import py3compat
 
-def NetworkFromN3(n3Source,additionalBuiltins=None):
+from FuXi.Horn import DATALOG_SAFETY_NONE
+from FuXi.Horn.PositiveConditions import (
+    And,
+    Atomic,
+    Exists,
+    ExternalFunction,
+    SetOperator,
+    Uniterm
+    )
+
+# required by doctests
+from rdflib import Namespace, RDF, RDFS, URIRef, Literal
+
+
+def NetworkFromN3(n3Source, additionalBuiltins=None):
     """
     Takes an N3 / RDF conjunctive graph and returns a ReteNetwork built from
     the rules in the N3 graph
@@ -20,19 +32,23 @@ def NetworkFromN3(n3Source,additionalBuiltins=None):
     rule_store, rule_graph, network = SetupRuleStore(
                          makeNetwork=True,
                          additionalBuiltins=additionalBuiltins)
-    if isinstance(n3Source,ConjunctiveGraph):
+    if isinstance(n3Source, ConjunctiveGraph):
         for ctx in n3Source.contexts():
-            for s,p,o in ctx:
-                rule_store.add((s,p,o),ctx)
+            for s, p, o in ctx:
+                rule_store.add((s, p, o), ctx)
     else:
-        for s,p,o in n3Source:
-            rule_store.add((s,p,o),n3Source)
+        for s, p, o in n3Source:
+            rule_store.add((s, p, o), n3Source)
     rule_store._finalize()
-    for rule in Ruleset(n3Rules=rule_store.rules,nsMapping=rule_store.nsMgr):
+    for rule in Ruleset(n3Rules=rule_store.rules, nsMapping=rule_store.nsMgr):
         network.buildNetworkFromClause(rule)
     return network
 
-def HornFromDL(owlGraph, safety = DATALOG_SAFETY_NONE, derivedPreds = [],complSkip = []):
+
+def HornFromDL(owlGraph,
+               safety=DATALOG_SAFETY_NONE,
+               derivedPreds=[],
+               complSkip=[]):
     """
     Takes an OWL RDF graph, an indication of what level of ruleset safety
     (see: http://code.google.com/p/fuxi/wiki/FuXiUserManual#Rule_Safety) to apply,
