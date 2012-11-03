@@ -1,11 +1,23 @@
 import unittest
 from cStringIO import StringIO
 from rdflib.graph import Graph
-from rdflib import RDF, RDFS, Namespace, Variable, URIRef
+from rdflib import RDF, Namespace, Variable, URIRef
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from FuXi.Rete.RuleStore import SetupRuleStore
-from FuXi.SPARQL.BackwardChainingStore import *
-from FuXi.Syntax.InfixOWL import *
+from FuXi.SPARQL.BackwardChainingStore import BFP_METHOD
+from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
+from FuXi.Syntax.InfixOWL import OWL_NS
+from FuXi.SPARQL import EDBQuery
+from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
+import logging
+
+
+def _debug(*args, **kw):
+    logging.basicConfig(level=logging.ERROR, format="%(message)s")
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    logger.debug(*args, **kw)
+
 
 EX_ONT = \
 u"""
@@ -58,14 +70,30 @@ class QueryCountingGraph(Graph):
 
 class QueryMemoizationTest(unittest.TestCase):
     def setUp(self):
-        self.owlGraph = QueryCountingGraph().parse(
-                            StringIO(EX_ONT), format='n3')
+        self.owlGraph = QueryCountingGraph().parse(data=EX_ONT, format='n3')
         rule_store, rule_graph, self.network = SetupRuleStore(makeNetwork=True)
         self.program = self.network.setupDescriptionLogicProgramming(
                                                      self.owlGraph,
                                                      addPDSemantics=False,
                                                      constructNetwork=False)
         self.program.update(AdditionalRules(self.owlGraph))
+
+    # def testQueryMemoization(self):
+    #     topDownStore = TopDownSPARQLEntailingStore(
+    #                     self.owlGraph.store,
+    #                     self.owlGraph,
+    #                     idb=self.program,
+    #                     DEBUG=False,
+    #                     nsBindings=nsMap,
+    #                     decisionProcedure=BFP_METHOD,
+    #                     identifyHybridPredicates=True)
+    #     targetGraph = Graph(topDownStore)
+    #     for pref, nsUri in nsMap.items():
+    #         targetGraph.bind(pref, nsUri)
+    #     _debug("Queries dispatched against EDB")
+    #     # print("# queries {}".format(len(self.owlGraph.queriesDispatched)))
+    #     # self.assertEqual(len(self.owlGraph.queriesDispatched), 4)
+    #     assert len(self.owlGraph.queriesDispatched) == 4
 
     def testQueryMemoization(self):
         topDownStore = TopDownSPARQLEntailingStore(
@@ -84,12 +112,12 @@ class QueryMemoizationTest(unittest.TestCase):
                                 self.owlGraph,
                                 [Variable('SUBJECT')])
         query = queryLiteral.asSPARQL()
-        # rt=targetGraph.query(query,initNs=nsMap)
+        rt = targetGraph.query(query, initNs=nsMap)
         # if len(topDownStore.edbQueries) == len(set(topDownStore.edbQueries)):
         #     pprint(topDownStore.edbQueries)
-        print("Queries dispatched against EDB")
+        _debug("Queries dispatched against EDB")
         for query in self.owlGraph.queriesDispatched:
-            print(query)
+            _debug(query)
         self.failUnlessEqual(
             len(self.owlGraph.queriesDispatched), 4, "Duplicate query")
 

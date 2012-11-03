@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# encoding: utf-8
+
 import unittest
 from rdflib import Graph
 from FuXi.Rete.RuleStore import SetupRuleStore
@@ -10,13 +10,17 @@ from FuXi.Rete.RuleStore import SetupRuleStore
 ## http://code.google.com/p/fuxi/issues/detail?id=17
 ##
 
+
 class NetworkReset(unittest.TestCase):
+
     def setUp(self):
-	    self.rule_store, self.rule_graph, self.network = SetupRuleStore(makeNetwork=True)
+        self.rule_store, self.rule_graph, self.network = \
+                    SetupRuleStore(makeNetwork=True)
+
     def testReset(self):
         newInferredFacts = Graph()
         self.network.reset(newInferredFacts)
         self.failUnless(newInferredFacts is self.network.inferredFacts)
 
 if __name__ == '__main__':
-	unittest.main()
+    unittest.main()

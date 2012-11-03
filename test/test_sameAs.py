@@ -1,13 +1,26 @@
 #!/usr/bin/env python
-# encoding: utf-8
 import unittest
+from pprint import pformat
 from cStringIO import StringIO
 from rdflib.graph import Graph
 from rdflib import Namespace, Variable
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Syntax.InfixOWL import OWL_NS
 from FuXi.Horn.HornRules import HornFromN3
-from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
+from FuXi.SPARQL.BackwardChainingStore import (
+    TopDownSPARQLEntailingStore,
+    SetupDDLAndAdornProgram
+    )
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+
+
+def _debug(*args, **kw):
+    _logger = logging.getLogger(__name__)
+    _logger.setLevel(logging.DEBUG)
+    _logger.debug(*args, **kw)
+
 
 EX = Namespace('http://example.org/')
 
@@ -41,19 +54,25 @@ QUERIES = {
     "SELECT ?o { ex:foo owl:sameAs ?o }": set([EX.bar, EX.baz])
 }
 
+TEST_QUERY = """\
+PREFIX ex: <http://example.org/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?o { ex:baz owl:sameAs ?o }
+"""
+
 
 class test_sameAs(unittest.TestCase):
     def setUp(self):
         self.rule_store, self.rule_graph, self.network = \
                                 SetupRuleStore(makeNetwork=True)
-        self.graph = Graph().parse(StringIO(FACTS), format='n3')
-        # adornedProgram = SetupDDLAndAdornProgram(
+        self.graph = Graph().parse(data=FACTS, format='n3')
+        # self.graph.adornedProgram = SetupDDLAndAdornProgram(
         #                                self.graph,
         #                                HornFromN3(StringIO(RULES)),
         #                                GOALS,
         #                                derivedPreds=[OWL_NS.sameAs],
         #                                hybridPreds2Replace=[OWL_NS.sameAs])
-        # pprint(list(self.graph.adornedProgram))
 
     def testTransitivity(self):
         # from nose.exc import SkipTest
@@ -63,14 +82,16 @@ class test_sameAs(unittest.TestCase):
                         self.graph.store,
                         self.graph,
                         idb=HornFromN3(StringIO(RULES)),
-                        DEBUG=True,
+                        DEBUG=False,
                         derivedPredicates=[OWL_NS.sameAs],
                         nsBindings=nsBindings,
                         hybridPredicates=[OWL_NS.sameAs])
         targetGraph = Graph(topDownStore)
         for query, solns in QUERIES.items():
+            _debug("query {}".format(query))
+            _debug("solutions {}".format(solns))
             result = set(targetGraph.query(query, initNs=nsBindings))
-            print(query, result)
+            _debug("result {}".format(result))
             self.failUnless(not solns.difference(result))
 
     # def testSmushing(self):
@@ -92,7 +113,7 @@ class test_sameAs(unittest.TestCase):
         #             success = True
         #             print "Found solution!", ans
         #             break
-        # self.failUnless(success,"Unable to proove %s" % (
+        # self.failUnless(success,"Unable to prove %s" % (
         #                   repr((EX.foo, EX.y, Literal('yyyy')))))
 
 if __name__ == '__main__':
