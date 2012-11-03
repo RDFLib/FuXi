@@ -1,40 +1,69 @@
 """
 """
-from .RuleStore import N3Builtin
-from rdflib.graph import Graph
-from rdflib import Namespace, RDF, RDFS, Literal, Variable, BNode, URIRef
-from rdflib import py3compat
-from .ReteVocabulary import RETE_NS
-from .Node import Node
+import logging
 from functools import reduce
+from pickle import dumps, PicklingError  # for memoize
 
-OWL_NS    = Namespace("http://www.w3.org/2002/07/owl#")
+from rdflib.graph import Graph
+from rdflib import py3compat, BNode, Namespace, Variable
 
-SUBJECT   = 0
+from .Node import Node
+
+#required for doctesting
+
+from rdflib import RDF, RDFS, URIRef
+
+
+def _debug(*args, **kw):
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+    logger = logging.getLogger(__name__)
+    logger.debug(*args, **kw)
+
+
+__all__ = [
+    'OWL_NS',
+    'SUBJECT',
+    'PREDICATE',
+    'OBJECT',
+    'VARIABLE',
+    'VALUE',
+    'TERMS',
+    'AlphaNode',
+    'BuiltInAlphaNode',
+    'defaultIntraElementTest',
+    'memoize',
+    'normalizeTerm',
+]
+
+OWL_NS = Namespace("http://www.w3.org/2002/07/owl#")
+
+SUBJECT = 0
 PREDICATE = 1
-OBJECT    = 2
+OBJECT = 2
 
 VARIABLE = 0
-VALUE    = 1
+VALUE = 1
 
-TERMS = [SUBJECT,PREDICATE,OBJECT]
+TERMS = [SUBJECT, PREDICATE, OBJECT]
+
 
 def normalizeTerm(term):
     """
     Graph Identifiers are used
     """
-    if isinstance(term,Graph):
+    if isinstance(term, Graph):
         return term.identifier
     else:
         return term
 
-from pickle import dumps, PicklingError # for memoize
+
 class memoize(object):
     """Decorator that caches a function's return value each time it is called.
     If called later with the same arguments, the cached value is returned, and
     not re-evaluated. Slow for mutable types."""
     # Ideas from MemoizeMutable class of Recipe 52201 by Paul Moore and
-    # from memoized decorator of http://wiki.python.org/moin/PythonDecoratorLibrary
+    # from memoized decorator of
+    # http://wiki.python.org/moin/PythonDecoratorLibrary
     # For a version with timeout see Recipe 325905
     # For a self cleaning version see Recipe 440678
     # Weak references (a dict with weak values) can be used, like this:
@@ -43,6 +72,7 @@ class memoize(object):
     def __init__(self, func):
         self.func = func
         self._cache = {}
+
     def __call__(self, *args, **kwds):
         key = args
         if kwds:
@@ -65,19 +95,21 @@ class memoize(object):
                 self._cache[dump] = result = self.func(*args, **kwds)
                 return result
 
+
 class ReteToken:
     """
-    A ReteToken, an RDF triple in a Rete network.  Once it passes an alpha node test,
-    if will have unification substitutions per variable
+    A ReteToken, an RDF triple in a Rete network.  Once it passes an alpha
+    node test, if will have unification substitutions per variable
     """
-    def __init__(self, xxx_todo_changeme,debug = False):
-        (subject,predicate,object_) = xxx_todo_changeme
+    def __init__(self, triple, debug=False):
+        (subject, predicate, object_) = triple
         self.debug = debug
-        self.subject   = (None,normalizeTerm(subject))
-        self.predicate = (None,normalizeTerm(predicate))
-        self.object_   = (None,normalizeTerm(object_))
+        self.subject = (None, normalizeTerm(subject))
+        self.predicate = (None, normalizeTerm(predicate))
+        self.object_ = (None, normalizeTerm(object_))
         self.bindingDict = {}
-        self._termConcat = self.concatenateTerms([self.subject,self.predicate,self.object_])
+        self._termConcat = self.concatenateTerms(
+            [self.subject, self.predicate, self.object_])
         self.hash = hash(self._termConcat)
         self.inferred = False
 
@@ -95,21 +127,25 @@ class ReteToken:
 
     @memoize
     def concatenateTerms(terms):
-        return reduce(lambda x,y:str(x)+str(y),[term[VALUE] for term in terms])
+        return reduce(lambda x, y:
+                      str(x) + str(y), [term[VALUE]
+                                        for term in terms])
 
-    def __eq__(self,other):
+    def __eq__(self, other):
         return hash(self) == hash(other)
 
     @py3compat.format_doctest_out
-    def alphaNetworkHash(self,termHash):
+    def alphaNetworkHash(self, termHash):
         """
-        We store pointers to all the system's alpha memories in a hash table, indexed
-        according to the particular values being tested. Executing the alpha network then becomes a
-        simple matter of doing eight hash table lookups:
+        We store pointers to all the system's alpha memories in a hash table,
+        indexed according to the particular values being tested. Executing
+        the alpha network then becomes a simple matter of doing eight hash
+        table lookups:
 
         >>> aNode1 = AlphaNode((Variable('Z'),RDF.type,Variable('A')))
         >>> aNode2 = AlphaNode((Variable('X'),RDF.type,Variable('C')))
-        >>> token = ReteToken((URIRef('urn:uuid:Boo'),RDF.type,URIRef('urn:uuid:Foo')))
+        >>> token = ReteToken(
+        ...    (URIRef('urn:uuid:Boo'), RDF.type, URIRef('urn:uuid:Foo')))
         >>> token.alphaNetworkHash(aNode1.alphaNetworkHash())
         %(u)s'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
@@ -118,97 +154,127 @@ class ReteToken:
         termHash = list(termHash)
         return ''.join([triple[idx] for idx in TERMS if termHash[idx] == '1'])
 
-    def unboundCopy(self,noSubsequentDebug=False):
+    def unboundCopy(self, noSubsequentDebug=False):
         if noSubsequentDebug:
-            return ReteToken((self.subject[VALUE],self.predicate[VALUE],self.object_[VALUE]))
+            return ReteToken(
+                (self.subject[VALUE],
+                    self.predicate[VALUE],
+                 self.object_[VALUE]))
         else:
-            return ReteToken((self.subject[VALUE],self.predicate[VALUE],self.object_[VALUE]),self.debug)
+            return ReteToken(
+                (self.subject[VALUE],
+                    self.predicate[VALUE],
+                 self.object_[VALUE]), self.debug)
 
     def __repr__(self):
-        return "<ReteToken: %s>"%(
-            ','.join(["%s->%s"%(var,val) for var,val in self.getVarBindings(False)])
+        return "<ReteToken: %s>" % (
+            ','.join(["%s->%s" % (var, val)
+                      for var, val in self.getVarBindings(False)])
         )
 
-    def getVarBindings(self,asDict=True):
-        _vars=[]
-        for var,val in [self.subject,self.predicate,self.object_]:
-            if isinstance(var,(Variable)):
-                _vars.append((var,val))
+    def getVarBindings(self, asDict=True):
+        _vars = []
+        for var, val in [self.subject, self.predicate, self.object_]:
+            if isinstance(var, (Variable)):
+                _vars.append((var, val))
         return dict(_vars) if asDict else _vars
 
     def getUniterm(self):
         from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
-        return BuildUnitermFromTuple(tuple([val for var,val in [self.subject,self.predicate,self.object_]]))
+        return BuildUnitermFromTuple(
+            tuple([val for var, val in
+                   [self.subject, self.predicate, self.object_]]))
 
     def asTuple(self):
-        return (self.subject[VALUE],self.predicate[VALUE],self.object_[VALUE])
+        return (
+            self.subject[VALUE], self.predicate[VALUE], self.object_[VALUE])
 
-    def bindVariables(self,thing):
+    def bindVariables(self, thing):
         """
-        This function, called when a token passes a node test, associates token terms with variables
-        in the node test
+        This function, called when a token passes a node test, associates
+        token terms with variables in the node test.
         """
-        if isinstance(thing,BuiltInAlphaNode):
+        if isinstance(thing, BuiltInAlphaNode):
             self.pattern = list(thing.n3builtin)
-            self.subject   = (thing.n3builtin.argument,self.subject[VALUE])
-            self.predicate = (thing.n3builtin.uri,self.predicate[VALUE])
-            self.object_   = (thing.n3builtin.result,self.object_[VALUE])
-            assert not self.bindingDict,self.bindingDict
+            self.subject = (thing.n3builtin.argument, self.subject[VALUE])
+            self.predicate = (thing.n3builtin.uri, self.predicate[VALUE])
+            self.object_ = (thing.n3builtin.result, self.object_[VALUE])
+            assert not self.bindingDict, self.bindingDict
             bindHashItems = []
-            for var,val in [self.subject,self.predicate,self.object_]:
-                if var and isinstance(var,(Variable,BNode)) and var not in self.bindingDict:
+            for var, val in [self.subject, self.predicate, self.object_]:
+                if var and isinstance(var, (Variable, BNode)) \
+                        and var not in self.bindingDict:
                     self.bindingDict[var] = val
                     bindHashItems.append(var + val)
                 else:
                     bindHashItems.append(val)
             #self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
-            self.hash = hash(reduce(lambda x,y:x+y,bindHashItems))
+            self.hash = hash(reduce(lambda x, y:
+                                    x + y, bindHashItems))
             return self
-        elif isinstance(thing,AlphaNode):
+        elif isinstance(thing, AlphaNode):
             self.pattern = thing.triplePattern
-            self.subject   = (thing.triplePattern[SUBJECT],self.subject[VALUE])
-            self.predicate = (thing.triplePattern[PREDICATE],self.predicate[VALUE])
-            self.object_   = (thing.triplePattern[OBJECT],self.object_[VALUE])
-            assert not self.bindingDict,self.bindingDict
+            self.subject = (thing.triplePattern[SUBJECT],
+                            self.subject[VALUE])
+            self.predicate = (thing.triplePattern[PREDICATE],
+                              self.predicate[VALUE])
+            self.object_ = (thing.triplePattern[OBJECT],
+                            self.object_[VALUE])
+            assert not self.bindingDict, self.bindingDict
             bindHashItems = []
-            for var,val in [self.subject,self.predicate,self.object_]:
-                if var and isinstance(var,(Variable,BNode)) and var not in self.bindingDict:
+            for var, val in [
+                    self.subject, self.predicate, self.object_]:
+                if var and isinstance(var, (Variable, BNode)) \
+                        and var not in self.bindingDict:
                     self.bindingDict[var] = val
                     bindHashItems.append(var + val)
                 else:
                     bindHashItems.append(val)
-            #self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
-            self.hash = hash(reduce(lambda x,y:x+y,bindHashItems))
+            # self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
+            self.hash = hash(reduce(lambda x, y: x + y, bindHashItems))
             return self
-        elif isinstance(thing,dict):
-            revDict=dict([(v,k) for k,v in list(thing.items())])
-            #create mapping from variable to value if in range of mapping
-            self.subject   = (revDict.get(self.subject[VALUE],self.subject[VALUE]),self.subject[VALUE])
-            self.predicate = (revDict.get(self.predicate[VALUE],self.predicate[VALUE]),self.predicate[VALUE])
-            self.object_   = (revDict.get(self.object_[VALUE],self.object_[VALUE]),self.object_[VALUE])
+        elif isinstance(thing, dict):
+            revDict = dict([(v, k)
+                            for k, v in list(thing.items())])
+            # create mapping from variable to value if in range of mapping
+            self.subject = (
+                revDict.get(self.subject[VALUE], self.subject[VALUE]),
+                self.subject[VALUE])
+            self.predicate = (
+                revDict.get(self.predicate[VALUE], self.predicate[VALUE]),
+                self.predicate[VALUE])
+            self.object_ = (
+                revDict.get(self.object_[VALUE], self.object_[VALUE]),
+                self.object_[VALUE])
 
-def defaultIntraElementTest(aReteToken,triplePattern):
+
+def defaultIntraElementTest(aReteToken, triplePattern):
     """
     'Standard' Charles Forgy intra element token pattern test.
     """
-    tokenTerms = [aReteToken.subject[VALUE],aReteToken.predicate[VALUE],aReteToken.object_[VALUE]]
+    tokenTerms = [aReteToken.subject[VALUE],
+                  aReteToken.predicate[VALUE],
+                  aReteToken.object_[VALUE]]
     varBindings = {}
-    for idx in [SUBJECT,PREDICATE,OBJECT]:
-        tokenTerm   = tokenTerms[idx]
+    for idx in [SUBJECT, PREDICATE, OBJECT]:
+        tokenTerm = tokenTerms[idx]
         patternTerm = triplePattern[idx]
-        if not isinstance(patternTerm,(Variable,BNode)) and tokenTerm != patternTerm:
+        if not isinstance(patternTerm, (Variable, BNode)) \
+                and tokenTerm != patternTerm:
             return False
-        elif patternTerm in varBindings and varBindings[patternTerm] != tokenTerm:
+        elif patternTerm in varBindings \
+                and varBindings[patternTerm] != tokenTerm:
             return False
         elif patternTerm not in varBindings:
             varBindings[patternTerm] = tokenTerm
     return True
 
+
 class AlphaNode(Node):
     """
     Basic Triple Pattern Pattern check
     """
-    def __init__(self,triplePatternOrFunc,filters=None):
+    def __init__(self, triplePatternOrFunc, filters=None):
         filters = filters and filters or {}
         self.relinked = False
         self.name = BNode()
@@ -219,17 +285,19 @@ class AlphaNode(Node):
         self.universalTruths = []
 
     @py3compat.format_doctest_out
-    def alphaNetworkHash(self,groundTermHash=False,skolemTerms=[]):
+    def alphaNetworkHash(self, groundTermHash=False, skolemTerms=[]):
         """
-        Thus, given a WME w, to determine which alpha memories w should be added to, we need only check whether
-        any of these eight possibilities is actually present in the system.  (Some might not be present, since
-        there might not be any alpha memory corresponding to that particular combination of tests and 's.)
+        Thus, given a WME w, to determine which alpha memories w should be
+        added to, we need only check whether any of these eight possibilities
+        is actually present in the system.  (Some might not be present, since
+        there might not be any alpha memory corresponding to that particular
+        combination of tests and 's.)
 
         0 - Variable
         1 - Ground term
 
-        >>> aNode1 = AlphaNode((Variable('P'),RDF.type,OWL_NS.InverseFunctionalProperty))
-        >>> aNode2 = AlphaNode((Variable('X'),Variable('P'),Variable('Z')))
+        >>> aNode1 = AlphaNode((Variable('P'), RDF.type, OWL_NS.InverseFunctionalProperty))
+        >>> aNode2 = AlphaNode((Variable('X'), Variable('P'), Variable('Z')))
         >>> aNode1.alphaNetworkHash()
         ('0', '1', '1')
         >>> aNode2.alphaNetworkHash()
@@ -239,12 +307,13 @@ class AlphaNode(Node):
         """
         if groundTermHash:
             return ''.join([term for term in self.triplePattern
-                            if not isinstance(term,(BNode,Variable)) or \
-                               isinstance(term,BNode) and term in skolemTerms])
+                            if not isinstance(term, (BNode, Variable)) or
+                            isinstance(term, BNode) and term in skolemTerms])
         else:
-            return tuple([isinstance(term,(BNode,Variable)) and '0' or '1' for term in self.triplePattern])
+            return tuple([isinstance(term, (BNode, Variable))
+                          and '0' or '1' for term in self.triplePattern])
 
-    def checkDefaultRule(self,defaultRules):
+    def checkDefaultRule(self, defaultRules):
         """
         Check to see if the inter element test associated with this Alpha node may match
         the given 'default' conflict set.  If so, update universalTruths with the
@@ -254,115 +323,137 @@ class AlphaNode(Node):
         pass
 
     def __repr__(self):
-        return "<AlphaNode: %s. Feeds %s beta nodes>"%(repr(self.triplePattern),len(self.descendentBetaNodes))
+        return "<AlphaNode: %s. Feeds %s beta nodes>" % (
+            repr(self.triplePattern), len(self.descendentBetaNodes))
 
-    def activate(self,aReteToken,explicitSuccessors2Activate=None):
-        from .BetaNode import PartialInstantiation, LEFT_MEMORY, RIGHT_MEMORY, LEFT_UNLINKING
-        explicitSuccessors2Activate = [] if explicitSuccessors2Activate is None\
-                                         else explicitSuccessors2Activate
+    def activate(self, aReteToken, explicitSuccessors2Activate=None):
+        from .BetaNode import (
+            PartialInstantiation,
+            LEFT_MEMORY,
+            RIGHT_MEMORY,
+            LEFT_UNLINKING
+        )
+        explicitSuccessors2Activate = [] \
+            if explicitSuccessors2Activate is None\
+            else explicitSuccessors2Activate
         aReteToken.bindVariables(self)
         for memory in self.descendentMemory:
-            if explicitSuccessors2Activate and memory.successor not in explicitSuccessors2Activate:
+            if explicitSuccessors2Activate \
+                    and memory.successor not in explicitSuccessors2Activate:
                 if aReteToken.debug:
                     print(
-                        "Skipping (per user specification) activation of join node: %s" % memory.successor)
+                        "Skipping (per user specification) activation of join node: %s" % (
+                        memory.successor))
                 continue
             singleToken = PartialInstantiation(
-                            [aReteToken],
-                            consistentBindings=aReteToken.bindingDict.copy())
-            # print(memory)
-            # print(self)
-            # print(self.descendentMemory)
+                [aReteToken],
+                consistentBindings=aReteToken.bindingDict.copy())
+            # _debug(memory)
+            # _debug(self)
+            # _debug(self.descendentMemory)
             if memory.position == LEFT_MEMORY:
                 memory.addToken(singleToken)
             else:
                 memory.addToken(aReteToken)
-            if memory.successor.leftUnlinkedNodes and len(memory) == 1 and LEFT_UNLINKING:
-                #Relink left memory of successor
-#                from Util import renderNetwork
-#                from md5 import md5
-#                from datetime import datetime
-#                import os
-#                print("Re-linking %s"%(memory.successor))
-#                print("Re-linking triggered from %s"%(repr(self)))
+            if memory.successor.leftUnlinkedNodes \
+                    and len(memory) == 1 and LEFT_UNLINKING:
+                # Relink left memory of successor
+                # from Util import renderNetwork
+                # from md5 import md5
+                # from datetime import datetime
+                # import os
+                # _debug("Re-linking %s" % (memory.successor))
+                # _debug("Re-linking triggered from %s" % (repr(self)))
                 for node in memory.successor.leftUnlinkedNodes:
-#                    print("\trelinking to ", node, " from ", memory.position)
-                    #aReteToken.debug = True
+                    # _debug("\trelinking to %s from %s" % (node, memory.position))
+                    # aReteToken.debug = True
                     if node.unlinkedMemory is None:
-                        assert len(node.descendentMemory) == 1,"%s %s %s"%(node,
-                                                                        node.descendentMemory,
-                                                                        memory.successor)
+                        assert len(node.descendentMemory) == 1, "%s %s %s" % (
+                            node, node.descendentMemory, memory.successor)
                         disconnectedMemory = list(node.descendentMemory)[0]
 
                     else:
                         disconnectedMemory = node.unlinkedMemory
                         node.descendentMemory.append(disconnectedMemory)
                         node.unlinkedMemory = None
-#                    if aReteToken.debug:
-#                        print("\t reattached memory ",str(disconnectedMemory))
+                    # if aReteToken.debug:
+                    #     _debug("\t reattached memory %s" % str(disconnectedMemory))
                     memory.successor.memories[LEFT_MEMORY] = disconnectedMemory
                     node.descendentBetaNodes.add(memory.successor)
-                    #print(memory.successor.memories[LEFT_MEMORY])
-                    memory.successor.propagate(RIGHT_MEMORY,aReteToken.debug,wme=aReteToken)
-                    #node._activate(singleToken,aReteToken.debug)
-                    #print("Activating re-linked node %s" % node)
-                    #node.propagate(None,aReteToken.debug)
-#                    if memory.position == LEFT_MEMORY:
-#                        node.propagate(memory.position,aReteToken.debug,singleToken)
-#                    else:
-#                        node.propagate(memory.position,aReteToken.debug,wme=aReteToken)
+                    # _debug(memory.successor.memories[LEFT_MEMORY])
+                    memory.successor.propagate(
+                        RIGHT_MEMORY, aReteToken.debug, wme=aReteToken)
+                    # node._activate(singleToken,aReteToken.debug)
+                    # _debug("Activating re-linked node %s" % node)
+                    # node.propagate(None,aReteToken.debug)
+                    # if memory.position == LEFT_MEMORY:
+                    #     node.propagate(memory.position,aReteToken.debug,singleToken)
+                    # else:
+                    #     node.propagate(memory.position,aReteToken.debug,wme=aReteToken)
 
-#                if memory.successor.network:
-#                    dtNow = datetime.now().isoformat()
-#                    fName = dtNow.replace(':','-').replace('.','-')
-#                    renderNetwork(memory.successor.network).write_graphviz(fName+'.dot')
-#                    os.popen ('dot -Tsvg -o %s %s'%(fName+'.svg',fName+'.dot'),'r')
-#                    os.remove(fName+'.dot')
-#                    print(fName)
-
-                #self.relinked = True
+                # if memory.successor.network:
+                #     dtNow = datetime.now().isoformat()
+                #     fName = dtNow.replace(':','-').replace('.','-')
+                #     renderNetwork(memory.successor.network).write_graphviz(fName+'.dot')
+                #     os.popen ('dot -Tsvg -o %s %s'%(fName+'.svg',fName+'.dot'),'r')
+                #     os.remove(fName+'.dot')
+                #     _debug(fName)
+                # self.relinked = True
                 memory.successor.leftUnlinkedNodes = set()
             if aReteToken.debug:
-                print("Added %s to %s"%(aReteToken,memory.successor))
-            if memory.successor.aPassThru or not memory.successor.checkNullActivation(memory.position):
+                _debug("Added %s to %s" % (aReteToken, memory.successor))
+            if memory.successor.aPassThru \
+                    or not memory.successor.checkNullActivation(
+                        memory.position):
                 if aReteToken.debug:
-                    print("Propagated from %s"%(self))
-                    print(aReteToken.asTuple())
+                    _debug("Propagated from %s" % self)
+                    _debug(aReteToken.asTuple())
                 if memory.position == LEFT_MEMORY:
-                    memory.successor.propagate(memory.position,aReteToken.debug,singleToken)
+                    memory.successor.propagate(
+                        memory.position, aReteToken.debug, singleToken)
                 else:
-                    memory.successor.propagate(memory.position,aReteToken.debug,wme=aReteToken)
+                    memory.successor.propagate(
+                        memory.position, aReteToken.debug, wme=aReteToken)
             else:
                 if aReteToken.debug:
-                    print("skipped null right activation of %s from %s"%(memory.successor,self))
+                    _debug("skipped null right activation of %s from %s" % (
+                        memory.successor, self))
+
 
 class BuiltInAlphaNode(AlphaNode):
     """
-    An Alpha Node for Builtins which doesn't participate in intraElement tests
+    An Alpha Node for Builtins which doesn't participate in intraElement tests.
     """
-    def __init__(self,n3builtin):
+    def __init__(self, n3builtin):
         self.name = BNode()
         self.n3builtin = n3builtin
         self.descendentMemory = []
         self.descendentBetaNodes = set()
         self.universalTruths = []
+
     def __iter__(self):
         yield self.n3builtin.argument
         yield self.n3builtin.result
 
-    def alphaNetworkHash(self,groundTermHash=False):
+    def alphaNetworkHash(self, groundTermHash=False):
         if groundTermHash:
-            return ''.join([term for term in self.n3builtin if not isinstance(term,(BNode,Variable))])
+            return ''.join(
+                [term for term in self.n3builtin
+                 if not isinstance(term, (BNode, Variable))])
         else:
-            return tuple([isinstance(term,(BNode,Variable)) and '0' or '1' for term in self.n3builtin])
+            return tuple([isinstance(term, (BNode, Variable))
+                          and '0' or '1'
+                          for term in self.n3builtin])
 
     def __repr__(self):
-        return "<BuiltInAlphaNode %s(%s),%s : Feeds %s beta nodes>"%(self.n3builtin.func,
-                                                                     self.n3builtin.argument,
-                                                                     self.n3builtin.result,len(self.descendentBetaNodes))
+        return "<BuiltInAlphaNode %s(%s),%s : Feeds %s beta nodes>" % (
+            self.n3builtin.func, self.n3builtin.argument,
+            self.n3builtin.result,
+            len(self.descendentBetaNodes))
 
-    def intraElementTest(self,aReteToken):
+    def intraElementTest(self, aReteToken):
         pass
+
 
 def test():
     import doctest
@@ -370,3 +461,16 @@ def test():
 
 if __name__ == '__main__':
     test()
+
+# from FuXi.Rete.AlphaNode import OWL_NS
+# from FuXi.Rete.AlphaNode import SUBJECT
+# from FuXi.Rete.AlphaNode import PREDICATE
+# from FuXi.Rete.AlphaNode import OBJECT
+# from FuXi.Rete.AlphaNode import VARIABLE
+# from FuXi.Rete.AlphaNode import VALUE
+# from FuXi.Rete.AlphaNode import TERMS
+# from FuXi.Rete.AlphaNode import normalizeTerm
+# from FuXi.Rete.AlphaNode import memoize
+# from FuXi.Rete.AlphaNode import defaultIntraElementTest
+# from FuXi.Rete.AlphaNode import AlphaNode
+# from FuXi.Rete.AlphaNode import BuiltInAlphaNode

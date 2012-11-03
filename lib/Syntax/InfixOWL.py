@@ -107,7 +107,7 @@ Python
 >>> Property(exNs.hasParent,graph=g) |max| Literal(1)
 ( ex:hasParent MAX 1 )
 
-#>>> print(g.serialize(format='pretty-xml'))
+>>> print(g.serialize(format='pretty-xml')) #doctest: +SKIP
 
 """)
 
@@ -129,6 +129,16 @@ from rdflib.namespace import NamespaceManager
 from rdflib.term import Identifier
 from rdflib.util import first
 
+import logging
+
+
+def _debug(*args, **kw):
+    # import logging
+    logging.basicConfig(level=logging.ERROR, format="%(message)s")
+    logger = logging.getLogger(__name__)
+    logger.debug(*args, **kw)
+
+
 """
 From: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/384122
 
@@ -137,6 +147,46 @@ infix operator like this. This recipe shows how (almost) arbitrary infix
 operators can be defined.
 
 """
+
+__all__ = [
+    'OWL_NS',
+    'nsBinds',
+    'ACE_NS',
+    'CLASS_RELATIONS',
+    'some',
+    'only',
+    'max',
+    'min',
+    'exactly',
+    'value',
+    'PropertyAbstractSyntax',
+    'AllClasses',
+    'AllDifferent',
+    'AllProperties',
+    'AnnotatableTerms',
+    'BooleanClass',
+    'Callable',
+    'CastClass',
+    'Class',
+    'ClassNamespaceFactory',
+    'classOrIdentifier',
+    'classOrTerm',
+    'CommonNSBindings',
+    'ComponentTerms',
+    'DeepClassClear',
+    'EnumeratedClass',
+    'generateQName',
+    'GetIdentifiedClasses',
+    'Individual',
+    'MalformedClass',
+    'manchesterSyntax',
+    'Ontology',
+    'OWLRDFListProxy',
+    'Property',
+    'propertyOrIdentifier',
+    'Restriction',
+    'termDeletionDecorator',
+]
 
 # definition of an Infix operator class
 # this recipe also works in jython
@@ -239,13 +289,13 @@ def manchesterSyntax(thing, store, boolean=None, transientList=False):
                 else:
                     prefix = manchesterSyntax(named[0], store)
                 if childList:
-                    return str(prefix) + u' THAT ' +u' AND '.join(
+                    return str(prefix) + u' THAT ' + u' AND '.join(
                         [str(manchesterSyntax(x, store)) for x in childList])
                 else:
                     return prefix
             else:
                 return u'( ' + u' AND '.join(
-                        [str(c) for c in children]) + u' )'
+                    [str(c) for c in children]) + u' )'
         elif boolean == OWL_NS.unionOf:
             return u'( ' + u' OR '.join([str(c) for c in children]) + ' )'
         elif boolean == OWL_NS.oneOf:
@@ -253,7 +303,7 @@ def manchesterSyntax(thing, store, boolean=None, transientList=False):
         else:
             assert boolean == OWL_NS.complementOf
     elif OWL_NS.Restriction in store.objects(
-                    subject=thing, predicate=RDF.type):
+            subject=thing, predicate=RDF.type):
         prop = list(
             store.objects(subject=thing, predicate=OWL_NS.onProperty))[0]
         prefix, uri, localName = store.compute_qname(prop)
@@ -262,29 +312,30 @@ def manchesterSyntax(thing, store, boolean=None, transientList=False):
         if label:
             propString = "'%s'" % label
         for onlyClass in store.objects(
-                    subject=thing, predicate=OWL_NS.allValuesFrom):
+                subject=thing, predicate=OWL_NS.allValuesFrom):
             return u'( %s ONLY %s )' % (
-                    propString, manchesterSyntax(onlyClass, store))
+                propString, manchesterSyntax(onlyClass, store))
         for val in store.objects(subject=thing, predicate=OWL_NS.hasValue):
             return u'( %s VALUE %s )' % (
-                    propString,
-                    manchesterSyntax(val.encode('utf-8', 'ignore'), store))
+                propString,
+                manchesterSyntax(val.encode('utf-8', 'ignore'), store))
         for someClass in store.objects(
                 subject=thing, predicate=OWL_NS.someValuesFrom):
             return u'( %s SOME %s )' % (
-                    propString, manchesterSyntax(someClass, store))
+                propString, manchesterSyntax(someClass, store))
         cardLookup = {OWL_NS.maxCardinality: 'MAX',
                       OWL_NS.minCardinality: 'MIN',
                       OWL_NS.cardinality: 'EQUALS'}
-        for s, p, o in store.triples_choices((thing, list(cardLookup.keys()), None)):
+        for s, p, o in store.triples_choices(
+                (thing, list(cardLookup.keys()), None)):
             return u'( %s %s %s )' % (
-                    propString, cardLookup[p], o.encode('utf-8', 'ignore'))
+                propString, cardLookup[p], o.encode('utf-8', 'ignore'))
     compl = list(store.objects(subject=thing, predicate=OWL_NS.complementOf))
     if compl:
         return '( NOT %s )' % (manchesterSyntax(compl[0], store))
     else:
         for boolProp, col in store.query(
-            "SELECT ?p ?bool WHERE {" + \
+            "SELECT ?p ?bool WHERE {" +
             "?class a owl:Class; ?p ?bool . ?bool rdf:first ?foo }",
             processor="sparql",
             initBindings={
@@ -299,7 +350,7 @@ def manchesterSyntax(thing, store, boolean=None, transientList=False):
             if isinstance(thing, BNode):
                 return thing.n3()
             return u"<" + thing + ">"
-            print(list(store.objects(subject=thing, predicate=RDF.type)))
+            _debug(list(store.objects(subject=thing, predicate=RDF.type)))
             raise
             return '[]'  # +thing._id.encode('utf-8')+'</em>'
         label = first(Class(thing, graph=store).label)
@@ -464,7 +515,10 @@ class AnnotatableTerms(Individual):
     Terms in an OWL ontology with rdfs:label and rdfs:comment
     """
     def __init__(self,
-            identifier, graph=None, nameAnnotation=None, nameIsLabel=False):
+                 identifier,
+                 graph=None,
+                 nameAnnotation=None,
+                 nameIsLabel=False):
         super(AnnotatableTerms, self).__init__(identifier, graph)
         if nameAnnotation:
             self.setupACEAnnotations()
@@ -579,7 +633,7 @@ class AnnotatableTerms(Individual):
 class Ontology(AnnotatableTerms):
     """ The owl ontology metadata"""
     def __init__(self,
-            identifier=None, imports=None, comment=None, graph=None):
+                 identifier=None, imports=None, comment=None, graph=None):
         super(Ontology, self).__init__(identifier, graph)
         self.imports = imports and imports or []
         self.comment = comment and comment or []
@@ -815,7 +869,8 @@ def CastClass(c, graph=None):
                             continue
                         kwArgs[str(p.split(OWL_NS)[-1])] = o
             if not set([str(i.split(OWL_NS)[-1])
-                for i in Restriction.restrictionKinds]).intersection(kwArgs):
+                        for i in Restriction.restrictionKinds]
+                                            ).intersection(kwArgs):
                 raise MalformedClass("Malformed owl:Restriction")
             return Restriction(**kwArgs)
         else:
@@ -1018,7 +1073,7 @@ class Class(AnnotatableTerms):
 
     def _get_subClassOf(self):
         for anc in self.graph.objects(
-            subject=self.identifier, predicate=RDFS.subClassOf):
+                subject=self.identifier, predicate=RDFS.subClassOf):
             yield Class(anc,
                         graph=self.graph,
                         skipOWLClassMembership=True)
@@ -1038,7 +1093,7 @@ class Class(AnnotatableTerms):
 
     def _get_equivalentClass(self):
         for ec in self.graph.objects(
-            subject=self.identifier, predicate=OWL_NS.equivalentClass):
+                subject=self.identifier, predicate=OWL_NS.equivalentClass):
             yield Class(ec, graph=self.graph)
 
     def _set_equivalentClass(self, other):
@@ -1057,7 +1112,7 @@ class Class(AnnotatableTerms):
 
     def _get_disjointWith(self):
         for dc in self.graph.objects(
-            subject=self.identifier, predicate=OWL_NS.disjointWith):
+                subject=self.identifier, predicate=OWL_NS.disjointWith):
             yield Class(dc, graph=self.graph)
 
     def _set_disjointWith(self, other):
@@ -1138,7 +1193,7 @@ class Class(AnnotatableTerms):
             else:
                 collectionHead = link
             for disjCls in self.factoryGraph.subjects(
-                            OWL_NS.unionOf, collectionHead):
+                    OWL_NS.unionOf, collectionHead):
                 if isinstance(disjCls, URIRef):
                     yield Class(disjCls, skipOWLClassMembership=True)
         for rdfList in self.factoryGraph.objects(
@@ -1168,7 +1223,7 @@ class Class(AnnotatableTerms):
 
     def subSumpteeIds(self):
         for s in self.graph.subjects(
-            predicate=RDFS.subClassOf, object=self.identifier):
+                predicate=RDFS.subClassOf, object=self.identifier):
             yield s
 
     # def __iter__(self):
@@ -1211,7 +1266,7 @@ class Class(AnnotatableTerms):
             if necStatements:
                 klassKind = "Primitive Type %s" % label
             exprs.append("SubClassOf: %s" % scJoin.join(
-                            [str(n) for n in necStatements]))
+                [str(n) for n in necStatements]))
             if full:
                 exprs[-1] = "\n    " + exprs[-1]
         if ec:
@@ -1237,8 +1292,8 @@ class Class(AnnotatableTerms):
         else:
             klassDescr = full and (descr and "\n    %s" %
                                    descr[0] or '') or '' + ' . '.join(exprs)
-        return (isinstance(self.identifier, BNode) \
-                and "Some Class " \
+        return (isinstance(self.identifier, BNode)
+                and "Some Class "
                 or "Class: %s " % self.qname) + klassDescr
 
 
@@ -1484,7 +1539,7 @@ class BooleanClass(OWLRDFListProxy, Class):
         return False
 
     def changeOperator(self, newOperator):
-        __doc__ = """
+        """
         Converts a unionOf / intersectionOf class expression into one
         that instead uses the given operator
 
@@ -1650,7 +1705,7 @@ class Restriction(Class):
 
     def _get_onProperty(self):
         return list(self.graph.objects(
-                subject=self.identifier, predicate=OWL_NS.onProperty))[0]
+            subject=self.identifier, predicate=OWL_NS.onProperty))[0]
 
     def _set_onProperty(self, prop):
         triple = (
@@ -1913,7 +1968,7 @@ class Property(AnnotatableTerms):
 
     def _get_extent(self, graph=None):
         for triple in (graph is None and self.graph or graph).triples(
-                                            (None, self.identifier, None)):
+                (None, self.identifier, None)):
             yield triple
 
     def _set_extent(self, other):
@@ -1928,32 +1983,32 @@ class Property(AnnotatableTerms):
         rt = []
         if OWL_NS.ObjectProperty in self.type:
             rt.append('ObjectProperty( %s annotation(%s)'
-                      % (self.qname, first(self.comment) \
+                      % (self.qname, first(self.comment)
                           and first(self.comment) or ''))
             if first(self.inverseOf):
                 twoLinkInverse = first(first(self.inverseOf).inverseOf)
                 if twoLinkInverse \
-                    and twoLinkInverse.identifier == self.identifier:
+                        and twoLinkInverse.identifier == self.identifier:
                     inverseRepr = first(self.inverseOf).qname
                 else:
                     inverseRepr = repr(first(self.inverseOf))
                 rt.append("  inverseOf( %s )%s" % (
                     inverseRepr,
-                    OWL_NS.SymmetricProperty in self.type \
-                    and ' Symmetric' \
+                    OWL_NS.SymmetricProperty in self.type
+                    and ' Symmetric'
                     or ''))
             for s, p, roleType in self.graph.triples_choices(
-                        (self.identifier,
-                         RDF.type,
-                         [OWL_NS.FunctionalProperty,
-                          OWL_NS.InverseFunctionalProperty,
-                          OWL_NS.TransitiveProperty])):
+                (self.identifier,
+                 RDF.type,
+                 [OWL_NS.FunctionalProperty,
+                  OWL_NS.InverseFunctionalProperty,
+                  OWL_NS.TransitiveProperty])):
                 rt.append(str(roleType.split(OWL_NS)[-1]))
         else:
             rt.append('DatatypeProperty( %s %s'
-                       % (self.qname, first(self.comment) \
-                            and first(self.comment) \
-                            or ''))
+                      % (self.qname, first(self.comment)
+                         and first(self.comment)
+                         or ''))
             for s, p, roleType in self.graph.triples((
                     self.identifier, RDF.type, OWL_NS.FunctionalProperty)):
                 rt.append('   Functional')
@@ -1965,21 +2020,21 @@ class Property(AnnotatableTerms):
             elif normalizedName.startswith(_XSD_NS):
                 return str(term)
             elif first(g.triples_choices((
-                      normalizedName,
-                      [OWL_NS.unionOf,
+                                         normalizedName,
+                                         [OWL_NS.unionOf,
                        OWL_NS.intersectionOf], None))):
                 return repr(term)
             else:
                 return str(term.qname)
         rt.append(' '.join(["   super( %s )" % canonicalName(
-                                                    superP, self.graph)
-                              for superP in self.subPropertyOf]))
+            superP, self.graph)
+            for superP in self.subPropertyOf]))
         rt.append(' '.join(["   domain( %s )" % canonicalName(
-                                                    domain, self.graph)
-                              for domain in self.domain]))
+            domain, self.graph)
+            for domain in self.domain]))
         rt.append(' '.join(["   range( %s )" % canonicalName(
-                                                    range, self.graph)
-                              for range in self.range]))
+            range, self.graph)
+            for range in self.range]))
         rt = '\n'.join([expr for expr in rt if expr])
         rt += '\n)'
         return str(rt).encode('utf-8')

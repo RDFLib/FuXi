@@ -1,5 +1,6 @@
 
 # import sys
+import logging
 from rdflib import Namespace, RDF, BNode, URIRef, Variable
 from rdflib.store import Store
 from rdflib.graph import QuotedGraph, Graph
@@ -8,67 +9,95 @@ from .BuiltinPredicates import FILTERS
 from rdflib import py3compat
 from functools import reduce
 
+
+def _debug(*args, **kw):
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+    logger = logging.getLogger(__name__)
+    logger.debug(*args, **kw)
+
+__all__ = [
+    'LOG',
+    'Any',
+    'RULE_LHS',
+    'RULE_RHS',
+    'Formula',
+    'N3Builtin',
+    'N3RuleStore',
+    'Rule',
+    'SetupRuleStore',
+]
+
+
 LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 Any = None
 
 RULE_LHS = 0
 RULE_RHS = 1
 
+
 class N3Builtin(object):
     """
     An binary N3 Filter: A built-in which evaluates to a boolean
     """
-    def __init__(self,uri,func,argument,result):
+    def __init__(self, uri, func, argument, result):
         self.uri = uri
         self.argument = argument
         self.result = result
         self.func = func
-        self.variables = [arg for arg in [self.argument,self.result] if isinstance(arg,Variable)]
+        self.variables = [arg for arg in
+                          [self.argument, self.result]
+                            if isinstance(arg, Variable)]
 
     def isSecondOrder(self):
         return False
 
-    def ground(self,varMapping):
-        appliedKeys = set([self.argument,self.result]).intersection(list(varMapping.keys()))
-        self.argument = varMapping.get(self.argument,self.argument)
-        self.result = varMapping.get(self.result,self.result)
+    def ground(self, varMapping):
+        appliedKeys = set(
+            [self.argument, self.result]
+        ).intersection(list(varMapping.keys()))
+        self.argument = varMapping.get(self.argument, self.argument)
+        self.result = varMapping.get(self.result, self.result)
         return appliedKeys
 
     def isGround(self):
-        for term in [self.result,self.argument]:
-            if isinstance(term,Variable):
+        for term in [self.result, self.argument]:
+            if isinstance(term, Variable):
                 return False
         return True
 
-    def renameVariables(self,varMapping):
+    def renameVariables(self, varMapping):
         if varMapping:
-            self.argument = varMapping.get(self.argument,self.argument)
+            self.argument = varMapping.get(self.argument, self.argument)
             self.result = varMapping.get(self.result, self.result)
 
-    def binds(self,var):
+    def binds(self, var):
         return True
 
     def toRDFTuple(self):
-        return (self.argument,self.uri,self.result)
+        return (self.argument, self.uri, self.result)
 
-    def render(self,argument,result):
-        return "<%s>(%s,%s)" % (self.uri,argument,result)
+    def render(self, argument, result):
+        return "<%s>(%s,%s)" % (self.uri, argument, result)
 
     def __iter__(self):
-        for f in [self.uri,self.argument,self.result]:
+        for f in [self.uri, self.argument, self.result]:
             yield f
 
     def __repr__(self):
-        return "<%s>(%s,%s)" % (self.uri,
-                              isinstance(self.argument,Variable) and '?%s'%self.argument or self.argument,
-                              isinstance(self.result,Variable) and '?%s'%self.result or self.result)
+        return "<%s>(%s,%s)" % (
+            self.uri,
+            isinstance(self.argument, Variable) and '?%s' %
+            self.argument or self.argument,
+            isinstance(self.result, Variable) and '?%s' %
+            self.result or self.result)
+
 
 class Formula(object):
     """
     An N3 Formula.  Consists of an (internal) identifier
     and a *list* of triples
     """
-    def __init__(self,identifier):
+    def __init__(self, identifier):
         self.identifier = identifier
         self.triples = []
 
@@ -76,7 +105,7 @@ class Formula(object):
         return len(self.triples)
 
     def __repr__(self):
-        return "{%s}"%(repr(self.triples))
+        return "{%s}" % (repr(self.triples))
 
     def __getitem__(self, key):
         return self.triples[key]
@@ -85,10 +114,10 @@ class Formula(object):
         for item in self.triples:
             yield item
 
-    def extend(self,other):
+    def extend(self, other):
         self.triples.extend(other)
 
-    def append(self,other):
+    def append(self, other):
         self.triples.append(other)
 
 
@@ -96,12 +125,12 @@ class Rule(object):
     """
     An N3 Rule.  consists of two formulae associated via log:implies
     """
-    def __init__(self,LHS,RHS):
+    def __init__(self, LHS, RHS):
         self.lhs = LHS
         self.rhs = RHS
 
     def __repr__(self):
-        return "{%s} => {%s}"%(self.lhs,self.rhs)
+        return "{%s} => {%s}" % (self.lhs, self.rhs)
 
 
 def SetupRuleStore(n3Stream=None, additionalBuiltins=None, makeNetwork=False):
@@ -259,118 +288,149 @@ BuiltIn used out of order
         self._listBuffer = []
         self.rules = []
         self.referencedVariables = set()
-        self.nsMgr = {'skolem':URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')}
+        self.nsMgr = {'skolem': URIRef(
+            'http://code.google.com/p/python-dlp/wiki/SkolemTerm#')}
         self.filters = {}
         self.filters.update(FILTERS)
         if additionalBuiltins:
             self.filters.update(additionalBuiltins)
 
-    def namespace(self,prefix):
+    def namespace(self, prefix):
         return self.nsMgr.get(prefix)
 
     def bind(self, prefix, namespace, override=True):
         if override or prefix not in self.nsMgr:
-            self.nsMgr[prefix]=namespace
+            self.nsMgr[prefix] = namespace
 
-    def prefix(self,namespace):
-        return dict([(v,k) for
-                       k,v in list(self.nsMgr.items())]).get(namespace)
+    def prefix(self, namespace):
+        return dict([(v, k) for
+                     k, v in list(self.nsMgr.items())]).get(namespace)
 
-    def _unrollList(self,l,listName):
+    def _unrollList(self, l, listName):
         listTriples = []
         lastItemName = None
         for linkItem in l:
             linkName = l.index(linkItem) == 0 and listName or BNode()
             if lastItemName:
-                listTriples.append((lastItemName,RDF.rest,linkName))
-            listTriples.append((linkName,RDF.first,linkItem))
+                listTriples.append((lastItemName, RDF.rest, linkName))
+            listTriples.append((linkName, RDF.first, linkItem))
             lastItemName = linkName
-        listTriples.append((lastItemName,RDF.rest,RDF.nil))
+        listTriples.append((lastItemName, RDF.rest, RDF.nil))
         return listTriples
 
     def _finalize(self):
-        def unrollFunc(left,right):
+        def unrollFunc(left, right):
             leftListsToUnroll = []
             rightListsToUnroll = []
-            if isinstance(left,tuple):
-                s,p,o = left
-                leftListsToUnroll = [term for term in [s,o] if term in self._lists]
+            if isinstance(left, tuple):
+                s, p, o = left
+                leftListsToUnroll = [term for term in
+                                [s, o] if term in self._lists]
                 if leftListsToUnroll:
-                    leftListsToUnroll = reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in leftListsToUnroll])
+                    leftListsToUnroll = reduce(
+                        lambda x, y: x + y, [
+                                self._unrollList(self._lists[l], l)
+                                            for l in leftListsToUnroll])
                 left = [left]
-            elif isinstance(left,N3Builtin):
+            elif isinstance(left, N3Builtin):
                 left = [left]
-            if isinstance(right,tuple):
-                s,p,o = right
-                rightListsToUnroll = [term for term in [s,o] if term in self._lists]
+            if isinstance(right, tuple):
+                s, p, o = right
+                rightListsToUnroll = [term for term in
+                                        [s, o] if term in self._lists]
                 if rightListsToUnroll:
-                    rightListsToUnroll = reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in rightListsToUnroll])
+                    rightListsToUnroll = reduce(
+                        lambda x, y: x + y, [
+                                self._unrollList(self._lists[l], l)
+                                    for l in rightListsToUnroll])
                 right = [right]
-            elif isinstance(right,N3Builtin):
+            elif isinstance(right, N3Builtin):
                 right = [right]
-            return left +leftListsToUnroll+right+rightListsToUnroll
+            return left + leftListsToUnroll + right + rightListsToUnroll
         if len(self.facts) == 1:
-            s,p,o = self.facts[0]
-            listsToUnroll = [term for term in [s,o] if term in self._lists]
+            s, p, o = self.facts[0]
+            listsToUnroll = [term for term in [s, o] if term in self._lists]
             if listsToUnroll:
-                self.facts.extend(reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in listsToUnroll]))
+                self.facts.extend(reduce(lambda x, y: x + y, [self._unrollList(
+                    self._lists[l], l) for l in listsToUnroll]))
         elif self.facts:
-            self.facts = reduce(unrollFunc,self.facts)
+            self.facts = reduce(unrollFunc, self.facts)
         for formula in list(self.formulae.values()):
             if len(formula) == 1:
-                if isinstance(formula[0],tuple):
-                    s,p,o = formula[0]
-                    listsToUnroll = [term for term in [s,o] if term in self._lists]
+                if isinstance(formula[0], tuple):
+                    s, p, o = formula[0]
+                    listsToUnroll = [term for term in [
+                        s, o] if term in self._lists]
                     if listsToUnroll:
-                        listTriples = reduce(lambda x,y:x+y,[self._unrollList(self._lists[l],l) for l in listsToUnroll])
+                        listTriples = reduce(
+                            lambda x, y: x + y, [
+                                self._unrollList(self._lists[l], l)
+                                                for l in listsToUnroll])
                         formula.extend(listTriples)
             elif len(formula):
-                formula.triples = reduce(unrollFunc,[i for i in formula])
-        for lhs,rhs in self.rules:
-            for item in self.formulae.get(rhs,[]):
-                assert isinstance(item,tuple),"Rule RHS must only include RDF triples! (%s)"%item
-        self.rules = [(self.formulae.get(lhs,Formula(lhs)),self.formulae.get(rhs,Formula(rhs))) for lhs,rhs in self.rules]
+                formula.triples = reduce(unrollFunc, [i for i in formula])
+        for lhs, rhs in self.rules:
+            for item in self.formulae.get(rhs, []):
+                assert isinstance(item, tuple), \
+                    "Rule RHS must only include RDF triples! (%s)" % item
+        self.rules = [
+                (self.formulae.get(lhs, Formula(lhs)), self.formulae.get(
+                    rhs, Formula(rhs))) for lhs, rhs in self.rules]
 
-    def _checkVariableReferences(self,referencedVariables,terms,funcObj):
-        for term in [i for i in terms if isinstance(i,Variable)]:
+    def _checkVariableReferences(self, referencedVariables, terms, funcObj):
+        for term in [i for i in terms if isinstance(i, Variable)]:
             if term not in referencedVariables:
-                raise Exception("Builtin refers to variables without previous reference! (%s)"%funcObj)
+                raise Exception(
+                    "Builtin refers to variables without " +
+                    "previous reference! (%s)" % funcObj)
 
     def add(self, triple, context=None, quoted=False):
         (subject, predicate, obj) = triple
-        if predicate == RDF.first and not isinstance(subject,Variable) and not isinstance(object,Variable):
+        if predicate == RDF.first \
+            and not isinstance(subject, Variable) \
+            and not isinstance(object, Variable):
             if not self.currentList:
                 self._listBuffer.append(obj)
                 self.currentList = subject
             else:
                 self._listBuffer.append(obj)
-        elif predicate == RDF.rest and not isinstance(subject,Variable) and not isinstance(object,Variable):
+        elif predicate == RDF.rest \
+            and not isinstance(subject, Variable) \
+            and not isinstance(object, Variable):
             if obj == RDF.nil:
-                self._lists[self.currentList] = [item for item in self._listBuffer]
+                self._lists[self.currentList] = [
+                    item for item in self._listBuffer]
                 self._listBuffer = []
                 self.currentList = None
-        elif not isinstance(context,QuotedGraph):
+        elif not isinstance(context, QuotedGraph):
             if not self.rootFormula:
                 self.rootFormula = context.identifier
             if predicate == LOG.implies:
                 self.rules.append(
-                      (isinstance(subject,URIRef) and subject or subject.identifier,
-                       isinstance(obj,URIRef) and obj or obj.identifier))
+                    (
+                        isinstance(subject,
+                                   URIRef) and subject or subject.identifier,
+                        isinstance(obj, URIRef) and obj or obj.identifier))
             else:
-                self.facts.append((subject,predicate,obj))
+                self.facts.append((subject, predicate, obj))
         else:
-            formula = self.formulae.get(context.identifier,Formula(context.identifier))
+            formula = self.formulae.get(
+                context.identifier, Formula(context.identifier))
             if predicate in self.filters:
-                newFilter = N3Builtin(predicate,self.filters[predicate](subject,obj),subject,obj)
-                #@attention: The non-deterministic parse order of an RDF graph makes this
-                #check hard to enforce
-                #self._checkVariableReferences(self.referencedVariables,[subject,obj],newFilter)
+                newFilter = N3Builtin(predicate, self.filters[
+                                      predicate](subject, obj), subject, obj)
+                # @attention: The non-deterministic parse order of an RDF graph
+                # makes this check hard to enforce
+                # self._checkVariableReferences(
+                #    self.referencedVariables,[subject,obj],newFilter)
                 formula.append(newFilter)
             else:
-                #print("(%s,%s,%s) pattern in %s"%(subject,predicate,obj,context.identifier))
-                variables = [arg for arg in [subject,predicate,obj] if isinstance(arg,Variable)]
+                # _debug("(%s,%s,%s) pattern in %s" % (
+                #    subject, predicate, obj, context.identifier))
+                variables = [arg for arg in [subject, predicate, obj]
+                                            if isinstance(arg, Variable)]
                 self.referencedVariables.update(variables)
-                formula.append((subject,predicate,obj))
+                formula.append((subject, predicate, obj))
             self.formulae[context.identifier] = formula
 
     def __repr__(self):
@@ -381,21 +441,25 @@ BuiltIn used out of order
 
     def optimizeRules(self):
         patternDict = {}
-        for lhs,rhs in self.rules:
+        for lhs, rhs in self.rules:
             for pattern in lhs:
-                if not isinstance(pattern,N3Builtin):
-                    _hashList = [isinstance(term,(Variable,BNode)) and '\t' or term for term in pattern]
-                    patternDict.setdefault(reduce(lambda x,y:x+y,_hashList),set()).add(pattern)
-        for key,vals in list(patternDict.items()):
+                if not isinstance(pattern, N3Builtin):
+                    _hashList = [isinstance(term, (Variable, BNode)) and \
+                                    '\t' or term for term in pattern]
+                    patternDict.setdefault(reduce(
+                        lambda x, y: x + y, _hashList), set()).add(pattern)
+        for key, vals in list(patternDict.items()):
             if len(vals) > 1:
-                print("###### Similar Patterns ######")
+                _debug("###### Similar Patterns ######")
                 for val in vals:
-                    print(val)
-                print("##############################")
+                    _debug(val)
+                _debug("##############################")
+
 
 def test():
     import doctest
     doctest.testmod()
+
 
 def test2():
     from nose.exc import SkipTest
@@ -414,13 +478,8 @@ def test2():
     s._finalize()
 
 if __name__ == '__main__':
-#    pass
     test()
     #test2()
-
-__all__ = ['LOG', 'Any', 'RULE_LHS', 'RULE_RHS', 'Formula',
-           'N3Builtin', 'N3RuleStore', 'Rule', 'SetupRuleStore']
-
 
 # from FuXi.Rete.RuleStore import LOG
 # from FuXi.Rete.RuleStore import Any

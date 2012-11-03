@@ -3,7 +3,7 @@
 import sys
 import time
 import warnings
-from rdflib.graph import Graph  # , ReadOnlyGraphAggregate, ConjunctiveGraph
+from rdflib.graph import Graph
 from rdflib.namespace import NamespaceManager
 from rdflib.util import first
 from rdfextras.sparql.components import Prolog
@@ -287,9 +287,9 @@ def main():
                 from FuXi.Horn.RIFCore import RIFCoreParser
                 rif_parser = RIFCoreParser(location=fileN, debug=options.debug)
                 rs = rif_parser.getRuleset()
-            except ImportError, e:
+            except ImportError:
                 raise Exception(
-                    "Missing 3rd party libraries for RIF processing: %s"%e
+                    "Missing 3rd party libraries for RIF processing"
                 )
         else:
             rs = HornFromN3(fileN)
@@ -409,11 +409,11 @@ def main():
                                           "must be mutually disjoint: %s and %s" % (
                                       Class(child).qname,
                                       Class(otherChild).qname), UserWarning, 1)
-#                if not isinstance(c.identifier,BNode):
+                # if not isinstance(c.identifier,BNode):
                 print(c.__repr__(True))
 
     if not options.why:
-        #Niave construction of graph
+        #Naive construction of graph
         for rule in ruleSet:
             network.buildNetworkFromClause(rule)
 
@@ -500,16 +500,20 @@ def main():
                 magicRuleNo+=1
                 network.buildNetworkFromClause(rule)
             if len(list(ruleSet)):
-                print("reduction in size of program: %s (%s -> %s clauses)"%(
-                                           100-(float(magicRuleNo)/float(len(list(ruleSet))))*100,
+                print("reduction in size of program: %s (%s -> %s clauses)" % (
+                                           100 - (float(magicRuleNo) /
+                                                  float(len(list(ruleSet)))
+                                                  ) * 100,
                                            len(list(ruleSet)),
                                            magicRuleNo))
             start = time.time()
             network.feedFactsToAdd(generateTokenSet(magicSeeds))
-            if not [rule for rule in factGraph.adornedProgram if len(rule.sip)]:
-                warnings.warn("Using GMS sideways information strategy with no "+
-                              "information to pass from query.  Falling back to "+
-                              "naive method over given facts and rules")
+            if not [
+                rule for rule in factGraph.adornedProgram if len(rule.sip)]:
+                warnings.warn(
+                    "Using GMS sideways information strategy with no "+
+                      "information to pass from query.  Falling back to "+
+                      "naive method over given facts and rules")
                 network.feedFactsToAdd(workingMemory)
             sTime = time.time() - start
             if sTime > 1:
@@ -558,7 +562,8 @@ def main():
             for pref, nsUri in list(network.nsMap.items()):
                 targetGraph.bind(pref, nsUri)
             start = time.time()
-            # queryLiteral = EDBQuery([BuildUnitermFromTuple(goal) for goal in goals],
+            # queryLiteral = EDBQuery([BuildUnitermFromTuple(goal)
+            #                                   for goal in goals],
             #                         targetGraph)
             # query = queryLiteral.asSPARQL()
             # print >>sys.stderr, "Goal to solve ", query
@@ -583,8 +588,9 @@ def main():
                         sTimeStr = "%s milli seconds" % sTime
                     if options.firstAnswer:
                         break
-                    print("Time to reach answer %s via top-down SPARQL sip strategy: %s" % (
-                        rt, sTimeStr))
+                    print(
+                    "Time to reach answer %s via top-down SPARQL sip strategy: %s" % (
+                    rt, sTimeStr))
             if options.output == 'conflict' and options.method == 'bfp':
                 for _network, _goal in topDownStore.queryNetworks:
                     print(_network, _goal)

@@ -28,34 +28,49 @@ try:
         ifilter as filter,
         ifilterfalse as filterfalse,
         chain
-        )
+    )
 except ImportError:
     from itertools import chain
-# from FuXi.Horn.HornRules import Clause, Ruleset
+from rdflib import (
+    BNode,
+    Literal,
+    Namespace,
+    RDF,
+    URIRef,
+    Variable,
+)
 from FuXi.Horn.PositiveConditions import (
     Uniterm,
     buildUniTerm,
     SetOperator,
     Exists,
-    )
+)
 from .BetaNode import (
-    # BetaNode,
-    # LEFT_MEMORY,
-    # RIGHT_MEMORY,
-    # PartialInstantiation,
     project,
-    )
+)
 from FuXi.Rete.RuleStore import N3Builtin
 from FuXi.Rete.AlphaNode import (
-    # AlphaNode,
     ReteToken
-    )
-# from FuXi.Rete.Network import _mulPatternWithSubstitutions
-# from rdflib.graph import Graph
-# from rdflib.namespace import NamespaceManager
-from rdflib import BNode, Literal, Namespace, RDF, URIRef, Variable
-# from pprint import pprint, pformat
-# from functools import reduce
+)
+
+
+__all__ = [
+    'PML',
+    'PML_P',
+    'FUXI',
+    'GMP_NS',
+    'any',
+    'all',
+    'fetchRETEJustifications',
+    'fillBindings',
+    'GenerateProof',
+    'ImmutableDict',
+    'InferenceStep',
+    'MakeImmutableDict',
+    'NodeSet',
+    'ProofBuilder',
+    'termIterator',
+]
 
 
 def any(seq, pred=None):
@@ -140,7 +155,7 @@ def MakeImmutableDict(regularDict):
     Takes a regular dicitonary and makes an immutable dictionary out of it
     """
     return ImmutableDict([
-            (k, v) for k, v in list(regularDict.items())])
+        (k, v) for k, v in list(regularDict.items())])
 
 
 def fetchRETEJustifications(goal, nodeset, builder, antecedent=None):
@@ -163,9 +178,9 @@ def fetchRETEJustifications(goal, nodeset, builder, antecedent=None):
                 try:
                     failedCheck = any(
                         termIterator(bodyTerm),
-                            lambda x: tuple(fillBindings(
-                                x.toRDFTuple(), antecedent.bindings))
-                                             in builder.goals)
+                        lambda x: tuple(fillBindings(
+                                        x.toRDFTuple(), antecedent.bindings))
+                        in builder.goals)
                 except KeyError:
                     failedCheck = False
                 validJustification = not failedCheck
@@ -178,8 +193,8 @@ def fetchRETEJustifications(goal, nodeset, builder, antecedent=None):
                     try:
                         if any(termIterator(tNode.clause.head),
                                lambda x:
-                                  tuple(fillBindings(x.toRDFTuple(),
-                                                     antecedent.bindings)) == goal):
+                               tuple(fillBindings(x.toRDFTuple(),
+                                                  antecedent.bindings)) == goal):
                             yield tNode
                     except Exception:
                         pass
@@ -188,7 +203,8 @@ def fetchRETEJustifications(goal, nodeset, builder, antecedent=None):
             yield tNode
 
 PML = Namespace('http://inferenceweb.stanford.edu/2004/07/iw.owl#')
-PML_P = Namespace('http://inferenceweb.stanford.edu/2006/06/pml-provenance.owl#')
+PML_P = Namespace(
+    'http://inferenceweb.stanford.edu/2006/06/pml-provenance.owl#')
 FUXI = URIRef('http://purl.org/net/chimezie/FuXi')
 GMP_NS = Namespace('http://inferenceweb.stanford.edu/registry/DPR/GMP.owl#')
 
@@ -202,17 +218,16 @@ def GenerateProof(network, goal):
 
 class ProofBuilder(object):
     """
-    Handles the recursive building of a proof tree (from a 'fired' RETE-UL network),
-    keeping the state of the goals already processed
+    Handles the recursive building of a proof tree (from a 'fired' RETE-UL
+    network), keeping the state of the goals already processed
 
     We begin by defining a proof as a sequence of ‚proof steps, where each
-    proof step consists of a conclusion, a justification for that conclusion, and a set
-    of assumptions discharged by the step. ‚A proof of C‚ is defined to be a proof
-    whose last step has conclusion C. A proof of C is conditional on an assumption
-    A if and only if there is a step in the proof that has A as its conclusion and
-    ‚assumption‚ as its justification, and A is not discharged by a later step in the
-    proof.
-
+    proof step consists of a conclusion, a justification for that conclusion,
+    and a set of assumptions discharged by the step. ‚A proof of C‚ is defined
+    to be a proof whose last step has conclusion C. A proof of C is
+    conditional on an assumption A if and only if there is a step in the proof
+    that has A as its conclusion and assumption as its justification, and A is
+    not discharged by a later step in the proof.
     """
     def __init__(self, network):
         self.goals = {}
@@ -241,7 +256,8 @@ class ProofBuilder(object):
     def renderProof(self, proof, nsMap={}):
         """
         Takes an instance of a compiled ProofTree and a namespace mapping (for
-        constructing QNames for rule pattern terms) and returns a BGL Digraph instance representing the Proof Tree
+        constructing QNames for rule pattern terms) and returns a BGL Digraph
+        instance representing the Proof Tree
         """
         dot = None
         bglGraph = None
@@ -267,12 +283,13 @@ class ProofBuilder(object):
             if not nodeset in visitedNodes:
                 idx += 1
                 visitedNodes[nodeset] = nodeset.generateGraphNode(
-                                            str(idx), nodeset is proof)
+                    str(idx), nodeset is proof)
             #register the justification steps
             for justification in nodeset.steps:
                 if not justification in visitedNodes:
                     idx += 1
-                    visitedNodes[justification] = justification.generateGraphNode(str(idx))
+                    visitedNodes[justification] = \
+                            justification.generateGraphNode(str(idx))
                     for ant in justification.antecedents:
                         if ant not in visitedNodes:
                             idx += 1
@@ -298,14 +315,17 @@ class ProofBuilder(object):
                         # if not isinstance(justification,InferenceStep) \
                         #     or not justification.source:
                         #     pass
-                        # if (visitedNodes[nodeset],visitedNodes[justification]) not in edges:
+                        # if (visitedNodes[nodeset],
+                        #       visitedNodes[justification]) not in edges:
                         edge = Edge(visitedNodes[justification],
                                     visitedNodes[ant],
                                     label="has antecedent",
                                     color='blue')
-                        #edge.label="has antecedents"
+                        # edge.label = "has antecedents"
                         dot.add_edge(edge)
-                        #edges.append((visitedNodes[nodeset],visitedNodes[justification]))
+                        # edges.append(
+                        #    (visitedNodes[nodeset],
+                        #      visitedNodes[justification]))
 
         return dot if dot is not None else bglGraph
 
@@ -314,14 +334,15 @@ class ProofBuilder(object):
         Takes a Node set and builds an inference step which contributes to its
         justification, recursively marking its ancestors (other dependent node
         sets / proof steps).
-        So this recursive method builds a proof tree 'upwards' from the original
-        goal.
+        So this recursive method builds a proof tree 'upwards' from the
+        original goal.
 
         This iterates over the tokens which caused the terminal node to 'fire'
         and 'proves' them by first checking if they are inferred or if they
         were asserted.
         """
-        #iterate over the tokens which caused the instantiation of this terminalNode
+        # iterate over the tokens which caused the instantiation of this
+        # terminalNode
         step = InferenceStep(parent, terminalNode.clause)
         bindings = {}
         for _dict in self.network.proofTracers[goal]:
@@ -329,65 +350,81 @@ class ProofBuilder(object):
         step.bindings.update(bindings)
         if ReteToken(goal) in self.network.workingMemory:
             step.source = 'some RDF graph'
-            self.trace.append("Marking justification from assertion for " + repr(goal))
+            self.trace.append(
+                "Marking justification from assertion for " + repr(goal))
         for tNode in fetchRETEJustifications(goal, parent, self, step):
             if self.network.instantiations[tNode]:
                 for bodyTerm in tNode.clause.body:
                     step.rule = tNode.clause
                     for termVar in termIterator(bodyTerm):
                         assert isinstance(termVar, (Uniterm, N3Builtin))
-                        a = [
-                                x for x in termVar.toRDFTuple()
-                                    if isinstance(x, Variable) and x not in step.bindings]
+                        a = [x for x in termVar.toRDFTuple()
+                            if isinstance(x, Variable) \
+                                and x not in step.bindings]
                     binds = []
                     for t in tNode.instanciatingTokens:
-                        binds.extend([project(binding, a) for binding in t.bindings])
-                    binds = set([ImmutableDict([(k, v) for k, v in list(bind.items())]) for bind in binds])
+                        binds.extend(
+                            [project(binding, a) for binding in t.bindings])
+                    binds = set([ImmutableDict([(k, v) for k,
+                                v in list(bind.items())]) for bind in binds])
                     assert len(binds) < 2
                     for b in binds:
                         step.bindings.update(b)
                     for termVar in termIterator(bodyTerm):
                         assert isinstance(termVar, (N3Builtin, Uniterm))
                         assert all(termVar.toRDFTuple(),
-                                   lambda x: isinstance(x, Variable) and x in step.bindings or not isinstance(x, Variable))
-                    groundAntecedentAssertion = tuple(fillBindings(bodyTerm.toRDFTuple(), step.bindings))
-                    self.trace.append("Building inference step for %s" % parent)
-                    self.trace.append("Inferred from RETE node via %s" % (tNode.clause))
+                                   lambda x: isinstance(x, Variable) \
+                                   and x in step.bindings \
+                                   or not isinstance(x, Variable))
+                    groundAntecedentAssertion = tuple(
+                        fillBindings(bodyTerm.toRDFTuple(), step.bindings))
+                    self.trace.append(
+                        "Building inference step for %s" % parent)
+                    self.trace.append(
+                        "Inferred from RETE node via %s" % (tNode.clause))
                     self.trace.append("Bindings: %s" % step.bindings)
-                    step.antecedents.append(self.buildNodeSet(groundAntecedentAssertion, antecedent=step))
+                    step.antecedents.append(self.buildNodeSet(
+                        groundAntecedentAssertion, antecedent=step))
         return step
 
     def buildNodeSet(self, goal, antecedent=None, proof=False):
         if not goal in self.network.justifications:
-            #Not inferred, must have been originally asserted
-            #assert goal not in self.network.workingMemory
-            self.trace.append("Building %s around%sgoal (justified by a direct assertion): %s" % (
+            # Not inferred, must have been originally asserted
+            # assert goal not in self.network.workingMemory
+            self.trace.append(
+                "Building %s around%sgoal (justified by a direct assertion): %s" % (
                 proof and 'proof' or 'nodeset', antecedent and ' antecedent ' or '',
                 str(buildUniTerm(goal, self.network.nsMap))))
-            # assertedSteps = [token.asTuple() for token in self.network.workingMemory]
-            #assert goal in assertedSteps
+            # assertedSteps = [token.asTuple()
+            #                      for token in self.network.workingMemory]
+            # assert goal in assertedSteps
             if goal in self.goals:
                 ns = self.goals[goal]
-                self.trace.append("Retrieving prior nodeset %s for %s" % (ns, goal))
+                self.trace.append(
+                    "Retrieving prior nodeset %s for %s" % (ns, goal))
             else:
                 idx = BNode()
                 ns = NodeSet(goal, network=self.network, identifier=idx)
                 self.goals[goal] = ns
                 ns.steps.append(InferenceStep(ns, source='some RDF graph'))
-                self.trace.append("Marking justification from assertion for " + repr(goal))
+                self.trace.append(
+                    "Marking justification from assertion for " + repr(goal))
         else:
             if goal in self.goals:
                 ns = self.goals[goal]
-                self.trace.append("Retrieving prior nodeset %s for %s" % (ns, goal))
+                self.trace.append(
+                    "Retrieving prior nodeset %s for %s" % (ns, goal))
             else:
                 self.trace.append("Building %s around%sgoal: %s" % (
-                    proof and 'proof' or 'nodeset', antecedent and ' antecedent ' or ' ',
+                    proof and 'proof' or 'nodeset',
+                    antecedent and ' antecedent ' or ' ',
                     str(buildUniTerm(goal, self.network.nsMap))))
                 idx = BNode()
                 ns = NodeSet(goal, network=self.network, identifier=idx)
                 self.goals[goal] = ns
                 ns.steps = [self.buildInferenceStep(ns, tNode, goal)
-                                for tNode in fetchRETEJustifications(goal, ns, self)]
+                            for tNode in fetchRETEJustifications(
+                                                    goal, ns, self)]
                 assert ns.steps
         return ns
 
@@ -401,14 +438,20 @@ class NodeSet(object):
     proof step. Every node set has one conclusion, and a conclusion of a node
     set is of type Expression.
 
-    Each inference step of a node set represents an application of an inference
-    rule that justifies the node set's conclusion. A node set can have any
-    number of inference steps, including none, and each inference step of a
-    node set is of type InferenceStep. A node set without inference steps is of a special kind identifying an
-    unproven goal in a reasoning process as described in Section 4.1.2 below.
+    Each inference step of a node set represents an application of an
+    inference rule that justifies the node set's conclusion. A node set can
+    have any number of inference steps, including none, and each inference
+    step of a node set is of type InferenceStep. A node set without inference
+    steps is of a special kind identifying an unproven goal in a reasoning
+    process as described in Section 4.1.2 below.
 
     """
-    def __init__(self, conclusion=None, steps=None, identifier=BNode(), network=None, naf=False):
+    def __init__(self,
+                 conclusion=None,
+                 steps=None,
+                 identifier=BNode(),
+                 network=None,
+                 naf=False):
         if network:
             self.network = network
         else:
@@ -425,15 +468,17 @@ class NodeSet(object):
         proofGraph.add((self.identifier,
                         PML.hasConclusion,
                         Literal("%s%s" % (conclusionPrefix,
-                                          repr(buildUniTerm(self.conclusion,
-                                                  self.network.nsMap))))))
+                                          repr(buildUniTerm(
+                                                self.conclusion,
+                                                self.network.nsMap))))))
         # proofGraph.add(
         #    (self.identifier,
         #      PML.hasLanguage,
         # URIRef('http://inferenceweb.stanford.edu/registry/LG/RIF.owl')))
         proofGraph.add((self.identifier, RDF.type, PML.NodeSet))
         for step in self.steps:
-            proofGraph.add((self.identifier, PML.isConsequentOf, step.identifier))
+            proofGraph.add(
+                (self.identifier, PML.isConsequentOf, step.identifier))
             builder.serializedNodeSets.add(self.identifier)
             step.serialize(builder, proofGraph)
 
@@ -447,12 +492,13 @@ class NodeSet(object):
         return vertex
 
     def __repr__(self):
-        #rt="Proof step for %s with %s justifications"%(buildUniTerm(self.conclusion),len(self.steps))
+        # rt = "Proof step for %s with %s justifications" % (
+        #    buildUniTerm(self.conclusion),len(self.steps))
         conclusionPrefix = self.naf and 'not ' or ''
         rt = "Proof step for %s%s" % (
-                conclusionPrefix,
-                buildUniTerm(self.conclusion,
-                self.network and self.network.nsMap or {}))
+            conclusionPrefix,
+            buildUniTerm(self.conclusion,
+                         self.network and self.network.nsMap or {}))
         return rt
 
 
@@ -460,12 +506,12 @@ class InferenceStep(object):
     """
     represents a justification for the conclusion of a node set.
 
-    The rule of an inference step, which is the value of the property hasRule of
-    the inference step, is the rule that was applied to produce the conclusion.
-    Every inference step has one rule, and that rule is of type InferenceRule
-    (see Section 3.3.3). Rules are in general registered in the IWBase by engine
-    developers. However, PML specifies three special instances of rules:
-    Assumption, DirectAssertion, and UnregisteredRule.
+    The rule of an inference step, which is the value of the property hasRule
+    of the inference step, is the rule that was applied to produce the
+    conclusion. Every inference step has one rule, and that rule is of type
+    InferenceRule (see Section 3.3.3). Rules are in general registered in the
+    IWBase by engine developers. However, PML specifies three special
+    instances of rules: Assumption, DirectAssertion, and UnregisteredRule.
 
     The antecedents of an inference step is a sequence of node sets each of
     whose conclusions is a premise of the application of the inference step's
@@ -474,24 +520,25 @@ class InferenceStep(object):
     step.
 
     Each binding of an inference step is a mapping from a variable to a term
-    specifying the substitutions performed on the premises before the application
-    of the step's rule. For instance, substitutions may be required to
-    unify terms in premises in order to perform resolution. An inference step
-    can have any number of bindings including none, and each binding is of
-    type VariableBinding. The bindings are members of a collection that is the
-    value of the property hasVariableMapping of the inference step.
+    specifying the substitutions performed on the premises before the
+    application of the step's rule. For instance, substitutions may be
+    required to unify terms in premises in order to perform resolution. An
+    inference step can have any number of bindings including none, and each
+    binding is of type VariableBinding. The bindings are members of a
+    collection that is the value of the property hasVariableMapping of the
+    inference step.
 
     Each discharged assumption of an inference step is an expression that is
-    discharged as an assumption by application of the step's rule. An inference
-    step can have any number of discharged assumptions including none,
-    and each discharged assumption is of type Expression. The discharged assumptions
-    are members of a collection that is the value of the property
-    hasDischargeAssumption of the inference step. This property supports
-    the application of rules requiring the discharging of assumptions such as
-    natural deduction's implication introduction. An assumption that is discharged
-    at an inference step can be used as an assumption in the proof
-    of an antecedent of the inference step without making the proof be conditional
-    on that assumption.
+    discharged as an assumption by application of the step's rule. An
+    inference step can have any number of discharged assumptions including
+    none, and each discharged assumption is of type Expression. The discharged
+    assumptions are members of a collection that is the value of the property
+    hasDischargeAssumption of the inference step. This property supports the
+    application of rules requiring the discharging of assumptions such as
+    natural deduction's implication introduction. An assumption that is
+    discharged at an inference step can be used as an assumption in the proof
+    of an antecedent of the inference step without making the proof be
+    conditional on that assumption.
 
     """
     def __init__(self, parent, rule=None, bindings=None, source=None):
@@ -508,7 +555,8 @@ class InferenceStep(object):
 
     def serialize(self, builder, proofGraph):
         if self.rule and not self.source:
-            proofGraph.add((self.identifier, PML.englishDescription, Literal(repr(self))))
+            proofGraph.add((
+                self.identifier, PML.englishDescription, Literal(repr(self))))
         if self.groundQuery and (self.identifier, None, None) not in proofGraph:
             query = BNode()
             info = BNode()
@@ -516,7 +564,8 @@ class InferenceStep(object):
             proofGraph.add((query, RDF.type, PML.Query))
             proofGraph.add((query, PML_P.hasContent, info))
             proofGraph.add((info, RDF.type, PML_P.Information))
-            proofGraph.add((info, PML_P.hasRawString, Literal(self.groundQuery)))
+            proofGraph.add(
+                (info, PML_P.hasRawString, Literal(self.groundQuery)))
         elif self.source:
             someDoc = BNode()
             proofGraph.add((self.identifier, PML_P.hasSource, someDoc))
@@ -529,9 +578,11 @@ class InferenceStep(object):
         proofGraph.add((self.identifier, RDF.type, PML.InferenceStep))
         proofGraph.add((self.identifier, PML.hasInferenceEngine, FUXI))
         proofGraph.add((self.identifier, PML.hasRule, GMP_NS.GMP))
-        proofGraph.add((self.identifier, PML.consequent, self.parent.identifier))
+        proofGraph.add(
+            (self.identifier, PML.consequent, self.parent.identifier))
         for ant in self.antecedents:
-            proofGraph.add((self.identifier, PML.hasAntecedent, ant.identifier))
+            proofGraph.add(
+                (self.identifier, PML.hasAntecedent, ant.identifier))
             ant.serialize(builder, proofGraph)
         for k, v in list(self.bindings.items()):
             mapping = BNode()
@@ -549,13 +600,14 @@ class InferenceStep(object):
         # outlineMap[vertex] = '1'
 
     def iterCondition(self, condition):
-        return isinstance(condition, SetOperator) and condition or iter([condition])
+        return isinstance(condition, SetOperator) \
+                    and condition or iter([condition])
 
     def prettyPrintRule(self):
         if len(list(self.iterCondition(self.rule.body))) > 2:
             return "And(%s)" % (
                 repr(self.rule.head) + ':-' + '\\n\\t'.join(
-                        [repr(i) for i in self.rule.body]))
+                    [repr(i) for i in self.rule.body]))
         return repr(self.rule)
 
     def __repr__(self):
@@ -565,7 +617,8 @@ class InferenceStep(object):
         elif self.source:
             return "[Parsing RDF source]"
         elif self.rule:
-            if isinstance(self.rule.head, AdornedUniTerm) and self.rule.head.isMagic:
+            if isinstance(self.rule.head, AdornedUniTerm) \
+                and self.rule.head.isMagic:
                 return "magic predicate justification\\n%s" % (self.rule)
             else:
                 return repr(self.rule)  # self.prettyPrintRule()
@@ -603,8 +656,3 @@ class InferenceStep(object):
 # from FuXi.Rete.Proof import NodeSet
 # from FuXi.Rete.Proof import ProofBuilder
 # from FuXi.Rete.Proof import termIterator
-
-__all__ = [
-    'PML', 'PML_P', 'FUXI', 'GMP_NS', 'any', 'all', 'fetchRETEJustifications',
-    'fillBindings', 'GenerateProof', 'ImmutableDict', 'InferenceStep',
-    'MakeImmutableDict', 'NodeSet', 'ProofBuilder', 'termIterator']

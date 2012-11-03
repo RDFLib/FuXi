@@ -12,7 +12,7 @@ from FuXi.Horn.PositiveConditions import (
     Exists,
     SetOperator,
     Uniterm
-    )
+)
 from FuXi.Rete.RuleStore import N3Builtin
 from FuXi.DLP import SKOLEMIZED_CLASS_NS
 from FuXi.DLP.Negation import ProperSipOrderWithNegation
@@ -26,7 +26,28 @@ from functools import reduce
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Horn.HornRules import Ruleset
 from io import StringIO
-from pprint import pprint;
+from pprint import pprint
+
+
+__all__ = [
+    'BuildNaturalSIP',
+    'CollectSIPArcVars',
+    'findFullSip',
+    'GetArgs',
+    'getOccurrenceId',
+    'GetOp',
+    'GetVariables',
+    'IncomingSIPArcs',
+    'InvalidSIPException',
+    'iterCondition',
+    'makeMD5Digest',
+    'normalizeTerm',
+    'RenderSIPCollection',
+    'SetOp',
+    'SIPGraphArc',
+    'SIPRepresentation',
+    'validSip',
+]
 
 
 def _debug(*args, **kw):
@@ -38,8 +59,8 @@ def _debug(*args, **kw):
 
 def makeMD5Digest(value):
     return md5(
-            isinstance(value, str) and value.encode('utf-8')
-            or value).hexdigest()
+        isinstance(value, str) and value.encode('utf-8')
+        or value).hexdigest()
 
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
 
@@ -49,7 +70,7 @@ def iterCondition(condition):
         return iterCondition(condition.formula)
     else:
         return isinstance(condition, SetOperator) \
-                and condition or iter([condition])
+            and condition or iter([condition])
 
 
 def normalizeTerm(uri, sipGraph):
@@ -71,7 +92,7 @@ def RenderSIPCollection(sipGraph, dot=None):
     nodes = {}
     for N, prop, q in sipGraph.query(
         'SELECT ?N ?prop ?q {  ?prop a magic:SipArc . ?N ?prop ?q . }',
-        initNs={u'magic': MAGIC}):
+            initNs={u'magic': MAGIC}):
 
         if MAGIC.BoundHeadPredicate in sipGraph.objects(subject=N,
                                                         predicate=RDF.type):
@@ -81,21 +102,21 @@ def RenderSIPCollection(sipGraph, dot=None):
 
         if q not in nodes:
             newNode = Node(makeMD5Digest(q),
-                         label=normalizeTerm(q, sipGraph),
-                         shape='plaintext')
+                           label=normalizeTerm(q, sipGraph),
+                           shape='plaintext')
             nodes[q] = newNode
             dot.add_node(newNode)
 
         bNode = BNode()
         nodeLabel = ', '.join([normalizeTerm(term, sipGraph)
-                      for term in NCol])
+                               for term in NCol])
         edgeLabel = ', '.join(
             [var.n3() for var in Collection(
-                    sipGraph, first(sipGraph.objects(prop, MAGIC.bindings)))])
+             sipGraph, first(sipGraph.objects(prop, MAGIC.bindings)))])
         markedEdgeLabel = ''
         if nodeLabel in dot.leftNodesLookup:
             bNode, leftNode, markedEdgeLabel = dot.leftNodesLookup[nodeLabel]
-            # _debug("\t", nodeLabel, edgeLabel,
+            # _debug("\t%s %s %s %s", nodeLabel, edgeLabel,
             #           markedEdgeLabel, not edgeLabel == markedEdgeLabel)
         else:
             leftNode = Node(makeMD5Digest(bNode),
@@ -153,15 +174,15 @@ def CollectSIPArcVars(left, right, phBoundVars):
     if isinstance(left, list):
         return set(reduce(
             lambda x, y: x + y,
-                [hasattr(t, 'isHead') and phBoundVars \
-                        or GetArgs(t, secondOrder=True)
-                    for t in left])
-                        ).intersection(GetArgs(right, secondOrder=True))
+            [hasattr(t, 'isHead') and phBoundVars
+             or GetArgs(t, secondOrder=True)
+             for t in left])
+        ).intersection(GetArgs(right, secondOrder=True))
     else:
         incomingVarsToInclude = phBoundVars and phBoundVars or \
             GetArgs(left, secondOrder=True)
         return set(incomingVarsToInclude
-                    ).intersection(GetArgs(right, secondOrder=True))
+                   ).intersection(GetArgs(right, secondOrder=True))
 
 
 def SetOp(term, value):
@@ -228,7 +249,7 @@ def IncomingSIPArcs(sip, predOcc):
                     sip, first(sip.objects(p, MAGIC.bindings)))
             else:
                 yield Collection(sip, s), Collection(
-                        sip, first(sip.objects(p, MAGIC.bindings)))
+                    sip, first(sip.objects(p, MAGIC.bindings)))
 
 
 def validSip(sipGraph):
@@ -236,9 +257,9 @@ def validSip(sipGraph):
     if not len(sipGraph):
         return False
     for arc in sipGraph.query(
-         "SELECT ?arc { ?arc m:bindings ?bindings OPTIONAL" + \
-         "{ ?bindings rdf:first ?val } FILTER(!BOUND(?val)) }",
-         initNs={'m': MAGIC}):
+        "SELECT ?arc { ?arc m:bindings ?bindings OPTIONAL" +
+        "{ ?bindings rdf:first ?val } FILTER(!BOUND(?val)) }",
+            initNs={'m': MAGIC}):
         return False
     return True
 
@@ -258,20 +279,20 @@ def findFullSip(rtvars, right):
             vars = GetArgs(rt[0], secondOrder=True)
         else:
             vars = reduce(lambda l, r:
-                [i for i in GetArgs(l, secondOrder=True) + \
-                            GetArgs(r, secondOrder=True)
-                               if isinstance(i, (Variable, BNode))],
-                               rt)
+                          [i for i in GetArgs(l, secondOrder=True) +
+                           GetArgs(r, secondOrder=True)
+                           if isinstance(i, (Variable, BNode))],
+                          rt)
     if len(right) == 1:
         if set(GetArgs(right[0], secondOrder=True)
-                        ).intersection(vars):  # len(dq)==1:
+               ).intersection(vars):  # len(dq)==1:
             #Valid End of recursion, return full SIP order
             yield rt + list(right) if isinstance(right, And) else right
     else:
         #for every combination of left and right, trigger recursive call
         for item in right:
             _vars = set([v for v in GetArgs(item, secondOrder=True)
-                                    if isinstance(v, (Variable, BNode))])
+                         if isinstance(v, (Variable, BNode))])
             _inVars = set([v for v in vars])
             if _vars.intersection(vars):
                 # There is an incoming arc, continue processing inductively on
@@ -321,7 +342,7 @@ def BuildNaturalSIP(clause,
     from FuXi.Rete.Magic import AdornedUniTerm
     occurLookup = {}
     boundHead = isinstance(adornedHead, AdornedUniTerm) \
-                    and 'b' in adornedHead.adornment
+        and 'b' in adornedHead.adornment
     phBoundVars = list(adornedHead.getDistinguishedVariables(varsOnly=True))
     # assert isinstance(clause.head, Uniterm), "Only one literal in the head!"
 
@@ -365,7 +386,7 @@ def BuildNaturalSIP(clause,
                     # query + rules combination is 'malformed')
                     raise InvalidSIPException(
                         "Unable to find a sip for %s (%s)" % (
-                                                clause, adornedHead))
+                        clause, adornedHead))
                 try:
                     reduce(collectSip,
                            iterCondition(And(sip)))
@@ -375,17 +396,17 @@ def BuildNaturalSIP(clause,
                     foundSip = False
         else:
             if first(filter(
-                    lambda i: isinstance(i, Uniterm) \
-                                and i.naf or False, clause.body)):
+                    lambda i: isinstance(i, Uniterm)
+                     and i.naf or False, clause.body)):
                 # There are negative literals in body, ensure
                 # the given sip order puts negated literals at the end
                 bodyOrder = first(
-                        filter(ProperSipOrderWithNegation,
-                                          findFullSip(([clause.head], None),
-                                                        clause.body)))
+                    filter(ProperSipOrderWithNegation,
+                           findFullSip(([clause.head], None),
+                                       clause.body)))
             else:
                 bodyOrder = first(findFullSip(
-                            ([clause.head], None), clause.body))
+                    ([clause.head], None), clause.body))
             assert bodyOrder, "Couldn't find a valid SIP for %s" % clause
             reduce(collectSip,
                    iterCondition(And(bodyOrder)))
@@ -404,17 +425,17 @@ def BuildNaturalSIP(clause,
         collectionsToClear = []
         for N, prop, q in sipGraph.query(
             'SELECT ?N ?prop ?q {  ?prop a magic:SipArc . ?N ?prop ?q . }',
-            initNs={u'magic': MAGIC}):
+                initNs={u'magic': MAGIC}):
             if occurLookup[q] not in derivedPreds \
-                and (occurLookup[q] not in \
-                    hybridPreds2Replace if hybridPreds2Replace else False):
+                and (occurLookup[q] not in
+                     hybridPreds2Replace if hybridPreds2Replace else False):
                 arcsToRemove.extend([(N, prop, q), (prop, None, None)])
                 collectionsToClear.append(Collection(sipGraph, N))
                 # clear bindings collection as well
                 bindingsColBNode = first(
-                        sipGraph.objects(prop, MAGIC.bindings))
+                    sipGraph.objects(prop, MAGIC.bindings))
                 collectionsToClear.append(
-                        Collection(sipGraph, bindingsColBNode))
+                    Collection(sipGraph, bindingsColBNode))
         for removeSts in arcsToRemove:
             sipGraph.remove(removeSts)
         for col in collectionsToClear:
@@ -426,20 +447,20 @@ def SIPRepresentation(sipGraph):
     rt = []
     for N, prop, q in sipGraph.query(
         'SELECT ?N ?prop ?q {  ?prop a magic:SipArc . ?N ?prop ?q . }',
-        initNs={u'magic': MAGIC}):
+            initNs={u'magic': MAGIC}):
         if MAGIC.BoundHeadPredicate in sipGraph.objects(
-                            subject=N, predicate=RDF.type):
+                subject=N, predicate=RDF.type):
             NCol = [N]
         else:
             NCol = Collection(sipGraph, N)
         rt.append("{ %s } -> %s %s" % (
-          ', '.join([normalizeTerm(term, sipGraph)
-                      for term in NCol]),
-          ', '.join([var.n3()
-                      for var in Collection(
-                        sipGraph,
-                        first(sipGraph.objects(prop, MAGIC.bindings)))]),
-          normalizeTerm(q, sipGraph)))
+                  ', '.join([normalizeTerm(term, sipGraph)
+                             for term in NCol]),
+                  ', '.join([var.n3()
+                             for var in Collection(
+                             sipGraph,
+                             first(sipGraph.objects(prop, MAGIC.bindings)))]),
+                  normalizeTerm(q, sipGraph)))
     return rt
 
 

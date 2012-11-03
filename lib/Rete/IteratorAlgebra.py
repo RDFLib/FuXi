@@ -12,6 +12,7 @@ Author: Jim Baker, jbaker@zyasoft.com
 
 import operator
 
+
 def identity(x):
     """x -> x
 
@@ -23,6 +24,7 @@ def identity(x):
     """
     return x
 
+
 def inner(X):
     """
     >>> X = [1, 2, 3, 4, 5]
@@ -32,27 +34,35 @@ def inner(X):
     for x in X:
         yield x
 
+
 #The original hash_join
 # throughout, we assume S is the smaller relation of R and S.
 def hash_join(R, S, predicate=identity, join=inner, combine=operator.concat):
     hashed = {}
     for s in S:
-        hashed.setdefault(predicate(s),[]).append(s)
+        hashed.setdefault(predicate(s), []).append(s)
     for r in R:
-        for s in join(hashed.get(predicate(r),())):
+        for s in join(hashed.get(predicate(r), ())):
             yield combine(r, s)
 
-def nested_loops_join(R, S, predicate=identity, join=inner,
-                      combine=operator.concat, theta=operator.eq):
+
+def nested_loops_join(R,
+                      S,
+                      predicate=identity,
+                      join=inner,
+                      combine=operator.concat,
+                      theta=operator.eq):
     Sp = [(predicate(s), s) for s in S]
     for r in R:
-        rp = predicate(r) 
+        rp = predicate(r)
         for s in join(s for sp, s in Sp if theta(rp, sp)):
             yield combine(r, s)
 
+
 def bisect_join(R, S, predicate=identity, join=inner, combine=operator.concat):
     """
-    I have not found discussion of this variant on the sort-merge join anywhere.
+    I have not found discussion of this variant on the sort-merge
+    join anywhere.
     """
 
     from bisect import bisect_left
@@ -89,7 +99,6 @@ def merge_join(R, S, predicate=identity, join=inner, combine=operator.concat):
 
     from itertools import groupby
 
-
     def advancer(Xp):
         """A simple wrapper of itertools.groupby, we simply need
         to follow our convention that Xp -> (xp0, x0), (xp1, x1), ...
@@ -97,7 +106,7 @@ def merge_join(R, S, predicate=identity, join=inner, combine=operator.concat):
 
         for k, g in groupby(Xp, key=operator.itemgetter(0)):
             yield k, list(g)
-    
+
     R_grouped = advancer(sorted((predicate(r), r) for r in R))
     S_grouped = advancer(sorted((predicate(s), s) for s in S))
 
@@ -119,5 +128,4 @@ def merge_join(R, S, predicate=identity, join=inner, combine=operator.concat):
         elif comparison > 0:
             sk, S_matched = next(S_grouped)
         else:
-            rk, R_matched = next(R_grouped)                
-                
+            rk, R_matched = next(R_grouped)

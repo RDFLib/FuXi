@@ -3,6 +3,7 @@ from rdflib import RDF
 from FuXi.Syntax.InfixOWL import OWL_NS
 from FuXi.Horn.HornRules import HornFromN3
 from rdflib import plugin, query
+
 plugin.register(
         'sparql', query.Processor,
         'rdfextras.sparql.processor', 'Processor')
@@ -11,7 +12,12 @@ plugin.register(
         'sparql', query.Result,
         'rdfextras.sparql.query', 'SPARQLQueryResult')
 
-LIST_MEMBERSHIP_SEMANTICS=\
+__all__ = [
+    'AdditionalRules', 'LIST_MEMBERSHIP_SEMANTICS',
+    'NOMINAL_SEMANTICS', 'FUNCTIONAL_SEMANTICS',
+    'DIFFERENT_FROM_SEMANTICS', 'FUNCTIONAL_PROPERTIES']
+
+LIST_MEMBERSHIP_SEMANTICS = \
 """
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix list: <http://www.w3.org/2000/10/swap/list#>.
@@ -20,7 +26,7 @@ LIST_MEMBERSHIP_SEMANTICS=\
 {?L rdf:rest ?R. ?I list:in ?R} => {?I list:in ?L}.
 """
 
-NOMINAL_SEMANTICS=\
+NOMINAL_SEMANTICS = \
 """
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
@@ -30,14 +36,16 @@ NOMINAL_SEMANTICS=\
 {?C owl:oneOf ?L. ?X list:in ?L} => {?X a ?C}.
 """
 
-FUNCTIONAL_SEMANTICS=\
+FUNCTIONAL_SEMANTICS = \
 """
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 @prefix log: <http://www.w3.org/2000/10/swap/log#>.
 
 #Inverse functional semantics
-{?P a owl:FunctionalProperty. ?S ?P ?O. ?S ?P ?Y. ?O log:notEqualTo ?Y } => {?O = ?Y}.
-{?P a owl:InverseFunctionalProperty. ?S ?P ?O. ?Y ?P ?O. ?S log:notEqualTo ?Y } => {?S = ?Y}.
+{?P a owl:FunctionalProperty. ?S ?P ?O.
+ ?S ?P ?Y. ?O log:notEqualTo ?Y } => {?O = ?Y}.
+{?P a owl:InverseFunctionalProperty. ?S ?P ?O.
+ ?Y ?P ?O. ?S log:notEqualTo ?Y } => {?S = ?Y}.
 
 #owl:sameAs is symmetric, transitive and supports "smushing."
 {?T1 = ?T2} => {?T2 = ?T1}.
@@ -45,16 +53,18 @@ FUNCTIONAL_SEMANTICS=\
 {?T1 ?P ?O. ?T1 = ?T2.} => {?T2 ?P ?O}.
 """
 
-DIFFERENT_FROM_SEMANTICS=\
+DIFFERENT_FROM_SEMANTICS = \
 """
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 @prefix log: <http://www.w3.org/2000/10/swap/log#>.
 @prefix list: <http://www.w3.org/2000/10/swap/list#>.
 
-{ ?ANY a owl:AllDifferent; owl:distinctMembers ?L. ?L1 list:in ?L. ?L2 list:in ?L. ?L1 log:notEqualTo ?L2 } => { ?L1 owl:differentFrom ?L2 }.
+{ ?ANY a owl:AllDifferent; owl:distinctMembers ?L.
+  ?L1 list:in ?L. ?L2 list:in ?L. ?L1 log:notEqualTo ?L2
+  } => { ?L1 owl:differentFrom ?L2 }.
 """
 
-FUNCTIONAL_PROPERTIES=\
+FUNCTIONAL_PROPERTIES = \
 """
 ASK {
   [] a ?KIND
@@ -63,6 +73,7 @@ ASK {
       ?KIND = owl:FunctionalProperty
   )
 }"""
+
 
 def AdditionalRules(tBox):
     """
@@ -76,10 +87,10 @@ def AdditionalRules(tBox):
     if tBox.query(FUNCTIONAL_PROPERTIES,
                   initNs={"owl": OWL_NS}).askAnswer:
         ruleSrc.add(FUNCTIONAL_SEMANTICS)
-    if (None,OWL_NS.oneOf,None) in tBox:
+    if (None, OWL_NS.oneOf, None) in tBox:
         ruleSrc.add(NOMINAL_SEMANTICS)
         addListSemantics = True
-    if (None,RDF.type,OWL_NS.AllDifferent) in tBox:
+    if (None, RDF.type, OWL_NS.AllDifferent) in tBox:
         ruleSrc.add(DIFFERENT_FROM_SEMANTICS)
         addListSemantics = True
     if addListSemantics:

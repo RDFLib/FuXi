@@ -1,2 +1,7 @@
 from rdflib import Namespace
-RETE_NS = Namespace("http://metacognition.info/ontologies/ReteVocabulary.owl#")
+
+__all__ = ['RETE_NS']
+
+
+RETE_NS = Namespace(
+    "http://metacognition.info/ontologies/ReteVocabulary.owl#")

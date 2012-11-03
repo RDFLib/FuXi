@@ -11,16 +11,14 @@ Query fact: rdfs:subClassOf_derived_query_bf(KneeJoint)
         :- And( rdfs:subClassOf_derived_bf(?C1 ?C2)
                 rdfs:subClassOf_derived_bf(?C2 ?C3) ) )
 
-		{ subClassOf }             -> ?C1 subClassOf_C1_C2
-		{ subClassOf, subClassOf } -> ?C2 subClassOf_C2_C3
-
-
-
+        { subClassOf }             -> ?C1 subClassOf_C1_C2
+        { subClassOf, subClassOf } -> ?C2 subClassOf_C2_C3
 
 """
 __author__ = 'chimezieogbuji'
 import sys
 from io import StringIO
+from pprint import pformat
 from rdflib import (
     RDF,
     RDFS,
@@ -29,7 +27,7 @@ from rdflib import (
     Variable,
     BNode,
     Namespace,
-    )
+)
 from rdflib.graph import Graph
 from FuXi.Syntax.InfixOWL import (
     OWL_NS,
@@ -42,14 +40,14 @@ from FuXi.Syntax.InfixOWL import (
     Individual,
     Property,
     Restriction,
-    )
+)
 from FuXi.DLP import (
     SkolemizeExistentialClasses,
     SKOLEMIZED_CLASS_NS,
     LloydToporTransformation,
     makeRule,
     non_DHL_OWL_Semantics as SUBSUMPTION_SEMANTICS,
-    )
+)
 from FuXi.Horn.HornRules import HornFromN3
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
@@ -90,7 +88,8 @@ CONDITIONAL_THING_RULE = \
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix list:   <http://www.w3.org/2000/10/swap/list#>.
 
-#Rule 4 (needs to be added conditionally - only if owl:Thing appears in the ontology)
+# Rule 4 (needs to be added conditionally - only if owl:Thing
+# appears in the ontology)
 { ?C rdfs:subClassOf ?C } => { ?C rdfs:subClassOf owl:Thing }."""
 
 RULES = \
@@ -105,33 +104,36 @@ RULES = \
 {?L rdf:first ?I}               => {?I list:in ?L} .
 {?L rdf:rest ?R. ?I list:in ?R} => {?I list:in ?L} .
 
-#CTO: Sufficient to assert ?R kor:subPropertyOf ?R for all properties ?R in ontology?
+# CTO: Sufficient to assert ?R kor:subPropertyOf ?R for all
+# properties ?R in ontology?
 { ?P1 rdfs:subPropertyOf ?P2 } => { ?P1 kor:subPropertyOf ?P2 } .
 
 #kor:subPropertyOf a owl:TransitiveProperty .
-{ ?P1 kor:subPropertyOf ?P2 . ?P2 kor:subPropertyOf ?P3 } => { ?P1 kor:subPropertyOf ?P3 } .
+{ ?P1 kor:subPropertyOf ?P2 . ?P2 kor:subPropertyOf ?P3
+    } => { ?P1 kor:subPropertyOf ?P3 } .
 
-#Rule 1
-#rdfs:subClassOf a owl:TransitiveProperty
-{ ?C1 rdfs:subClassOf ?C2 . ?C2 rdfs:subClassOf ?C3 } => { ?C1 rdfs:subClassOf ?C3 } .
+# Rule 1
+# rdfs:subClassOf a owl:TransitiveProperty
+{ ?C1 rdfs:subClassOf ?C2 . ?C2 rdfs:subClassOf ?C3
+        } => { ?C1 rdfs:subClassOf ?C3 } .
 
-#Rule 2 (CTO: Different from LL's formulation?)
+# Rule 2 (CTO: Different from LL's formulation?)
 { ?C  rdfs:subClassOf ?CLASS .
   ?CLASS owl:intersectionOf ?L  .
   ?D list:in ?L  } => { ?C rdfs:subClassOf ?D } .
 
-#Rule 3
+# Rule 3
 { ?C rdfs:subClassOf ?RESTRICTION .
   ?RESTRICTION owl:onProperty ?R ;
                owl:someValuesFrom ?D } => { ?D rdfs:subClassOf ?D } .
 
-#Rule 5
+# Rule 5
 { ?C rdfs:subClassOf ?D1, ?D2 .
   ?D1 list:in ?L .
   ?D2 list:in ?L .
   ?E owl:intersectionOf ?L } => { ?C rdfs:subClassOf ?E } .
 
-#Rule 6
+# Rule 6
 { ?C rdfs:subClassOf ?D .
   ?E owl:onProperty ?S ;
      owl:someValuesFrom ?D
@@ -139,7 +141,7 @@ RULES = \
           owl:onProperty ?S ;
           owl:someValuesFrom ?C ] rdfs:subClassOf ?E } .
 
-#Rule 7
+# Rule 7
 { ?D rdfs:subClassOf ?RESTRICTION1 .
   ?RESTRICTION1 owl:onProperty ?R ;
                owl:someValuesFrom ?C  .
@@ -163,27 +165,27 @@ RULES = \
     owl:someValuesFrom ?D ] rdfs:subClassOf ?E } .
 """
 
-LEFT_SUBSUMPTION_OPERAND    = 0
-RIGHT_SUBSUMPTION_OPERAND   = 1
-BOTH_SUBSUMPTION_OPERAND    = 2
+LEFT_SUBSUMPTION_OPERAND = 0
+RIGHT_SUBSUMPTION_OPERAND = 1
+BOTH_SUBSUMPTION_OPERAND = 2
 NEITHER_SUBSUMPTION_OPERAND = 3
 
 
-def WhichSubsumptionOperand(term,owlGraph):
-    topDownStore=TopDownSPARQLEntailingStore(
-                    owlGraph.store,
-                    owlGraph,
-                    idb=HornFromN3(StringIO(SUBSUMPTION_SEMANTICS)),
-                    DEBUG=False,
-                    derivedPredicates=[OWL_NS.sameAs],
-                    hybridPredicates=[OWL_NS.sameAs])
+def WhichSubsumptionOperand(term, owlGraph):
+    topDownStore = TopDownSPARQLEntailingStore(
+        owlGraph.store,
+        owlGraph,
+        idb=HornFromN3(StringIO(SUBSUMPTION_SEMANTICS)),
+        DEBUG=False,
+        derivedPredicates=[OWL_NS.sameAs],
+        hybridPredicates=[OWL_NS.sameAs])
     targetGraph = Graph(topDownStore)
-    appearsLeft  = targetGraph.query(
-            "ASK { <%s> rdfs:subClassOf [] } ",
-            initNs={'rdfs':RDFS})
+    appearsLeft = targetGraph.query(
+        "ASK { <%s> rdfs:subClassOf [] } ",
+        initNs={'rdfs': RDFS})
     appearsRight = targetGraph.query(
-            "ASK { [] rdfs:subClassOf <%s> } ",
-            initNs={'rdfs':RDFS})
+        "ASK { [] rdfs:subClassOf <%s> } ",
+        initNs={'rdfs': RDFS})
     if appearsLeft and appearsRight:
         return BOTH_SUBSUMPTION_OPERAND
     elif appearsLeft:
@@ -191,7 +193,8 @@ def WhichSubsumptionOperand(term,owlGraph):
     else:
         return RIGHT_SUBSUMPTION_OPERAND
 
-def StructuralTransformation(owlGraph,newOwlGraph):
+
+def StructuralTransformation(owlGraph, newOwlGraph):
     """
     Entry point for the transformation of the given ontology
 
@@ -219,167 +222,174 @@ def StructuralTransformation(owlGraph,newOwlGraph):
     >>> revDict = dict([(v,k) for k,v in conceptMap.items()])
     >>> newGraph.bind('ex',EX,True)
     >>> Individual.factoryGraph = newGraph
-    >>> for c in AllClasses(newGraph):
-    ...     if c.identifier in revDict: print("## New concept for %s ##"%revDict[c.identifier])
+    >>> for c in AllClasses(newGraph): #doctest +SKIP
+    ...     if c.identifier in revDict:
+    ...         print("## New concept for %s ##"%revDict[c.identifier])
     ...     print(c.__repr__(True))
     ...     print("################################")
 
     """
     FreshConcept = {}
-    newOwlGraph.bind('skolem',SKOLEMIZED_CLASS_NS,True)
+    newOwlGraph.bind('skolem', SKOLEMIZED_CLASS_NS, True)
 
     for cls in AllClasses(owlGraph):
-        ProcessConcept(cls,owlGraph,FreshConcept,newOwlGraph)
+        ProcessConcept(cls, owlGraph, FreshConcept, newOwlGraph)
     return newOwlGraph, FreshConcept
 
-def ProcessConcept(klass,owlGraph,FreshConcept,newOwlGraph):
+
+def ProcessConcept(klass, owlGraph, FreshConcept, newOwlGraph):
     """
-    This method implements the pre-processing portion of the completion-based procedure
-    and recursively transforms the input ontology one concept at a time
+    This method implements the pre-processing portion of the completion-based
+    procedure and recursively transforms the input ontology one concept at
+    a time.
     """
     iD = klass.identifier
-    #maps the identifier to skolem:bnodeLabel if
-    #the identifier is a BNode or to skolem:newBNodeLabel
-    #if its a URI
+    # maps the identifier to skolem:bnodeLabel if
+    # the identifier is a BNode or to skolem:newBNodeLabel
+    # if its a URI
     FreshConcept[iD] = SkolemizeExistentialClasses(
-        BNode() if isinstance(iD,URIRef) else iD
+        BNode() if isinstance(iD, URIRef) else iD
     )
-    #A fresh atomic concept (A_c)
-    newCls = Class(FreshConcept[iD],graph=newOwlGraph)
+    # A fresh atomic concept (A_c)
+    newCls = Class(FreshConcept[iD], graph=newOwlGraph)
 
-    cls = CastClass(klass,owlGraph)
+    cls = CastClass(klass, owlGraph)
 
-    #determine if the concept is the left, right (or both)
-    #operand of a subsumption axiom in the ontology
-    location = WhichSubsumptionOperand(iD,owlGraph)
+    # determine if the concept is the left, right (or both)
+    # operand of a subsumption axiom in the ontology
+    location = WhichSubsumptionOperand(iD, owlGraph)
     _debug(repr(cls))
-    if isinstance(iD,URIRef):
-        #An atomic concept?
-        if location in [LEFT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-            _debug("Original (atomic) concept appears in the left HS of a subsumption axiom")
-            #If class is left operand of subsumption operator,
-            #assert (in new OWL graph) that A_c subsumes the concept
-            _cls   = Class(cls.identifier,graph=newOwlGraph)
+    if isinstance(iD, URIRef):
+        # An atomic concept?
+        if location in [LEFT_SUBSUMPTION_OPERAND, BOTH_SUBSUMPTION_OPERAND]:
+            _debug("Original (atomic) concept appears " +
+                   "in the left HS of a subsumption axiom")
+            # If class is left operand of subsumption operator,
+            # assert (in new OWL graph) that A_c subsumes the concept
+            _cls = Class(cls.identifier, graph=newOwlGraph)
             newCls += _cls
-            _debug("%s subsumes %s"%(newCls,_cls))
-        if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-            _debug("Original (atomic) concept appears in the right HS of a subsumption axiom")
-            #If class is right operand of subsumption operator,
-            #assert that it subsumes A_c
-            _cls = Class(cls.identifier,graph=newOwlGraph)
+            _debug("%s subsumes %s" % (newCls, _cls))
+        if location in [RIGHT_SUBSUMPTION_OPERAND, BOTH_SUBSUMPTION_OPERAND]:
+            _debug("Original (atomic) concept appears " +
+                   "in the right HS of a subsumption axiom")
+            # If class is right operand of subsumption operator,
+            # assert that it subsumes A_c
+            _cls = Class(cls.identifier, graph=newOwlGraph)
             _cls += newCls
-            _debug("%s subsumes %s"%(_cls,newCls))
-    elif isinstance(cls,Restriction):
+            _debug("%s subsumes %s" % (_cls, newCls))
+    elif isinstance(cls, Restriction):
         if location != NEITHER_SUBSUMPTION_OPERAND:
-            #appears in at least one subsumption operator
+            # appears in at least one subsumption operator
 
-            #An existential role restriction
-            _debug("Original (role restriction) appears in a subsumption axiom")
-            role      = Property(cls.onProperty,graph=newOwlGraph)
+            # An existential role restriction
+            _debug(
+                "Original (role restriction) appears in a subsumption axiom")
+            role = Property(cls.onProperty, graph=newOwlGraph)
 
             fillerCls = ProcessConcept(
-                            Class(cls.restrictionRange),
-                            owlGraph,
-                            FreshConcept,
-                            newOwlGraph)
-            #leftCls is (role SOME fillerCls)
-            leftCls  = role|some|fillerCls
-            _debug("let leftCls be %s"%leftCls)
-            if location in [LEFT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-                #if appears as the left operand, we say A_c subsumes
-                #leftCls
-                newCls   += leftCls
-                _debug("%s subsumes leftCls"%newCls)
-            if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-                #if appears as right operand, we say left Cls subsumes A_c
-                leftCls  += newCls
-                _debug("leftCls subsumes %s"%newCls)
+                Class(cls.restrictionRange),
+                owlGraph,
+                FreshConcept,
+                newOwlGraph)
+            # leftCls is (role SOME fillerCls)
+            leftCls = role | some | fillerCls
+            _debug("let leftCls be %s" % leftCls)
+            if location in [
+                    LEFT_SUBSUMPTION_OPERAND, BOTH_SUBSUMPTION_OPERAND]:
+                # if appears as the left operand, we say A_c subsumes
+                # leftCls
+                newCls += leftCls
+                _debug("%s subsumes leftCls" % newCls)
+            if location in [
+                    RIGHT_SUBSUMPTION_OPERAND, BOTH_SUBSUMPTION_OPERAND]:
+                # if appears as right operand, we say left Cls subsumes A_c
+                leftCls += newCls
+                _debug("leftCls subsumes %s" % newCls)
     else:
-        assert isinstance(cls,BooleanClass),"Not ELH ontology: %r"%cls
-        assert cls._operator == OWL_NS.intersectionOf,"Not ELH ontology"
-        _debug("Original conjunction (or boolean operator wlog ) appears in a subsumption axiom")
-        #A boolean conjunction
+        assert isinstance(cls, BooleanClass), "Not ELH ontology: %r" % cls
+        assert cls._operator == OWL_NS.intersectionOf, "Not ELH ontology"
+        _debug("Original conjunction (or boolean operator wlog) " +
+               "appears in a subsumption axiom")
+        # A boolean conjunction
         if location != NEITHER_SUBSUMPTION_OPERAND:
             members = [ProcessConcept(Class(c),
                                       owlGraph,
                                       FreshConcept,
                                       newOwlGraph) for c in cls]
-            newBoolean = BooleanClass(BNode(),members=members,graph=newOwlGraph)
-            #create a boolean conjunction of the fresh concepts corresponding
-            #to processing each member of the existing conjunction
-            if location in [LEFT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-                #if appears as the left operand, we say the new conjunction
-                #is subsumed by A_c
-                newCls     += newBoolean
-                _debug("%s subsumes %s"%(newCls,newBoolean))
-            if location in [RIGHT_SUBSUMPTION_OPERAND,BOTH_SUBSUMPTION_OPERAND]:
-                #if appears as the right operand, we say A_c is subsumed by
-                #the new conjunction
+            newBoolean = BooleanClass(
+                BNode(), members=members, graph=newOwlGraph)
+            # create a boolean conjunction of the fresh concepts corresponding
+            # to processing each member of the existing conjunction
+            if location in [
+                    LEFT_SUBSUMPTION_OPERAND, BOTH_SUBSUMPTION_OPERAND]:
+                # if appears as the left operand, we say the new conjunction
+                # is subsumed by A_c
+                newCls += newBoolean
+                _debug("%s subsumes %s" % (newCls, newBoolean))
+            if location in [
+                    RIGHT_SUBSUMPTION_OPERAND, BOTH_SUBSUMPTION_OPERAND]:
+                # if appears as the right operand, we say A_c is subsumed by
+                # the new conjunction
                 newBoolean += newCls
-                _debug("%s subsumes %s"%(newBoolean,newCls))
+                _debug("%s subsumes %s" % (newBoolean, newCls))
     return newCls
+
 
 def createTestOntGraph():
     graph = Graph()
-    graph.bind('ex',EX_NS,True)
+    graph.bind('ex', EX_NS, True)
     Individual.factoryGraph = graph
     kneeJoint = EX_CL.KneeJoint
     joint = EX_CL.Joint
 
-    knee  = EX_CL.Knee
+    knee = EX_CL.Knee
     isPartOf = Property(EX_NS.isPartOf)
-    graph.add((isPartOf.identifier,RDF.type,OWL_NS.TransitiveProperty))
+    graph.add((isPartOf.identifier, RDF.type, OWL_NS.TransitiveProperty))
     structure = EX_CL.Structure
     leg = EX_CL.Leg
-    hasLocation = Property(EX_NS.hasLocation,subPropertyOf=[isPartOf])
-    # graph.add((hasLocation.identifier,RDFS.subPropertyOf,isPartOf.identifier))
+    hasLocation = Property(EX_NS.hasLocation, subPropertyOf=[isPartOf])
+    # graph.add(
+    #    (hasLocation.identifier,RDFS.subPropertyOf,isPartOf.identifier))
 
-    kneeJoint.equivalentClass = [joint & (isPartOf|some|knee)]
+    kneeJoint.equivalentClass = [joint & (isPartOf | some | knee)]
     legStructure = EX_CL.LegStructure
-    legStructure.equivalentClass = [structure & (isPartOf|some|leg)]
+    legStructure.equivalentClass = [structure & (isPartOf | some | leg)]
     structure += leg
     structure += joint
-    locatedInLeg = hasLocation|some|leg
+    locatedInLeg = hasLocation | some | leg
     locatedInLeg += knee
 
-
-    # print(graph.serialize(format='n3'))
-
+    # _debug(graph.serialize(format='n3'))
     # newGraph = Graph()
     # newGraph.bind('ex',EX_NS,True)
 
-#    newGraph,conceptMap = StructuralTransformation(graph,newGraph)
-#    revDict = dict([(v,k) for k,v in conceptMap.items()])
+    # newGraph,conceptMap = StructuralTransformation(graph,newGraph)
+    # revDict = dict([(v,k) for k,v in conceptMap.items()])
+    # Individual.factoryGraph = newGraph
+    # for oldConceptId ,newConceptId in conceptMap.items():
+    #     if isinstance(oldConceptId,BNode):
+    #         oldConceptRepr = repr(Class(oldConceptId,graph=graph))
+    #         if oldConceptRepr.strip() == 'Some Class':
+    #             oldConceptRepr = manchesterSyntax(
+    #                 oldConceptId,
+    #                 graph)
+    #         _debug("%s -> %s" % (oldConceptRepr, newConceptId))
 
-#    Individual.factoryGraph = newGraph
-#    for oldConceptId ,newConceptId in conceptMap.items():
-#        if isinstance(oldConceptId,BNode):
-#            oldConceptRepr = repr(Class(oldConceptId,graph=graph))
-#            if oldConceptRepr.strip() == 'Some Class':
-#                oldConceptRepr = manchesterSyntax(
-#                    oldConceptId,
-#                    graph)
-#            print("%s -> %s"%()
-#                oldConceptRepr,
-#                newConceptId
-#            )
-#
-#        else:
-#            print("%s -> %s"%()
-#                oldConceptId,
-#                newConceptId
-#            )
-#
-#    for c in AllClasses(newGraph):
-#        if isinstance(c.identifier,BNode) and c.identifier in conceptMap.values():
-#            print("## %s ##"%c.identifier)
-#        else:
-#            print("##" * 10)
-#        print(c.__repr__(True))
-#        print("################################")
+    #     else:
+    #         _debug("%s -> %s" % (oldConceptId, newConceptId))
+
+    # for c in AllClasses(newGraph):
+    #     if isinstance(c.identifier,BNode) \
+    #         and c.identifier in conceptMap.values():
+    #         _debug("## %s ##" % c.identifier)
+    #     else:
+    #         _debug("##" * 10)
+    #     _debug(c.__repr__(True))
+    #     _debug("################################")
     return graph
 
-def GetELHConsequenceProcedureRules(tBoxGraph,useThingRule=True):
+
+def GetELHConsequenceProcedureRules(tBoxGraph, useThingRule=True):
     owlThingAppears = False
     if useThingRule and OWL.Thing in tBoxGraph.all_nodes():
         owlThingAppears = True
@@ -390,18 +400,20 @@ def GetELHConsequenceProcedureRules(tBoxGraph,useThingRule=True):
     reducedCompletionRules = set()
     for rule in completionRules:
         for clause in LloydToporTransformation(rule.formula):
-            rule = makeRule(clause,{})
-            # print(rule)
-            #            PrettyPrintRule(rule)
+            rule = makeRule(clause, {})
+            # _debug(rule)
+            # PrettyPrintRule(rule)
             reducedCompletionRules.add(rule)
     return reducedCompletionRules
-def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
+
+
+def SetupMetaInterpreter(tBoxGraph, goal, useThingRule=True):
     from pprint import pprint
-    from FuXi.LP.BackwardFixpointProcedure    import BackwardFixpointProcedure
-    from FuXi.Rete.Magic                      import SetupDDLAndAdornProgram  # , PrettyPrintRule
-    from FuXi.Horn.PositiveConditions         import BuildUnitermFromTuple  # , Exists
-    from FuXi.Rete.TopDown                    import PrepareSipCollection
-    from FuXi.DLP                             import LloydToporTransformation, makeRule
+    from FuXi.LP.BackwardFixpointProcedure import BackwardFixpointProcedure
+    from FuXi.Rete.Magic import SetupDDLAndAdornProgram  # , PrettyPrintRule
+    from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple  # , Exists
+    from FuXi.Rete.TopDown import PrepareSipCollection
+    from FuXi.DLP import LloydToporTransformation, makeRule
     from FuXi.Rete.SidewaysInformationPassing import GetOp
 
     owlThingAppears = False
@@ -414,8 +426,8 @@ def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
     reducedCompletionRules = set()
     for rule in completionRules:
         for clause in LloydToporTransformation(rule.formula):
-            rule = makeRule(clause,{})
-            # print(rule)
+            rule = makeRule(clause, {})
+            # _debug(rule)
             # PrettyPrintRule(rule)
             reducedCompletionRules.add(rule)
 
@@ -425,50 +437,50 @@ def SetupMetaInterpreter(tBoxGraph,goal,useThingRule=True):
         reducedCompletionRules,
         [goal],
         derivedPreds=derivedPredicates,
-        ignoreUnboundDPreds = True,
+        ignoreUnboundDPreds=True,
         hybridPreds2Replace=hybridPredicates)
 
     lit = BuildUnitermFromTuple(goal)
     op = GetOp(lit)
-    lit.setOperator(URIRef(op+'_derived'))
+    lit.setOperator(URIRef(op + '_derived'))
     goal = lit.toRDFTuple()
 
-    sipCollection=PrepareSipCollection(reducedCompletionRules)
+    sipCollection = PrepareSipCollection(reducedCompletionRules)
     tBoxGraph.templateMap = {}
     bfp = BackwardFixpointProcedure(
-                tBoxGraph,
-                network,
-                derivedPredicates,
-                goal,
-                sipCollection,
-                hybridPredicates=hybridPredicates,
-                debug=True)
+        tBoxGraph,
+        network,
+        derivedPredicates,
+        goal,
+        sipCollection,
+        hybridPredicates=hybridPredicates,
+        debug=True)
     bfp.createTopDownReteNetwork(True)
-    pprint(reducedCompletionRules)
-    rt=bfp.answers(debug=True)
-    pprint(rt)
-    print(bfp.metaInterpNetwork)
-    bfp.metaInterpNetwork.reportConflictSet(True,sys.stderr)
+    _debug(pformat(reducedCompletionRules))
+    rt = bfp.answers(debug=True)
+    _debug(pformat(rt))
+    _debug(bfp.metaInterpNetwork)
+    bfp.metaInterpNetwork.reportConflictSet(True, sys.stderr)
     for query in bfp.edbQueries:
-        print("Dispatched query against dataset: %s" % query.asSPARQL())
-    pprint(list(bfp.goalSolutions))
+        _debug("Dispatched query against dataset: %s" % query.asSPARQL())
+    _debug(pformat(list(bfp.goalSolutions)))
+
 
 def NormalizeSubsumption(owlGraph):
-    operands = [(clsLHS,clsRHS)
-        for clsLHS,p,clsRHS in owlGraph.triples((None,
-                                                 OWL_NS.equivalentClass,
-                                                 None))]
-    for clsLHS,clsRHS in operands:
-        if isinstance(clsLHS,URIRef) and isinstance(clsRHS,URIRef):
-            owlGraph.add((clsLHS,RDFS.subClassOf,clsRHS))
-            owlGraph.add((clsRHS,RDFS.subClassOf,clsLHS))
-            owlGraph.remove((clsLHS,OWL_NS.equivalentClass,clsRHS))
-        elif isinstance(clsLHS,URIRef) and isinstance(clsRHS,BNode):
-            owlGraph.add((clsLHS,RDFS.subClassOf,clsRHS))
-            owlGraph.remove((clsLHS,OWL_NS.equivalentClass,clsRHS))
-        elif isinstance(clsLHS,BNode) and isinstance(clsRHS,URIRef):
-            owlGraph.add((clsRHS,RDFS.subClassOf,clsLHS))
-            owlGraph.remove((clsLHS,OWL_NS.equivalentClass,clsRHS))
+    operands = [(clsLHS, clsRHS)
+                for clsLHS, p, clsRHS in owlGraph.triples(
+                        (None, OWL_NS.equivalentClass, None))]
+    for clsLHS, clsRHS in operands:
+        if isinstance(clsLHS, URIRef) and isinstance(clsRHS, URIRef):
+            owlGraph.add((clsLHS, RDFS.subClassOf, clsRHS))
+            owlGraph.add((clsRHS, RDFS.subClassOf, clsLHS))
+            owlGraph.remove((clsLHS, OWL_NS.equivalentClass, clsRHS))
+        elif isinstance(clsLHS, URIRef) and isinstance(clsRHS, BNode):
+            owlGraph.add((clsLHS, RDFS.subClassOf, clsRHS))
+            owlGraph.remove((clsLHS, OWL_NS.equivalentClass, clsRHS))
+        elif isinstance(clsLHS, BNode) and isinstance(clsRHS, URIRef):
+            owlGraph.add((clsRHS, RDFS.subClassOf, clsLHS))
+            owlGraph.remove((clsLHS, OWL_NS.equivalentClass, clsRHS))
 
 if __name__ == '__main__':
     goal = (EX_NS.KneeJoint,
@@ -480,8 +492,8 @@ if __name__ == '__main__':
     #               EX_NS.KneeJoint))
     NormalizeSubsumption(ontGraph)
     for c in AllClasses(ontGraph):
-        print(c.__repr__(True))
-    SetupMetaInterpreter(ontGraph,goal)
-#    test()
-#    import doctest
-#    doctest.testmod()
+        _debug(c.__repr__(True))
+    SetupMetaInterpreter(ontGraph, goal)
+    # test()
+    # import doctest
+    # doctest.testmod()

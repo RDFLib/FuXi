@@ -10,6 +10,7 @@ trail.
 
 import os
 import urllib2
+import logging
 from lxml import etree
 from rdflib.graph import Graph
 from rdflib import Namespace, RDF, Variable, URIRef
@@ -17,6 +18,21 @@ from rdflib.util import first
 from rdflib.collection import Collection
 from FuXi.Horn.PositiveConditions import And, ExternalFunction, Uniterm
 from FuXi.Horn.HornRules import Rule, Clause
+
+
+def _debug(*args, **kw):
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+    logger = logging.getLogger(__name__)
+    logger.debug(*args, **kw)
+
+
+__all__ = [
+    'RIFCoreParser',
+    'SmartRedirectHandler',
+    'RIF_NS',
+    'XSD_NS',
+    'mimetypes',
+    ]
 
 
 class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
@@ -109,11 +125,11 @@ class RIFCoreParser(object):
             assert location is None, "Must supply one of graph or location"
             self.graph = graph
             if debug:
-                print("RIF in RDF graph was provided")
+                _debug("RIF in RDF graph was provided")
         else:
             assert graph is None, "Must supply one of graph or location"
             if debug:
-                print("RIF document URL provided ", location)
+                _debug("RIF document URL provided %s" % location)
             if self.location.find('http:') + 1:
                 req = urllib2.Request(self.location)
 
@@ -133,14 +149,14 @@ class RIFCoreParser(object):
                     data=etree.tostring(
                         transform(etree.fromstring(self.content))))
                 if debug:
-                    print("Extracted rules from RIF XML format")
+                    _debug("Extracted rules from RIF XML format")
             except ValueError:
                 try:
                     self.graph = Graph().parse(data=self.content, format='xml')
                 except:
                     self.graph = Graph().parse(data=self.content, format='n3')
                 if debug:
-                    print("Extracted rules from RIF in RDF document")
+                    _debug("Extracted rules from RIF in RDF document")
 
     def getRuleset(self):
         """
@@ -268,4 +284,10 @@ if __name__ == '__main__':
     # test()
     parser = RIFCoreParser('http://www.w3.org/2005/rules/test/repository/tc/Guards_and_subtypes/Guards_and_subtypes-premise.rif')
     for rule in parser.getRuleset():
-        print(rule)
+        _debug(rule)
+
+# from FuXi.Horn.RIFCore import RIFCoreParser
+# from FuXi.Horn.RIFCore import SmartRedirectHandler
+# from FuXi.Horn.RIFCore import RIF_NS
+# from FuXi.Horn.RIFCore import XSD_NS
+# from FuXi.Horn.RIFCore import mimetypes

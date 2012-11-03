@@ -9,6 +9,7 @@ Native Prolog-like Python implementation for RIF-Core, OWL 2, and SPARQL.
 
 import copy
 import itertools
+import logging
 from functools import reduce
 # from hashlib import md5
 from rdflib.util import first
@@ -26,7 +27,7 @@ from FuXi.Rete.Proof import (
     InferenceStep,
     MakeImmutableDict,
     NodeSet
-    )
+)
 from FuXi.Rete.RuleStore import N3Builtin
 from FuXi.Rete.SidewaysInformationPassing import (
     GetOp,
@@ -36,16 +37,40 @@ from FuXi.Rete.SidewaysInformationPassing import (
     iterCondition,
     makeMD5Digest,
     SIPRepresentation,
-    )
+)
 from FuXi.Rete.Util import selective_memoize, lazyGeneratorPeek
 
 from FuXi.SPARQL import EDBQuery, normalizeBindingsAndQuery
 
 
+def _debug(*args, **kw):
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+    logger = logging.getLogger(__name__)
+    logger.debug(*args, **kw)
+
+__all__ = [
+    'compute_qname',
+    'getBindingsFromLiteral',
+    'invokeRule',
+    'lazyCollapseBooleanProofs',
+    'literalIsGround',
+    'mergeMappings1To2',
+    'normalizeUri',
+    'PrepareSipCollection',
+    'prepMemiozedAns',
+    'RDFTuplesToSPARQL',
+    'refactorMapping',
+    'renderTerm',
+    'RuleFailure',
+    'SipStrategy',
+    'tripleToTriplePattern',
+]
+
 # def makeMD5Digest(value):
 #     return md5(
 #             isinstance(value, unicode) and value.encode('utf-8')
 #             or value).hexdigest()
+
 
 def PrepareSipCollection(adornedRuleset):
     """
@@ -85,8 +110,8 @@ def getBindingsFromLiteral(groundTuple, ungroundLiteral):
     """
     ungroundTuple = ungroundLiteral.toRDFTuple()
     return ImmutableDict([(term, groundTuple[idx])
-                  for idx, term in enumerate(ungroundTuple)
-                      if isinstance(term, Variable) and
+                          for idx, term in enumerate(ungroundTuple)
+                          if isinstance(term, Variable) and
                          not isinstance(groundTuple[idx], Variable)])
 
 
@@ -97,7 +122,7 @@ def tripleToTriplePattern(graph, term):
                                            term.result.n3()))
     else:
         return "%s %s %s" % tuple([renderTerm(graph, term)
-                                    for term in term.toRDFTuple()])
+                                   for term in term.toRDFTuple()])
 
 
 @selective_memoize([0])
@@ -139,9 +164,9 @@ def renderTerm(graph, term):
     if term == RDF.type:
         return ' a '
     elif isinstance(term, URIRef):
-        qname = normalizeUri(term, hasattr(graph, 'revNsMap') \
-                and graph.revNsMap \
-                or dict([(u, p) for p, u in graph.namespaces()]))
+        qname = normalizeUri(term, hasattr(graph, 'revNsMap')
+                             and graph.revNsMap
+                             or dict([(u, p) for p, u in graph.namespaces()]))
         return qname[0] == '_' and u"<%s>" % term or qname
     else:
         try:
@@ -160,7 +185,7 @@ def RDFTuplesToSPARQL(conjunct,
     corresponding SPARQL query
     """
     queryType = isGround and "ASK" or "SELECT %s" % (' '.join([v.n3()
-                                                             for v in vars]))
+                                                               for v in vars]))
     queryShell = len(conjunct) > 1 and "%s {\n%s\n}" or "%s { %s }"
     if symmAtomicInclusion:
         if vars:
@@ -169,18 +194,19 @@ def RDFTuplesToSPARQL(conjunct,
         else:
 
             prefix = "%s a ?KIND" % first(
-                    [lit.arg[0].n3() for lit in conjunct])
+                [lit.arg[0].n3() for lit in conjunct])
         subquery = queryShell % (queryType,
-                               "%s\nFILTER(%s)" % (
-                             prefix,
-                             ' ||\n'.join([
-                               '?KIND = %s' % edb.qname(GetOp(lit))
-                                    for lit in conjunct])))
+                                 "%s\nFILTER(%s)" % (
+                                     prefix,
+                                     ' ||\n'.join([
+                                                  '?KIND = %s' % edb.qname(
+                                                      GetOp(lit))
+                                                  for lit in conjunct])))
     else:
         subquery = queryShell % (
             queryType, ' .\n'.join(
-                        ['\t' + tripleToTriplePattern(edb, lit)
-                            for lit in conjunct]))
+                ['\t' + tripleToTriplePattern(edb, lit)
+                 for lit in conjunct]))
     return subquery
 
 
@@ -207,7 +233,7 @@ def literalIsGround(literal):
     """
     return not [term for term in GetArgs(literal,
                                          secondOrder=True)
-                                         if isinstance(term, Variable)]
+                if isinstance(term, Variable)]
 
 
 def mergeMappings1To2(mapping1, mapping2, makeImmutable=False):
@@ -289,30 +315,30 @@ def invokeRule(priorAnswers,
                 else:
                     newStep = None
                 for rt, _step in \
-                   invokeRule([priorAns],
-                              iter([i for i in remainingBodyList]),
-                              sip,
-                              otherargs,
-                              priorBooleanGoalSuccess,
-                              newStep,
-                              debug=debug,
-                              buildProof=buildProof):
+                    invokeRule([priorAns],
+                               iter([i for i in remainingBodyList]),
+                               sip,
+                               otherargs,
+                               priorBooleanGoalSuccess,
+                               newStep,
+                               debug=debug,
+                               buildProof=buildProof):
                     if rt:
                         yield rt, _step
             except RuleFailure:
                 pass
         if not success:
-            #None of prior answers were successful
-            #indicate termination of rule processing
+            # None of prior answers were successful
+            # indicate termination of rule processing
             raise RuleFailure(
-              "Unable to solve either of %s against remainder of rule: %s" % (
+                "Unable to solve either of %s against remainder of rule %s" % (
                     ansNo, remainingBodyList))
             # yield False,_InferenceStep(
             #    step.parent,step.rule,source=step.source)
     else:
         lazyGenerator = lazyGeneratorPeek(lazyGenerator)
         projectedBindings = lazyGenerator.successful \
-                                and first(lazyGenerator) or {}
+            and first(lazyGenerator) or {}
 
         # First we check if we can combine a large group of subsequent body
         # literals into a single query
@@ -325,7 +351,7 @@ def invokeRule(priorAnswers,
                 return not literal.naf and GetOp(literal) not in derivedPreds
             else:
                 return isinstance(literal, N3Builtin) and \
-                       literal.uri in factGraph.templateMap
+                    literal.uri in factGraph.templateMap
 
         def sparqlResolvableNoTemplates(literal):
             if isinstance(literal, Uniterm):
@@ -334,18 +360,18 @@ def invokeRule(priorAnswers,
                 return False
 
         conjGroundLiterals = list(itertools.takewhile(
-                          hasattr(factGraph, 'templateMap') \
-                            and sparqlResolvable \
-                            or sparqlResolvableNoTemplates,
-                          remainingBodyList))
+                                  hasattr(factGraph, 'templateMap')
+                                  and sparqlResolvable
+                                  or sparqlResolvableNoTemplates,
+                                  remainingBodyList))
         bodyLiteralIterator = iter(remainingBodyList)
         if len(conjGroundLiterals) > 1:
             # If there are literals to combine *and* a mapping from rule
             # builtins to SPARQL FILTER templates ..
             basePredicateVars = set(
-                    reduce(lambda x, y: x + y,
-                           [list(GetVariables(arg, secondOrder=True))
-                                    for arg in conjGroundLiterals]))
+                reduce(lambda x, y: x + y,
+                       [list(GetVariables(arg, secondOrder=True))
+                        for arg in conjGroundLiterals]))
             if projectedBindings:
                 openVars = basePredicateVars.intersection(projectedBindings)
             else:
@@ -353,10 +379,10 @@ def invokeRule(priorAnswers,
                 #the body as an open query
                 openVars = basePredicateVars
             queryConj = EDBQuery([copy.deepcopy(lit)
-                                    for lit in conjGroundLiterals],
-                                    factGraph,
-                                    openVars,
-                                    projectedBindings)
+                                  for lit in conjGroundLiterals],
+                                 factGraph,
+                                 openVars,
+                                 projectedBindings)
             query, answers = queryConj.evaluate(debug)
             if isinstance(answers, bool):
                 combinedAnswers = {}
@@ -364,10 +390,10 @@ def invokeRule(priorAnswers,
             else:
                 if projectedBindings:
                     combinedAnswers = (mergeMappings1To2(
-                                            ans,
-                                            projectedBindings,
-                                            makeImmutable=True)
-                                                for ans in answers)
+                        ans,
+                        projectedBindings,
+                        makeImmutable=True)
+                        for ans in answers)
                 else:
                     combinedAnswers = (
                         MakeImmutableDict(ans) for ans in answers)
@@ -375,37 +401,39 @@ def invokeRule(priorAnswers,
                 rtCheck = combinedAnsLazyGenerator.successful
             if not rtCheck:
                 raise RuleFailure(
-                        "No answers for combined SPARQL query: %s" % query)
+                    "No answers for combined SPARQL query: %s" % query)
             else:
                 # We have solved the previous N body literals with a single
                 # conjunctive query, now we need to make each of the literals
                 # an antecedent to a 'query' step.
                 if buildProof:
                     queryStep = InferenceStep(None, source='some RDF graph')
+                    # @@FIXME: incomplete code
                     queryStep.groundQuery = subquery
                     queryStep.bindings = {}  # combinedAnswers[-1]
+                    # @@FIXME: incomplete code
                     queryHash = URIRef(
-                        "tag:info@fuxi.googlecode.com:Queries#" + \
+                        "tag:info@fuxi.googlecode.com:Queries#" +
                         makeMD5Digest(subquery))
                     queryStep.identifier = queryHash
                     for subGoal in conjGroundLiterals:
                         subNs = NodeSet(subGoal.toRDFTuple(),
-                                   identifier=BNode())
+                                        identifier=BNode())
                         subNs.steps.append(queryStep)
                         step.antecedents.append(subNs)
                         queryStep.parent = subNs
                 for rt, _step in invokeRule(
-                           isinstance(answers, bool) \
-                            and [projectedBindings] \
-                            or combinedAnsLazyGenerator,
-                           iter(remainingBodyList[
-                                len(conjGroundLiterals):]),
-                           sip,
-                           otherargs,
-                           isinstance(answers, bool),
-                           step,
-                           debug=debug,
-                           buildProof=buildProof):
+                    isinstance(answers, bool)
+                    and [projectedBindings]
+                    or combinedAnsLazyGenerator,
+                    iter(remainingBodyList[
+                         len(conjGroundLiterals):]),
+                    sip,
+                    otherargs,
+                    isinstance(answers, bool),
+                    step,
+                    debug=debug,
+                        buildProof=buildProof):
                     yield rt, _step
         else:
             # Continue processing rule body condition
@@ -426,43 +454,38 @@ def invokeRule(priorAnswers,
                     assert lhs is not None and rhs is not None
                     if bodyLiteral.func(lhs, rhs):
                         if debug:
-                            print("Invoked %s(%s,%s) -> True" % (
-                                             bodyLiteral.uri,
-                                             lhs,
-                                             rhs))
+                            _debug("Invoked %s(%s,%s) -> True" % (
+                                  bodyLiteral.uri, lhs, rhs))
                         # positive answer means we can continue processing
                         # the rule body
                         if buildProof:
                             ns = NodeSet(bodyLiteral.toRDFTuple(),
-                                        identifier=BNode())
+                                         identifier=BNode())
                             step.antecedents.append(ns)
                         for rt, _step in invokeRule(
-                                           [projectedBindings],
-                                           bodyLiteralIterator,
-                                           sip,
-                                           otherargs,
-                                           step,
-                                           priorBooleanGoalSuccess,
-                                           debug=debug,
-                                           buildProof=buildProof):
+                            [projectedBindings],
+                            bodyLiteralIterator,
+                            sip,
+                            otherargs,
+                            step,
+                            priorBooleanGoalSuccess,
+                            debug=debug,
+                                buildProof=buildProof):
                             yield rt, _step
                     else:
                         if debug:
-                            print("Successfully invoked %s(%s,%s) -> False" % (
-                                             bodyLiteral.uri,
-                                             lhs,
-                                             rhs))
+                            _debug(
+                                "Successfully invoked %s(%s,%s) -> False" % (
+                                  bodyLiteral.uri, lhs, rhs))
                         raise RuleFailure(
-                                "Failed builtin invokation %s(%s,%s)" %
-                                          (bodyLiteral.uri,
-                                           lhs,
-                                           rhs))
+                            "Failed builtin invokation %s(%s,%s)" %
+                            (bodyLiteral.uri, lhs, rhs))
                 else:
                     # For every body literal, subqueries are generated
                     # according to the sip
                     sipArcPred = URIRef(
                         GetOp(bodyLiteral) + '_' + '_'.join(
-                                            GetArgs(bodyLiteral)))
+                            GetArgs(bodyLiteral)))
                     assert len(list(IncomingSIPArcs(sip, sipArcPred))) < 2
                     subquery = copy.deepcopy(bodyLiteral)
                     subquery.ground(projectedBindings)
@@ -484,18 +507,18 @@ def invokeRule(priorAnswers,
                         ns = None
 
                         answers = first(
-                                itertools.dropwhile(
-                                        lambda item: not item[0],
-                                        SipStrategy(
-                                            subquery.toRDFTuple(),
-                                            sipCollection,
-                                            factGraph,
-                                            derivedPreds,
-                                            MakeImmutableDict(
-                                                    projectedBindings),
-                                            processedRules,
-                                            network=step is not None \
-                                                    and step.parent.network \
+                            itertools.dropwhile(
+                                lambda item: not item[0],
+                                SipStrategy(
+                                    subquery.toRDFTuple(),
+                                    sipCollection,
+                                    factGraph,
+                                    derivedPreds,
+                                    MakeImmutableDict(
+                                        projectedBindings),
+                                    processedRules,
+                            network=step is not None
+                                                    and step.parent.network
                                                     or None,
                                             debug=debug,
                                             buildProof=buildProof,
@@ -511,7 +534,7 @@ def invokeRule(priorAnswers,
                             # literal is negative and there is an answer for
                             # the subgoal
                             raise RuleFailure(
-                                "No solutions solving ground query %s" % \
+                                "No solutions solving ground query %s" %
                                     subquery)
                         else:
                             if buildProof:
@@ -540,7 +563,7 @@ def invokeRule(priorAnswers,
                                     derivedPreds,
                                     MakeImmutableDict(projectedBindings),
                                     processedRules,
-                                    network=step is not None and \
+                                    network=step is not None and
                                             step.parent.network or None,
                                     debug=debug,
                                     buildProof=buildProof,
@@ -563,7 +586,7 @@ def invokeRule(priorAnswers,
                         if not answers.successful and not bodyLiteral.naf or\
                           (bodyLiteral.naf and answers.successful):
                             raise RuleFailure(
-                                "No solutions solving ground query %s" % \
+                                "No solutions solving ground query %s" %
                                     subquery)
                         else:
                             #either we have a positive subgoal and answers
@@ -652,13 +675,14 @@ def SipStrategy(query,
         queryLiteral.ground(bindings)
 
     if debug:
-        print("%sSolving" % ('\t' * proofLevel), queryLiteral, bindings)
-    #Only consider ground triple pattern isomorphism with matching bindings
+        _debug("%sSolving %s %s" % (
+                '\t' * proofLevel, queryLiteral, bindings))
+    # Only consider ground triple pattern isomorphism with matching bindings
     goalRDFStatement = queryLiteral.toRDFTuple()
 
     if queryLiteral in memoizeMemory:
         if debug:
-            print("%sReturning previously calculated results for " % \
+            _debug("%sReturning previously calculated results for %s" %
                         ('\t' * proofLevel, queryLiteral))
         for answers in memoizeMemory[queryLiteral]:
             yield answers
@@ -668,11 +692,10 @@ def SipStrategy(query,
                         ).alphaNetworkHash(
                             True, skolemTerms=list(bindings.values()))
             for r in processedRules
-                if AdornLiteral(goalRDFStatement).adornment == \
+                if AdornLiteral(goalRDFStatement).adornment ==
                    r.adornment]:
         if debug:
-            print("%s Goal already processed..." % \
-                    ('\t' * proofLevel))
+            _debug("%s Goal already processed..." % '\t' * proofLevel)
     else:
         isGround = literalIsGround(queryLiteral)
         if buildProof:
@@ -727,10 +750,9 @@ def SipStrategy(query,
             filter(IsAtomicInclusionAxiomRHS, rules))
         if atomicInclusionAxioms and len(atomicInclusionAxioms) > 1:
             if debug:
-                from pprint import pprint
-                import sys
-                print("\tCombining atomic inclusion axioms: ")
-                pprint(atomicInclusionAxioms, sys.stderr)
+                from pprint import pformat
+                _debug("\tCombining atomic inclusion axioms: ")
+                _debug(pformat(atomicInclusionAxioms))
             if buildProof:
                 factStep = InferenceStep(ns, source='some RDF graph')
                 ns.steps.append(factStep)
@@ -757,6 +779,7 @@ def SipStrategy(query,
                                     _bindings).evaluate(
                                         debug, symmAtomicInclusion=True)
                 if buildProof:
+                    # @@FIXME: incomplete code
                     factStep.groundQuery = subquery
                 for ans in rt:
                     if buildProof:
@@ -775,6 +798,7 @@ def SipStrategy(query,
                                     _bindings).evaluate(
                                         debug, symmAtomicInclusion=True)
                 if buildProof:
+                    # @@FIXME: incomplete code
                     factStep.groundQuery = subquery
                 memoizeMemory.setdefault(queryLiteral, set()).add(
                                          (prepMemiozedAns(rt), ns))
@@ -800,14 +824,15 @@ def SipStrategy(query,
             # dontStop = True
             # projectedBindings = comboBindings.copy()
             if debug:
-                print("%sProcessing rule" % ('\t' * proofLevel, rule.formula))
+                _debug("%sProcessing rule %s" % (
+                            '\t' * proofLevel, rule.formula))
                 if debug and sipCollection:
-                    print(
-                        "Sideways Information Passing (sip) graph for %s: " % \
+                    _debug(
+                        "Sideways Information Passing (sip) graph for %s: " %
                                                                 queryLiteral)
-                    print(sipCollection.serialize(format='n3'))
+                    _debug(sipCollection.serialize(format='n3'))
                     for sip in SIPRepresentation(sipCollection):
-                        print(sip)
+                        _debug(sip)
             try:
                 # Invoke the rule
                 if buildProof:
