@@ -1,0 +1,18 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix drugbank: <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/>.
+
+drugbank:interactionForDrug 
+  a owl:ObjectProperty;
+  owl:inverseOf drugbank:interactionDrug1, drugbank:interactionDrug2 .
+
+drugbank:InfluenzaDrug a owl:Class.
+
+[
+   a owl:Restriction;
+   owl:onProperty drugbank:affectedOrganism;
+   owl:hasValue "Influenza Virus"
+] rdfs:subClassOf drugbank:InfluenzaDrug .
+
+drugbank:affectedOrganism a owl:DatatypeProperty .
+

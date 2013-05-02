@@ -1,0 +1,7 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . 
+@prefix : <http://xdors.net/demo#> . 
+:john rdf:type :person; :spouse :jane; :has_child :johny, :jack . 
+:jane rdf:type  :person; :has_child :janey; :has_child :johny. 
+:janey rdf:type :person. 
+:johny rdf:type :person. 
+:jack rdf:type  :person. 

@@ -1,0 +1,9 @@
+@prefix ddl: <http://code.google.com/p/fuxi/wiki/DataDescriptionLanguage#>.
+@prefix drugbank: <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/>.
+
+( 
+  drugbank:InfluenzaDrug 
+) a ddl:DerivedClassList .
+
+( drugbank:interactionForDrug ) a ddl:DerivedPropertyList .
+

@@ -1,0 +1,15 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix : <http://xdors.net/demo#> .
+:john rdf:type :person; :spouse :jane.
+:jane rdf:type  :person;
+    :has_child :janey;
+    :has_child :johny .
+:janey rdf:type :person .
+:johny rdf:type :person .
+:jack rdf:type  :person .
+:janey owl:differentFrom :johny .
+
+# according to the OWL semantics, you need to declare that 
+# janey and  johny are indeed different individuals
+

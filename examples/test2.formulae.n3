@@ -1,0 +1,4 @@
+@prefix : <http://xdors.net/demo#> . 
+@prefix log: <http://www.w3.org/2000/10/swap/log#> . 
+{ ?x :has_child ?y.  ?x :has_child ?z.  ?y log:notEqualTo ?z } => { ? 
+y :has_sibling ?z }. 

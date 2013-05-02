@@ -1,0 +1,34 @@
+@prefix : <http://xdors.net/demo#> . 
+@prefix owl:  <http://www.w3.org/2002/07/owl#> . 
+
+# original
+# { ?y owl:differentFrom ?z. 
+#   ?x :has_child ?y. 
+#   ?x :has_child ?z. 
+# } => 
+# {?y :has_sibling ?z}. 
+
+# "N3 engines are plain RDF tools; they are not aware of the OWL 
+# semantics. For that you need to add more rules"
+
+@prefix : <http://xdors.net/demo#> . 
+@prefix log: <http://www.w3.org/2000/10/swap/log#> . 
+{ 
+  #  ?y owl:differentFrom ?z. 
+  ?x :has_child ?y. 
+  ?x :has_child ?z. 
+  ?y log:notEqualTo ?z. 
+} => { 
+  ?y :has_sibling ?z 
+}. 
+
+# https://groups.google.com/d/msg/fuxi-discussion/1oR1pT3F2SQ/JeX-NCyGHakJ
+
+# Then , you need also a rule for the symmetry of the owl:differentFrom property:
+{
+    ?A owl:differentFrom ?B
+
+} => {
+
+    ?B owl:differentFrom ?A
+}.
