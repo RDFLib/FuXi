@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-from io import StringIO
+try:
+    from io import StringIO
+    assert StringIO
+except ImportError:
+    from StringIO import StringIO
 from glob import glob
 import os
 import time
@@ -7,7 +11,7 @@ import unittest
 from pprint import pprint, pformat
 from rdflib import BNode, Namespace, RDF, RDFS, URIRef, plugin
 from rdflib.graph import Graph
-from rdfextras.sparql.parser import parse
+from rdflib.plugins.sparql.parser import parse
 from rdflib.store import Store
 
 from FuXi.DLP import non_DHL_OWL_Semantics
