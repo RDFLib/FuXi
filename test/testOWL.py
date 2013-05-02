@@ -11,7 +11,7 @@ import unittest
 from pprint import pprint, pformat
 from rdflib import BNode, Namespace, RDF, RDFS, URIRef, plugin
 from rdflib.graph import Graph
-from rdflib.plugins.sparql.parser import parse
+# from rdflib.plugins.sparql.parser import parse
 from rdflib.store import Store
 
 from FuXi.DLP import non_DHL_OWL_Semantics
@@ -80,7 +80,7 @@ WHERE {
     rtest:conclusionDocument ?conclusion
   ]
 }"""
-PARSED_MANIFEST_QUERY = parse(MANIFEST_QUERY)
+# PARSED_MANIFEST_QUERY = parse(MANIFEST_QUERY)
 
 Features2Skip = [
     URIRef('http://www.w3.org/2002/07/owl#sameClassAs'),
