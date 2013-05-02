@@ -1,48 +1,35 @@
+# -*- coding: utf-8 -*-
+"""
+==================================================================================
+"""
 import sys
 import unittest
-import logging
-from rdflib import RDF
-from rdflib.graph import Graph
-from rdflib.namespace import Namespace, NamespaceManager
-from rdflib.util import first
-from FuXi.Syntax.InfixOWL import OWL_NS
+
 from FuXi.Syntax.InfixOWL import BooleanClass
-from FuXi.Syntax.InfixOWL import CastClass
 from FuXi.Syntax.InfixOWL import Class
-from FuXi.Syntax.InfixOWL import classOrIdentifier
 from FuXi.Syntax.InfixOWL import Individual
-
-
-def _debug(*args, **kw):
-    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
-    logger = logging.getLogger(__name__)
-    logger.debug(*args, **kw)
-
-
-__all__ = [
-    'DATALOG_SAFETY_NONE',
-    'DATALOG_SAFETY_STRICT',
-    'DATALOG_SAFETY_LOOSE',
-    'safetyNameMap',
-    'ComplementExpansion',
-    'SubSumptionExpansion',
-]
+from FuXi.Syntax.InfixOWL import CastClass
+from FuXi.Syntax.InfixOWL import classOrIdentifier
+from FuXi.Syntax.InfixOWL import OWL_NS
+from rdflib.graph import Graph
+from rdflib.namespace import NamespaceManager
+from rdflib import RDF, Namespace
+from rdflib.util import first
 
 DATALOG_SAFETY_NONE = 0
 DATALOG_SAFETY_STRICT = 1
 DATALOG_SAFETY_LOOSE = 2
 
 safetyNameMap = {
-    'none': DATALOG_SAFETY_NONE,
-    'strict': DATALOG_SAFETY_STRICT,
-    'loose': DATALOG_SAFETY_LOOSE
+  'none': DATALOG_SAFETY_NONE,
+  'strict': DATALOG_SAFETY_STRICT,
+  'loose': DATALOG_SAFETY_LOOSE
 }
 
 
 def SubSumptionExpansion(owlClass):
     owlClass = CastClass(owlClass)
-    if isinstance(owlClass, BooleanClass) \
-            and owlClass._operator == OWL_NS.unionOf:
+    if isinstance(owlClass, BooleanClass) and owlClass._operator == OWL_NS.unionOf:
         for member in owlClass:
             expanded = False
             for innerMember in SubSumptionExpansion(Class(member)):
@@ -62,12 +49,11 @@ def SubSumptionExpansion(owlClass):
 
 def ComplementExpansion(owlClass, debug=False):
     """
-    For binary conjunctions of a positive conjunction concept and a negative
-    atomic concept.
+    For binary conjunctions of a positive conjunction concept and a negative atomic concept
     """
     owlClass = CastClass(owlClass.identifier, owlClass.graph)
     if isinstance(owlClass, BooleanClass) and \
-            len(owlClass) == 2 and owlClass._operator == OWL_NS.intersectionOf:
+       len(owlClass) == 2 and owlClass._operator == OWL_NS.intersectionOf:
         oldRepr = owlClass.__repr__()
         # A boolean-constructed class
         negativeClasses = set()
@@ -75,8 +61,7 @@ def ComplementExpansion(owlClass, debug=False):
         for member in owlClass:
             member = Class(member)
             if member.complementOf:
-                # A negative class, expand it and add to bucket of classes to
-                # 'remove'
+                # A negative class, expand it and add to bucket of classes to 'remove'
                 for expandedClass in SubSumptionExpansion(member.complementOf):
                     negativeClasses.add(expandedClass)
             else:
@@ -89,22 +74,21 @@ def ComplementExpansion(owlClass, debug=False):
                     otherClasses.add(member.identifier)
 
         if negativeClasses:
-            # Delete the old list of operands for the boolean class
+            #Delete the old list of operands for the boolean class
             oldList = owlClass._rdfList
             oldList.clear()
 
-            # Recreate the list of operands, exluding the expanded negative
-            # classes
+            #Recreate the list of operands, exluding the expanded negative classes
             for allowedClasses in otherClasses.difference(negativeClasses):
                 oldList.append(classOrIdentifier(allowedClasses))
             owlClass.changeOperator(OWL_NS.unionOf)
             if debug:
-                _debug("Incoming boolean class: %s" % oldRepr)
-                _debug("Expanded boolean class: %s" % owlClass.__repr__())
+                print("Incoming boolean class: ", oldRepr)
+                print("Expanded boolean class: ", owlClass.__repr__())
             return owlClass
         else:
             if debug:
-                _debug("There were no negative classes!")
+                print("There were no negative classes.")
 
 
 class ComplementExpansionTestSuite(unittest.TestCase):
@@ -141,24 +125,21 @@ class ComplementExpansionTestSuite(unittest.TestCase):
         female += girl
 
         testClass = human & ~ female
-        self.assertEquals(
-            repr(testClass), '( ex:Human and ( not ex:Female ) )')
+        self.assertEquals(repr(testClass), 'ex:Human THAT ( NOT ex:Female )')
         newtestClass = ComplementExpansion(testClass, debug=True)
-        self.assertTrue(
-            repr(newtestClass) in [
-                '( ex:Boy or ex:Man )', '( ex:Man or ex:Boy )'],
-            repr(newtestClass))
+        self.assertTrue(repr(newtestClass) in [
+                '( ex:Boy or ex:Man )',
+                '( ex:Man or ex:Boy )'],
+                repr(newtestClass))
 
         testClass2 = animal & ~ (male | female)
-        self.assertEquals(
-            repr(testClass2),
-            '( ( ex:Cat or ex:Dog or ex:Human ) and ' +
-            '( not ( ex:Male or ex:Female ) ) )')
+        self.assertEquals(repr(testClass2),
+            '( ( ex:Cat or ex:Dog or ex:Human ) and ( not ( ex:Male or ex:Female ) ) )')
         newtestClass2 = ComplementExpansion(testClass2, debug=True)
         testClass2Repr = repr(newtestClass2)
-        self.assertTrue(
-            testClass2Repr in [
-                '( ex:Cat or ex:Dog )', '( ex:Dog or ex:Cat )'],
+        self.assertTrue(testClass2Repr in [
+            '( ex:Cat or ex:Dog )',
+            '( ex:Dog or ex:Cat )'],
             testClass2Repr)
 
 if __name__ == '__main__':
@@ -168,16 +149,16 @@ if __name__ == '__main__':
     parser = OptionParser()
 
     parser.add_option('--verbose', action="store_true", default=False,
-                      help='Output debug print statements or not')
+        help='Output debug print statements or not')
     parser.add_option('--format', default="xml",
-                      help='The RDF serialization syntax to parse with')
+        help='The RDF serialization syntax to parse with')
 
     (options, args) = parser.parse_args()
 
     owlGraph = Graph()
     for input in args[0:]:
         if options.verbose:
-            _debug("Parsing %s as %s" % (input, options.format))
+            print("Parsing ", input, " as ", options.format)
         owlGraph.parse(input, format=options.format)
 
     Individual.factoryGraph = owlGraph
@@ -193,16 +174,15 @@ if __name__ == '__main__':
             prevLink = containingList
             containingList = first(owlGraph.subjects(RDF.rest, containingList))
         for s, p, o in owlGraph.triples_choices((None,
-                                                 [OWL_NS.intersectionOf,
-                                                  OWL_NS.unionOf],
-                                                 prevLink)):
+                                            [OWL_NS.intersectionOf,
+                                             OWL_NS.unionOf],
+                                             prevLink)):
             _class = Class(s)
-            # _debug(_class.__repr__(True,True))
+            # print(_class.__repr__(True,True))
             ComplementExpansion(_class, debug=options.verbose)
 
-# from FuXi.Horn import DATALOG_SAFETY_NONE
-# from FuXi.Horn import DATALOG_SAFETY_STRICT
-# from FuXi.Horn import DATALOG_SAFETY_LOOSE
-# from FuXi.Horn import safetyNameMap
-# from FuXi.Horn import SubSumptionExpansion
+
+
 # from FuXi.Horn import ComplementExpansion
+# from FuXi.Horn import SubSumptionExpansion
+# from FuXi.Horn import ComplementExpansionTestSuite

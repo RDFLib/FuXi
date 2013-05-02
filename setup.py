@@ -35,35 +35,20 @@ def setup_python3():
 
     return tmp_src
 
-
-# Find version. We have to do this because we can't import it in Python 3 until
-# its been automatically converted in the setup process.
-def find_version(filename):
-    _version_re = re.compile(r'__version__ = "(.*)"')
-    for line in open(filename):
-        version_match = _version_re.match(line)
-        if version_match:
-            return version_match.group(1)
-
-__version__ = find_version('lib/__init__.py')
-
-# import ez_setup
-# ez_setup.use_setuptools()
-# from setuptools  import setup
-
 config = dict(
     name="FuXi",
     version="1.4",
     description="An OWL / N3-based in-memory, logic reasoning system for RDF",
     author="Chime Ogbuji",
     author_email="chimezie@gmail.com",
-    maintainer='RDFLib Team',
-    maintainer_email='rdflib-dev@googlegroups.com',
+    maintainer="RDFLib Team",
+    maintainer_email="rdflib-dev@google.com",
     platforms=["any"],
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 2.5",
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.2",
@@ -72,7 +57,7 @@ config = dict(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Operating System :: OS Independent",
         "Natural Language :: English",
-        ],
+       ],
     package_dir={
         'FuXi': 'lib',
     },
@@ -83,10 +68,12 @@ config = dict(
         "FuXi.Rete",
         "FuXi.DLP",
         "FuXi.Horn",
+        "FuXi.Syntax",
     ],
-    install_requires=['rdflib>2', 'rdfextras>0.2', 'lxml'],  # 'telescope'],
+    install_requires=['rdflib>2'],
     license="Apache",
     keywords="python logic owl rdf dlp n3 rule reasoner",
+    test_suite='nose.collector',
     url="https://github.com/RDFLib/FuXi",
     entry_points={
         'console_scripts': [
@@ -99,12 +86,13 @@ config = dict(
 kwargs = {}
 if sys.version_info[0] >= 3:
     from setuptools import setup
+    assert setup
     kwargs['use_2to3'] = True
     kwargs['src_root'] = setup_python3()
 else:
     try:
         from setuptools import setup
-        kwargs['test_suite'] = "nose.collector"
+        assert setup
     except ImportError:
         from distutils.core import setup
 

@@ -1,52 +1,25 @@
 """
-Utility functions for a Boost Graph Library (BGL) DiGraph via the BGL
-Python Bindings
+=======================================================================================
+Utility functions for a Boost Graph Library (BGL) DiGraph via the BGL Python Bindings
 """
 import itertools
 import pickle
-import logging
-from rdflib import BNode, py3compat
-from rdflib.collection import Collection
+from rdflib import (
+    BNode,
+    Namespace,
+    )
 from rdflib.graph import Graph
+from rdflib.collection import Collection
 from rdflib.namespace import NamespaceManager
+from rdflib import py3compat
 
 try:
-    import boost.graph as bgl
-    bglGraph = bgl.Digraph()
+    from pydot import Node, Edge, Dot
 except:
-    try:
-        from pydot import Node, Edge, Dot
-    except:
-        import warnings
-        warnings.warn("Missing pydot library", ImportWarning)
+    import warnings
+    warnings.warn("Missing pydot library", ImportWarning)
 
-from FuXi.Rete.AlphaNode import AlphaNode
-from FuXi.DLP import LOG
-
-# required for doctesting
-from rdflib import URIRef
-from rdflib.util import first
-
-
-def _debug(*args, **kw):
-    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
-    logger = logging.getLogger(__name__)
-    logger.debug(*args, **kw)
-
-
-__all__ = [
-    'call_with_filtered_args',
-    'CollapseDictionary',
-    'generateBGLNode',
-    'generateTokenSet',
-    'InformedLazyGenerator',
-    'lazyGeneratorPeek',
-    'permu',
-    'renderNetwork',
-    'selective_memoize',
-    'setdict',
-    'xcombine',
-]
+LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 
 
 def xcombine(*seqin):
@@ -62,7 +35,7 @@ def xcombine(*seqin):
         '''recursive looping function'''
         if seqin:                   # any more sequences to process?
             for item in seqin[0]:
-                newcomb = comb + [item]  # add next item to current combination
+                newcomb = comb + [item]     # add next item to current combination
                 # call rloop w/ remaining seqs, newcomb
                 for item in rloop(seqin[1:], newcomb):
                     yield item          # seqs and newcomb
@@ -95,6 +68,7 @@ def CollapseDictionary(mapping):
     and removes prefix mappings that begin with _ and
     there is already a map to their value
 
+    >>> from rdflib import URIRef
     >>> a = {'ex': URIRef('http://example.com/')}
     >>> a['_1'] =  a['ex']
     >>> len(a)
@@ -108,6 +82,7 @@ def CollapseDictionary(mapping):
     """
     def originalPrefixes(item):
         return item.find('_') + 1 == 1
+
     revDict = {}
     for k, v in list(mapping.items()):
         revDict.setdefault(v, set()).add(k)
@@ -115,20 +90,19 @@ def CollapseDictionary(mapping):
     for k, v in list(revDict.items()):
         origPrefixes = []
         dupePrefixes = []
-        #group prefixes for a single URI by whether or not
-        #they have a _ prefix
+        # group prefixes for a single URI by whether or not
+        # they have a _ prefix
         for rt, items in itertools.groupby(v, originalPrefixes):
             if rt:
                 dupePrefixes.extend(items)
             else:
                 origPrefixes.extend(items)
         if origPrefixes and len(v) > 1 and len(dupePrefixes):
-            #There are allocated prefixes for URIs that were originally
-            #given a prefix
+            # There are allocated prefixes for URIs that were originally
+            # given a prefix
             assert len(origPrefixes) == 1
             prefixes2Collapse.extend(dupePrefixes)
-    return dict([(k, v) for k, v in list(
-        mapping.items()) if k not in prefixes2Collapse])
+    return dict([(k, v) for k, v in list(mapping.items()) if k not in prefixes2Collapse])
 
 
 class selective_memoize(object):
@@ -167,8 +141,8 @@ class selective_memoize(object):
     3
     """
     # Ideas from MemoizeMutable class of Recipe 52201 by Paul Moore and
-    # from memoized decorator of
-    # http://wiki.python.org/moin/PythonDecoratorLibrary
+    # from memoized decorator of http://wiki.python.org/moin/PythonDecoratorLibrary
+
     def __init__(self, cacheableArgPos=[], cacheableArgKey=[]):
         self.cacheableArgPos = cacheableArgPos
         self.cacheableArgKey = cacheableArgKey
@@ -187,7 +161,7 @@ class selective_memoize(object):
             if kwds:
                 if self.cacheableArgKey:
                     items = [(k, v) for k, v in list(kwds.items())
-                             if k in self.cacheableArgKey]
+                                if k in self.cacheableArgKey]
                 else:
                     items = []
                 items.sort()
@@ -225,6 +199,7 @@ def lazyGeneratorPeek(iterable, firstN=1):
     Lazily peeks into an iterable and returns None if it has less than N items
     or returns another generator over *all* content if it isn't
 
+    >>> from rdflib.util import first
     >>> a=(i for i in [1,2,3])
     >>> first(a)
     1
@@ -232,15 +207,17 @@ def lazyGeneratorPeek(iterable, firstN=1):
     [2, 3]
     >>> a=(i for i in [1,2,3])
     >>> result = lazyGeneratorPeek(a)
+    >>> result  # doctest:+ELLIPSIS
+    <FuXi.Rete.Util.InformedLazyGenerator object at ...>
     >>> result = list(result)
     >>> result
     [1, 2, 3]
-    >>> lazyGeneratorPeek((i for i in [])) # doctest:+SKIP
-    <FuXi.Rete.Util.InformedLazyGenerator object at  ...>
-    >>> lazyGeneratorPeek(result,4) # doctest:+SKIP
-    <FuXi.Rete.Util.InformedLazyGenerator object at  ...>
-    >>> lazyGeneratorPeek(result,3) # doctest:+SKIP
-    <FuXi.Rete.Util.InformedLazyGenerator object at  ...>
+    >>> lazyGeneratorPeek((i for i in [])) # doctest:+ELLIPSIS
+    <FuXi.Rete.Util.InformedLazyGenerator object at ...>
+    >>> lazyGeneratorPeek(result,4) # doctest:+ELLIPSIS
+    <FuXi.Rete.Util.InformedLazyGenerator object at ...>
+    >>> lazyGeneratorPeek(result,3) # doctest:+ELLIPSIS
+    <FuXi.Rete.Util.InformedLazyGenerator object at ...>
     """
     cnt = firstN
     header = []
@@ -248,15 +225,13 @@ def lazyGeneratorPeek(iterable, firstN=1):
         cnt -= 1
         header.append(item)
         if not cnt:
-            #Stop after consuming first N items
+            # Stop after consuming first N items
             break
     if not cnt:
-        #There at least N items
-        return InformedLazyGenerator(
-            (i for i in itertools.chain(header, iterable)), True)
+        # There at least N items
+        return InformedLazyGenerator((i for i in itertools.chain(header, iterable)), True)
     else:
-        return InformedLazyGenerator(
-            (i for i in header), False)
+        return InformedLazyGenerator((i for i in header), False)
 
 
 class setdict(dict):
@@ -328,7 +303,7 @@ def generateTokenSet(graph, debugTriples=[], skipImplies=True):
     for s, p, o in graph:
 
         if not skipImplies or p != LOG.implies:
-            _debug("%s %s %s" % (s, p, o))
+            # print(s, p, o)
             debug = debugTriples and (s, p, o) in debugTriples
             rt.add(ReteToken((normalizeGraphTerms(s),
                               normalizeGraphTerms(p),
@@ -337,7 +312,7 @@ def generateTokenSet(graph, debugTriples=[], skipImplies=True):
 
 
 def generateBGLNode(dot, node, namespace_manager, identifier):
-    from FuXi.Rete import ReteNetwork, BetaNode, BuiltInAlphaNode
+    from FuXi.Rete import ReteNetwork, BetaNode, BuiltInAlphaNode, AlphaNode
     from .BetaNode import LEFT_MEMORY, RIGHT_MEMORY
     vertex = Node(identifier)
 
@@ -353,16 +328,14 @@ def generateBGLNode(dot, node, namespace_manager, identifier):
         elif node.aPassThru:
             label = "Pass-thru Beta node\\n"
         elif node.commonVariables:
-            label = "Beta node\\n(%s)" % (','.join(
-                    ["?%s" % i for i in node.commonVariables]))
+            label = "Beta node\\n(%s)" % (
+                ','.join(["?%s" % i for i in node.commonVariables]))
         else:
             label = "Beta node"
         if not node.fedByBuiltin:
-            leftLen = node.memories[LEFT_MEMORY] and len(
-                node.memories[LEFT_MEMORY]) or 0
+            leftLen = node.memories[LEFT_MEMORY] and len(node.memories[LEFT_MEMORY]) or 0
             rightLen = len(node.memories[RIGHT_MEMORY])
-            label += '\\n %s in left, %s in right memories' % (
-                leftLen, rightLen)
+            label += '\\n %s in left, %s in right memories' % (leftLen, rightLen)
 
     elif isinstance(node, BetaNode) and node.consequent:
         # rootMap[vertex] = 'true'
@@ -370,8 +343,8 @@ def generateBGLNode(dot, node, namespace_manager, identifier):
         stmts = []
         for s, p, o in node.consequent:
             stmts.append(' '.join([str(namespace_manager.normalizeUri(s)),
-                                   str(namespace_manager.normalizeUri(p)),
-                                   str(namespace_manager.normalizeUri(o))]))
+              str(namespace_manager.normalizeUri(p)),
+              str(namespace_manager.normalizeUri(o))]))
 
         rhsVertex = Node(BNode(),
                          label='"' + '\\n'.join(stmts) + '"',
@@ -386,8 +359,7 @@ def generateBGLNode(dot, node, namespace_manager, identifier):
                 ','.join(["?%s" % i for i in node.commonVariables]), inst))
         else:
             label = "Terminal node"
-        leftLen = node.memories[LEFT_MEMORY] and len(node.memories[
-                                                     LEFT_MEMORY]) or 0
+        leftLen = node.memories[LEFT_MEMORY] and len(node.memories[LEFT_MEMORY]) or 0
         rightLen = len(node.memories[RIGHT_MEMORY])
         label += '\\n %s in left, %s in right memories' % (leftLen, rightLen)
         inst = node.network.instantiations[node]
@@ -408,9 +380,8 @@ def generateBGLNode(dot, node, namespace_manager, identifier):
         peripheries = '1'
         shape = 'plaintext'
         # widthMap[vertex] = '50em'
-        label = ' '.join(
-            [isinstance(i, BNode) and i.n3() or str(namespace_manager.normalizeUri(i))
-             for i in node.triplePattern])
+        label = ' '.join([isinstance(i, BNode) and i.n3() or str(namespace_manager.normalizeUri(i))
+                           for i in node.triplePattern])
 
     vertex.set_shape(shape)
     vertex.set_label('"%s"' % label)
@@ -424,8 +395,10 @@ def renderNetwork(network, nsMap={}):
     """
     Takes an instance of a compiled ReteNetwork and a namespace mapping (for constructing QNames
     for rule pattern terms) and returns a BGL Digraph instance representing the Rete network
-    (from which GraphViz diagrams can be generated)
+    #(from which GraphViz diagrams can be generated)
     """
+    # from FuXi.Rete import BuiltInAlphaNode
+    # from BetaNode import LEFT_MEMORY, RIGHT_MEMORY, LEFT_UNLINKING
     dot = Dot(graph_type='digraph')
     namespace_manager = NamespaceManager(Graph())
     for prefix, uri in list(nsMap.items()):
@@ -437,8 +410,7 @@ def renderNetwork(network, nsMap={}):
     for node in list(network.nodes.values()):
         if not node in visitedNodes:
             idx += 1
-            visitedNodes[node] = generateBGLNode(
-                dot, node, namespace_manager, str(idx))
+            visitedNodes[node] = generateBGLNode(dot, node, namespace_manager, str(idx))
             dot.add_node(visitedNodes[node])
     nodeIdxs = {}
     for node in list(network.nodes.values()):
@@ -453,8 +425,7 @@ def renderNetwork(network, nsMap={}):
                         if i not in visitedNodes:
                             idx += 1
                             nodeIdxs[i] = idx
-                            visitedNodes[i] = generateBGLNode(
-                                dot, i, namespace_manager, str(idx))
+                            visitedNodes[i] = generateBGLNode(dot, i, namespace_manager, str(idx))
                             dot.add_node(visitedNodes[i])
                     edge = Edge(visitedNodes[node],
                                 visitedNodes[bNode],
@@ -472,13 +443,14 @@ def test():
 if __name__ == '__main__':
     test()
 
+# from FuXi.Rete.Util import selective_memoize
+# from FuXi.Rete.Util import InformedLazyGenerator
+# from FuXi.Rete.Util import setdict
+
 # from FuXi.Rete.Util import xcombine
 # from FuXi.Rete.Util import permu
 # from FuXi.Rete.Util import CollapseDictionary
-# from FuXi.Rete.Util import selective_memoize
-# from FuXi.Rete.Util import InformedLazyGenerator
 # from FuXi.Rete.Util import lazyGeneratorPeek
-# from FuXi.Rete.Util import setdict
 # from FuXi.Rete.Util import call_with_filtered_args
 # from FuXi.Rete.Util import generateTokenSet
 # from FuXi.Rete.Util import generateBGLNode

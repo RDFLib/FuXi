@@ -2,8 +2,6 @@ import doctest
 from rdflib import RDF
 from rdflib import py3compat
 
-__all__ = ['IdentifyHybridPredicates']
-
 
 @py3compat.format_doctest_out
 def IdentifyHybridPredicates(graph, derivedPredicates):
@@ -22,9 +20,9 @@ def IdentifyHybridPredicates(graph, derivedPredicates):
     >>> sorted(rt)
     [rdflib.term.URIRef(%(u)s'http://example.com/Class1'), rdflib.term.URIRef(%(u)s'http://example.com/predicate1')]
     """
-    derivedPredicates = derivedPredicates \
-                            if isinstance(derivedPredicates, set) else \
-                            set(derivedPredicates)
+    derivedPredicates = \
+        derivedPredicates if isinstance(derivedPredicates, set) \
+                            else set(derivedPredicates)
     return derivedPredicates.intersection(
                     [o if p == RDF.type else p
                         for s, p, o in graph])

@@ -1,11 +1,30 @@
-﻿import unittest
-from io import StringIO
-from rdflib.graph import ConjunctiveGraph, QuotedGraph
-from rdflib import Literal, Variable, URIRef, Namespace
-from FuXi.Horn.HornRules import NetworkFromN3
-from FuXi.Rete.BuiltinPredicates import STRING_NS
+﻿#!/usr/bin/env python
+
+import unittest
+# from pprint import pprint
+from cStringIO import StringIO
+from rdflib.graph import (
+    # Graph,
+    ConjunctiveGraph,
+    QuotedGraph
+    )
+from rdflib import (
+    Literal,
+    Variable,
+    URIRef,
+    Namespace
+    )
+from FuXi.Rete.BuiltinPredicates import (
+    # FILTERS,
+    STRING_NS
+    )
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Rete.Util import generateTokenSet
+from FuXi.Horn.HornRules import (
+    # HornFromN3,
+    NetworkFromN3
+    )
+# from FuXi.Rete.BuiltinPredicates import FILTERS, STRING_NS
 
 TEST_NS = Namespace("http://example.org/test#")
 LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
@@ -35,21 +54,22 @@ def extractBaseFacts(cg):
 
 
 def build_network(rules):
+    if isinstance(rules, basestring):
+        rules = StringIO(rules)
     graph = ConjunctiveGraph()
-    graph.parse(data=rules, publicID='test', format='n3')
+    graph.load(rules, publicID='test', format='n3')
     network = NetworkFromN3(
-        graph, additionalBuiltins={
-            STRING_NS.startsWith: StringStartsWith})
+        graph, additionalBuiltins={STRING_NS.startsWith: StringStartsWith})
     network.feedFactsToAdd(generateTokenSet(extractBaseFacts(graph)))
     return network
 
 
 def build_network2(rules):
     graph = ConjunctiveGraph()
-    graph.parse(data=rules, publicID='test', format='n3')
-    rule_store, rule_graph = SetupRuleStore(StringIO(rules),
-                                additionalBuiltins={
-                                STRING_NS.startsWith: StringStartsWith})
+    graph.load(StringIO(rules), publicID='test', format='n3')
+    rule_store, rule_graph = SetupRuleStore(
+                  StringIO(rules),
+                  additionalBuiltins={STRING_NS.startsWith: StringStartsWith})
     from FuXi.Rete.Network import ReteNetwork
     network = ReteNetwork(rule_store)
     network.feedFactsToAdd(generateTokenSet(extractBaseFacts(graph)))
@@ -58,7 +78,7 @@ def build_network2(rules):
 
 class LiteralStringStartsWith(unittest.TestCase):
     fact = (TEST_NS.test, TEST_NS.passes, Literal(1))
-    rules = u"""
+    rules = """
     @prefix test: <http://example.org/test#> .
     @prefix str: <http://www.w3.org/2000/10/swap/string#> .
 
@@ -80,14 +100,14 @@ class LiteralStringStartsWith(unittest.TestCase):
 
 class URIRefStringStartsWith(unittest.TestCase):
     fact = (TEST_NS.test, TEST_NS.passes, Literal(1))
-    rules = u"""
+    rules = """
     @prefix test: <http://example.org/test#> .
     @prefix str: <http://www.w3.org/2000/10/swap/string#> .
 
     test:example test:value test:example .
     { test:example test:value ?value .
-      ?value str:startsWith "http://example.org/test#ex"
-        } => { test:test test:passes 1 } .
+      ?value str:startsWith "http://example.org/test#ex" } =>
+            { test:test test:passes 1 } .
     """
 
     def setUp(self):

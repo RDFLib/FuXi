@@ -1,42 +1,35 @@
 # -*- coding: utf-8 -*-
 """
+====================================================================================
 Stratified Negation Semantics for DLP using SPARQL to handle the negation
 """
 import copy
 import itertools
 import unittest
-from functools import reduce
 from rdflib.graph import Graph
 from rdflib import Namespace, RDF, Variable, BNode
 from rdflib.util import first
+from FuXi.Rete.RuleStore import SetupRuleStore
+from FuXi.Horn.PositiveConditions import And
+from FuXi.Rete.Util import generateTokenSet
+
+from FuXi.Syntax.InfixOWL import some
+from FuXi.Syntax.InfixOWL import only
+from FuXi.Syntax.InfixOWL import Class
+from FuXi.Syntax.InfixOWL import ClassNamespaceFactory
+from FuXi.Syntax.InfixOWL import EnumeratedClass
+from FuXi.Syntax.InfixOWL import Individual
+from FuXi.Syntax.InfixOWL import OWL_NS
+from FuXi.Syntax.InfixOWL import Property
+
 
 from FuXi.DLP import MapDLPtoNetwork
 from .DLNormalization import NormalFormReduction
-from FuXi.Horn.PositiveConditions import And, Uniterm
-from FuXi.Rete.RuleStore import SetupRuleStore
-from FuXi.Rete.Util import generateTokenSet
-from FuXi.Syntax.InfixOWL import (
-    Class,
-    ClassNamespaceFactory,
-    EnumeratedClass,
-    Individual,
-    only,
-    OWL_NS,
-    Property,
-    some,
-)
+try:
+    from functools import reduce
+except ImportError:
+    pass
 
-__all__ = [
-    'CalculateStratifiedModel',
-    'createCopyPattern',
-    'GetVars',
-    'NegatedDisjunctTest',
-    'NegatedExistentialRestrictionTest',
-    'NegationOfAtomicConcept',
-    'ProperSipOrderWithNegation',
-    'StratifiedSPARQL',
-    'UniversalRestrictionTest',
-    ]
 
 EX_NS = Namespace('http://example.com/')
 EX = ClassNamespaceFactory(EX_NS)
@@ -49,16 +42,16 @@ def GetVars(atom):
 
 def CalculateStratifiedModel(network, ontGraph, derivedPreds, edb=None):
     posRules, ignored = MapDLPtoNetwork(network,
-                                        ontGraph,
-                                        constructNetwork=False,
-                                        derivedPreds=derivedPreds,
-                                        ignoreNegativeStratus=True)
+                               ontGraph,
+                               constructNetwork=False,
+                               derivedPreds=derivedPreds,
+                               ignoreNegativeStratus=True)
     for rule in posRules:
         network.buildNetworkFromClause(rule)
     network.feedFactsToAdd(generateTokenSet(edb and edb or ontGraph))
     for i in ignored:
-        # Evaluate the Graph pattern, and instanciate the head of the rule with
-        # the solutions returned
+        #Evaluate the Graph pattern, and instanciate the head of the rule with
+        #the solutions returned
         sel, compiler = StratifiedSPARQL(i)
         query = compiler.compile(sel)
         i.stratifiedQuery = query
@@ -66,8 +59,8 @@ def CalculateStratifiedModel(network, ontGraph, derivedPreds, edb=None):
         for rt in (edb and edb or ontGraph).query(query):
             solutions = {}
             if isinstance(rt, tuple):
-                solutions.update(
-                    dict([(vars[idx], i) for idx, i in enumerate(rt)]))
+                solutions.update(dict(
+                    [(vars[idx], i) for idx, i in enumerate(rt)]))
             else:
                 solutions[vars[0]] = rt
             i.solutions = solutions
@@ -77,18 +70,19 @@ def CalculateStratifiedModel(network, ontGraph, derivedPreds, edb=None):
             network.inferredFacts.add(fact)
             network.feedFactsToAdd(generateTokenSet([fact]))
 
-    # Now we need to clear assertions that cross the individual, concept,
-    # relation divide toRemove=[]
+    # Now we need to clear assertions that cross the individual,
+    # concept, relation divide
+    # toRemove=[]
     for s, p, o in network.inferredFacts.triples((None,
-                                                  RDF.type,
-                                                  None)):
+                                                RDF.type,
+                                                None)):
         if s in (edb and edb or ontGraph).predicates() or\
-            s in [_s for _s, _p, _o in
-                  (edb and edb or ontGraph).triples_choices(
-                  (None,
-                   RDF.type,
-                   [OWL_NS.Class,
-                    OWL_NS.Restriction]))]:
+           s in [_s for _s, _p, _o in
+                    (edb and edb or ontGraph).triples_choices(
+                                        (None,
+                                         RDF.type,
+                                         [OWL_NS.Class,
+                                          OWL_NS.Restriction]))]:
             network.inferredFacts.remove((s, p, o))
     return posRules, ignored
 
@@ -136,12 +130,12 @@ def StratifiedSPARQL(rule, nsMapping={EX_NS: 'ex'}):
     from FuXi.Rete.SidewaysInformationPassing import (
         GetArgs,
         findFullSip,
-        iterCondition,
+        iterCondition
         )
     # Find a sip order of the horn rule
     if isinstance(rule.formula.body, And):
-        sipOrder = first(
-            findFullSip(([rule.formula.head], None), rule.formula.body))
+        sipOrder = first(findFullSip(
+            ([rule.formula.head], None), rule.formula.body))
     else:
         sipOrder = [rule.formula.head] + [rule.formula.body]
     from telescope import optional, op
@@ -158,22 +152,22 @@ def StratifiedSPARQL(rule, nsMapping={EX_NS: 'ex'}):
             negativeVars.update(GetVars(atom))
         else:
             positiveLiterals = True
-    # The negative literas are moved to the back of the body conjunct
-    # Intuitively, they should not be disconnected from the rest of rule
-    # Due to the correlation between DL and guarded FOL
+    #The negative literas are moved to the back of the body conjunct
+    #Intuitively, they should not be disconnected from the rest of rule
+    #Due to the correlation between DL and guarded FOL
     [sipOrder.remove(toRemove) for toRemove in toDo]
 
-    # posLiterals are all the positive literals leading up to the negated
-    # literals (in left-to-right order)  There may be none, see below
+    #posLiterals are all the positive literals leading up to the negated
+    #literals (in left-to-right order)  There may be none, see below
     posLiterals = sipOrder[1:]
 
     posVarIgnore = []
     if not positiveLiterals:
-        # If there are no lead, positive literals (i.e. the LP is of the form:
+        from FuXi.Horn.PositiveConditions import Uniterm
+        #If there are no lead, positive literals (i.e. the LP is of the form:
         #   H :- not B1, not B2, ...
-        # Then a 'phantom' triple pattern is needed as the left operand to the
-        # OPTIONAL in order to properly implement P0 MINUS P where P0 is an
-        # empty pattern
+        #Then a 'phantom' triple pattern is needed as the left operand to the OPTIONAL
+        #in order to properly implement P0 MINUS P where P0 is an empty pattern
         keyVar = GetVars(rule.formula.head)[0]
         newVar1 = Variable(BNode())
         newVar2 = Variable(BNode())
@@ -181,53 +175,47 @@ def StratifiedSPARQL(rule, nsMapping={EX_NS: 'ex'}):
         phantomLiteral = Uniterm(newVar1, [keyVar, newVar2])
         posLiterals.insert(0, phantomLiteral)
 
-    # The positive variables are collected
-    positiveVars = set(
-        reduce(lambda x, y: x + y, [GetVars(atom) for atom in posLiterals]))
+    #The positive variables are collected
+    positiveVars = set(reduce(lambda x, y: x + y, [GetVars(atom) for atom in posLiterals]))
 
-    # vars={}
-    # varExprs={}
-    # copyPatterns=[]
-    print("%s =: { %s MINUS %s} " % (
-        rule.formula.head, posLiterals, toDo))
+    # vars = {}
+    # varExprs = {}
+    # copyPatterns = []
+    print("%s =: { %s MINUS %s} " % (rule.formula.head,
+                                                  posLiterals,
+                                                  toDo))
 
     def collapseMINUS(left, right):
         negVars = set()
         for pred in iterCondition(right):
             negVars.update([term for term in GetArgs(pred)
-                            if isinstance(term, Variable)])
+                                    if isinstance(term, Variable)])
         innerCopyPatternNeeded = not negVars.difference(positiveVars)
-        # A copy pattern is needed if the negative literals don't introduce
-        # new vars
+        #A copy pattern is needed if the negative literals don't introduce new vars
         if innerCopyPatternNeeded:
-            innerCopyPatterns, innerVars, innerVarExprs = createCopyPattern(
-                [right])
-            # We use an arbitrary new variable as for the outer
-            # FILTER(!BOUND(..))
+            innerCopyPatterns, innerVars, innerVarExprs = createCopyPattern([right])
+            #We use an arbitrary new variable as for the outer FILTER(!BOUND(..))
             outerFilterVariable = list(innerVars.values())[0]
             optionalPatterns = [right] + innerCopyPatterns
             negatedBGP = optional(*[formula.toRDFTuple()
-                                    for formula in optionalPatterns])
-            negatedBGP.filter(
-                *[k == v for k, v in list(innerVarExprs.items())])
-            positiveVars.update(
-                [Variable(k.value[0:]) for k in list(innerVarExprs.keys())])
+                                for formula in optionalPatterns])
+            negatedBGP.filter(*[k == v for k, v in list(innerVarExprs.items())])
+            positiveVars.update([Variable(k.value[0:]) for k in list(innerVarExprs.keys())])
             positiveVars.update(list(innerVarExprs.values()))
         else:
-            # We use an arbitrary, 'independent' variable for the outer
-            # FILTER(!BOUND(..))
+            #We use an arbitrary, 'independent' variable for the outer FILTER(!BOUND(..))
             outerFilterVariable = negVars.difference(positiveVars).pop()
             optionalPatterns = [right]
             negatedBGP = optional(*[formula.toRDFTuple()
-                                    for formula in optionalPatterns])
+                                for formula in optionalPatterns])
             positiveVars.update(negVars)
         left = left.where(*[negatedBGP])
         left = left.filter(~op.bound(outerFilterVariable))
         return left
     topLevelQuery = Select(GetArgs(rule.formula.head)).where(
-        GroupGraphPattern.from_obj([
-                                   formula.toRDFTuple()
-                                   for formula in posLiterals]))
+                             GroupGraphPattern.from_obj([
+                                 formula.toRDFTuple()
+                                    for formula in posLiterals]))
     rt = reduce(collapseMINUS, [topLevelQuery] + toDo)
     return rt, SelectCompiler(nsMapping)
 
@@ -238,7 +226,7 @@ def ProperSipOrderWithNegation(body):
     at the end of the list
     """
     # from FuXi.Rete.SidewaysInformationPassing import iterCondition
-    # import pdb;pdb.set_trace()
+    #import pdb;pdb.set_trace()
     firstNegLiteral = None
     bodyIterator = list(body)
     for idx, literal in enumerate(bodyIterator):
@@ -246,19 +234,18 @@ def ProperSipOrderWithNegation(body):
             firstNegLiteral = literal
             break
     if firstNegLiteral:
-        # There is a first negative literal, are there subsequent
-        # positive literals?
+        #There is a first negative literal, are there subsequent positive literals?
         subsequentPosLits = first(itertools.dropwhile(lambda i: i.naf,
-                                                      bodyIterator[idx:]))
+                                                       bodyIterator[idx:]))
         if len(body) - idx > 1:
-            # if this is not the last term in the body
-            # then we succeed only if there are no subsequent positive literals
+            #if this is not the last term in the body
+            #then we succeed only if there are no subsequent positive literals
             return not subsequentPosLits
         else:
-            # this is the last term, so we are successful
+            #this is the last term, so we are successful
             return True
     else:
-        # There are no negative literals
+        #There are no negative literals
         return True
 
 
@@ -278,15 +265,11 @@ class UniversalRestrictionTest(unittest.TestCase):
         testClass1 = foo & (contains | only | ~innerDisjunct)
         testClass1.identifier = EX_NS.Bar
 
-        self.assertEqual(
-            repr(testClass1),
-                 "ex:foo that ( ex:contains only " +
-                 "( not ( ex:Omega or ex:Alpha ) ) )")
+        self.assertEqual(repr(testClass1),
+                'ex:foo THAT ( ex:contains ONLY ( NOT ( ex:Omega OR ex:Alpha ) ) )')
         NormalFormReduction(self.ontGraph)
-        self.assertEqual(
-            repr(testClass1),
-                 "ex:foo that ( not ( ex:contains some " +
-                 "( ex:Omega or ex:Alpha ) ) )")
+        self.assertEqual(repr(testClass1),
+                'ex:foo THAT ( NOT ( ex:contains SOME ( ex:Omega OR ex:Alpha ) ) )')
 
         individual1 = BNode()
         individual2 = BNode()
@@ -294,10 +277,8 @@ class UniversalRestrictionTest(unittest.TestCase):
         contains.extent = [(individual1, individual2)]
         (EX.Baz).extent = [individual2]
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
-        posRules, ignored = CalculateStratifiedModel(
-            network, self.ontGraph, [EX_NS.Bar])
-        self.failUnless(
-            not posRules, "There should be no rules in the 0 strata!")
+        posRules, ignored = CalculateStratifiedModel(network, self.ontGraph, [EX_NS.Bar])
+        self.failUnless(not posRules, "There should be no rules in the 0 strata.")
         self.assertEqual(len(ignored), 2, "There should be 2 'negative' rules")
         testClass1.graph = network.inferredFacts
         self.failUnless(individual1 in testClass1.extent,
@@ -314,15 +295,12 @@ class UniversalRestrictionTest(unittest.TestCase):
         self.testClass = (EX.Bar) & (partitionProp | only | subPartition)
         self.testClass.identifier = EX_NS.Foo
         self.assertEqual(repr(self.testClass),
-                         "ex:Bar that ( ex:propFoo only { ex:individual1 } )")
+                        'ex:Bar THAT ( ex:propFoo ONLY { ex:individual1 } )')
         self.assertEqual(repr(self.testClass.identifier),
-                         "rdflib.term.URIRef('http://example.com/Foo')")
+                        "rdflib.term.URIRef(u'http://example.com/Foo')")
         NormalFormReduction(self.ontGraph)
-        self.assertEqual(
-            repr(self.testClass),
-                 "ex:Bar that ( not ( ex:propFoo value " +
-                 "ex:individual2 ) ) and ( not ( ex:propFoo " +
-                 "value ex:individual3 ) )")
+        self.assertEqual(repr(self.testClass),
+        "ex:Bar that ( not ( ex:propFoo value ex:individual2 ) ) and ( not ( ex:propFoo value ex:individual3 ) )")
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
 
         ex = BNode()
@@ -342,37 +320,28 @@ class NegatedExistentialRestrictionTest(unittest.TestCase):
 
     def testInConjunct(self):
         contains = Property(EX_NS.contains)
-        testCase2 = EX.Operation & ~ (
-            contains | some | EX.IsolatedCABGConcomitantExclusion) & \
-            (contains | some |
-             EX.CoronaryArteryBypassGrafting)
+        testCase2 = EX.Operation & ~ (contains | some | EX.IsolatedCABGConcomitantExclusion) & \
+                                          (contains | some | EX.CoronaryArteryBypassGrafting)
         testCase2.identifier = EX_NS.IsolatedCABGOperation
         NormalFormReduction(self.ontGraph)
-        self.assertEqual(
-            repr(testCase2),
-                 "ex:Operation that ( ex:contains some " +
-                 "ex:CoronaryArteryBypassGrafting ) and ( " +
-                 "not ( ex:contains some " +
-                 "ex:IsolatedCABGConcomitantExclusion ) )")
+        self.assertEqual(repr(testCase2),
+                        'ex:Operation THAT ( ex:contains SOME ex:CoronaryArteryBypassGrafting ) AND ( NOT ( ex:contains SOME ex:IsolatedCABGConcomitantExclusion ) )')
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
         op = BNode()
         (EX.Operation).extent = [op]
         grafting = BNode()
         (EX.CoronaryArteryBypassGrafting).extent = [grafting]
         testCase2.graph.add((op, EX_NS.contains, grafting))
-        CalculateStratifiedModel(network, testCase2.graph, [
-                                 EX_NS.Foo, EX_NS.IsolatedCABGOperation])
+        CalculateStratifiedModel(network, testCase2.graph, [EX_NS.Foo, EX_NS.IsolatedCABGOperation])
         testCase2.graph = network.inferredFacts
-        self.failUnless(
-            op in testCase2.extent,
-                "%s should be in ex:IsolatedCABGOperation's extent" % op)
+        self.failUnless(op in testCase2.extent,
+                        "%s should be in ex:IsolatedCABGOperation's extent" % op)
 
     def testGeneralConceptInclusion(self):
         # Some Class
-        #    ## Primitive Type  ##
-        #    SubClassOf: Class: ex:NoExclusion  .
-        #    DisjointWith
-        #     ( ex:contains some ex:IsolatedCABGConcomitantExclusion )
+        #     ## Primitive Type  ##
+        #     SubClassOf: Class: ex:NoExclusion  .
+        #     DisjointWith ( ex:contains some ex:IsolatedCABGConcomitantExclusion )
         contains = Property(EX_NS.contains)
         testClass = ~(contains | some | EX.Exclusion)
         testClass2 = EX.NoExclusion
@@ -382,22 +351,15 @@ class NegatedExistentialRestrictionTest(unittest.TestCase):
         individual2 = BNode()
         contains.extent = [(individual1, individual2)]
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
-        posRules, negRules = CalculateStratifiedModel(
-            network, self.ontGraph, [EX_NS.NoExclusion])
-        self.failUnless(
-            not posRules, "There should be no rules in the 0 strata!")
-        self.assertEqual(
-            len(negRules), 2, "There should be 2 'negative' rules")
+        posRules, negRules = CalculateStratifiedModel(network, self.ontGraph, [EX_NS.NoExclusion])
+        self.failUnless(not posRules, "There should be no rules in the 0 strata.")
+        self.assertEqual(len(negRules), 2, "There should be 2 'negative' rules")
         Individual.factoryGraph = network.inferredFacts
         targetClass = Class(EX_NS.NoExclusion, skipOWLClassMembership=False)
-        self.failUnless(
-            individual1 in targetClass.extent,
-                "There is a BNode that bears the contains " +
-                "relation with another individual that is not " +
-                "a member of Exclusion!")
-        self.assertEquals(
-                len(list(targetClass.extent)), 1,
-                "There should only be one member in NoExclusion.")
+        self.failUnless(individual1 in targetClass.extent,
+        "There is a BNode that bears the contains relation with another individual that is not a member of Exclusion.")
+        self.assertEquals(len(list(targetClass.extent)), 1,
+                          "There should only be one member in NoExclusion")
 
 
 class NegatedDisjunctTest(unittest.TestCase):
@@ -410,7 +372,7 @@ class NegatedDisjunctTest(unittest.TestCase):
     def testStratified(self):
         bar = EX.Bar
         baz = EX.Baz
-        noBarOrBaz = ~(bar | baz)
+        noBarOrBaz = ~ (bar | baz)
         omega = EX.Omega
         foo = omega & noBarOrBaz
         foo.identifier = EX_NS.Foo
@@ -419,19 +381,12 @@ class NegatedDisjunctTest(unittest.TestCase):
         omega.extent = [individual]
         NormalFormReduction(self.ontGraph)
         self.assertEqual(repr(foo),
-                         "ex:Omega that ( not ex:Bar ) and ( not ex:Baz )")
-        posRules, negRules = CalculateStratifiedModel(
-            network, self.ontGraph, [EX_NS.Foo])
+                         'ex:Omega THAT ( NOT ex:Bar ) AND ( NOT ex:Baz )')
+        posRules, negRules = CalculateStratifiedModel(network, self.ontGraph, [EX_NS.Foo])
         foo.graph = network.inferredFacts
-        self.failUnless(
-            not posRules, "There should be no rules in the 0 strata!")
-        self.assertEqual(
-            repr(negRules[0]),
-                 "Forall ?X ( ex:Foo(?X) :- " +
-                 "And( ex:Omega(?X) not ex:Bar(?X) not ex:Baz(?X) ) )")
-        self.failUnless(
-            len(negRules) == 1,
-            "There should only be one negative rule in a higher strata")
+        self.failUnless(not posRules, "There should be no rules in the 0 strata.")
+        self.assertEqual(repr(negRules[0]), "Forall ?X ( ex:Foo(?X) :- And( ex:Omega(?X) not ex:Bar(?X) not ex:Baz(?X) ) )")
+        self.failUnless(len(negRules) == 1, "There should only be one negative rule in a higher strata")
         self.failUnless(individual in foo.extent,
                         "%s should be a member of ex:Foo" % individual)
 
@@ -445,7 +400,7 @@ class NegationOfAtomicConcept(unittest.TestCase):
 
     def testAtomicNegation(self):
         bar = EX.Bar
-        baz = ~bar
+        baz = ~ bar
         baz.identifier = EX_NS.Baz
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
         individual = BNode()
@@ -455,13 +410,9 @@ class NegationOfAtomicConcept(unittest.TestCase):
         NormalFormReduction(self.ontGraph)
         self.assertEqual(repr(baz),
                          "Class: ex:Baz DisjointWith ex:Bar\n")
-        posRules, negRules = CalculateStratifiedModel(
-            network, self.ontGraph, [EX_NS.Foo])
-        self.failUnless(
-            not posRules, "There should be no rules in the 0 strata!")
-        self.failUnless(
-            len(negRules) == 1,
-            "There should only be one negative rule in a higher strata")
+        posRules, negRules = CalculateStratifiedModel(network, self.ontGraph, [EX_NS.Foo])
+        self.failUnless(not posRules, "There should be no rules in the 0 strata.")
+        self.failUnless(len(negRules) == 1, "There should only be one negative rule in a higher strata")
         self.assertEqual(repr(negRules[0]),
                          "Forall ?X ( ex:Baz(?X) :- not ex:Bar(?X) )")
         baz.graph = network.inferredFacts
@@ -473,12 +424,13 @@ class NegationOfAtomicConcept(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-# from FuXi.DLP.Negation import GetVars
+# from FuXi.DLP.Negation import NegatedDisjunctTest
+# from FuXi.DLP.Negation import NegatedExistentialRestrictionTest
+# from FuXi.DLP.Negation import NegationOfAtomicConcept
+# from FuXi.DLP.Negation import UniversalRestrictionTest
+
 # from FuXi.DLP.Negation import CalculateStratifiedModel
 # from FuXi.DLP.Negation import createCopyPattern
-# from FuXi.DLP.Negation import StratifiedSPARQL
+# from FuXi.DLP.Negation import GetVars
 # from FuXi.DLP.Negation import ProperSipOrderWithNegation
-# from FuXi.DLP.Negation import UniversalRestrictionTest
-# from FuXi.DLP.Negation import NegatedExistentialRestrictionTest
-# from FuXi.DLP.Negation import NegatedDisjunctTest
-# from FuXi.DLP.Negation import NegationOfAtomicConcept
+# from FuXi.DLP.Negation import StratifiedSPARQL

@@ -1,44 +1,33 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-DLP - DLNormalization
-Helper Functions for reducing DL axioms into normal forms
+====================================================================================
+Helper Functions for reducing DL axioms into a normal forms
 """
 
-import unittest
-from functools import reduce
-
-from rdflib.collection import Collection
 from rdflib.graph import Graph
 from rdflib import Namespace, RDFS, BNode
+from rdflib.collection import Collection
 from rdflib.util import first
+import unittest
 
-from FuXi.Syntax.InfixOWL import (
-    OWL_NS,
-    some,
-    only,
-    value,
-    BooleanClass,
-    CastClass,
-    Class,
-    ClassNamespaceFactory,
-    EnumeratedClass,
-    Individual,
-    Property,
-    Restriction,
-    )
+from FuXi.Syntax.InfixOWL import BooleanClass
+from FuXi.Syntax.InfixOWL import CastClass
+from FuXi.Syntax.InfixOWL import Class
+from FuXi.Syntax.InfixOWL import ClassNamespaceFactory
+from FuXi.Syntax.InfixOWL import EnumeratedClass
+from FuXi.Syntax.InfixOWL import Individual
+from FuXi.Syntax.InfixOWL import OWL_NS
+from FuXi.Syntax.InfixOWL import Property
+from FuXi.Syntax.InfixOWL import Restriction
+from FuXi.Syntax.InfixOWL import only
+from FuXi.Syntax.InfixOWL import some
+from FuXi.Syntax.InfixOWL import value
+try:
+    from functools import reduce
+except ImportError:
+    pass
 
-__all__ = [
-    'EX',
-    'EX_NS',
-    'ConjunctionFlattener',
-    'DemorganTransformer',
-    'DoubleNegativeTransformer',
-    'GeneralUniversalTransformer',
-    'NominalRangeTransformer',
-    'NormalFormReduction',
-    'UniversalNominalRangeTransformer',
-    ]
 
 
 class NominalRangeTransformer(object):
@@ -50,15 +39,14 @@ class NominalRangeTransformer(object):
 
     def transform(self, graph):
         """
-        Transforms a 'pure' nominal range into a disjunction of value
-        restrictions
+        Transforms a 'pure' nominal range into a disjunction of value restrictions
         """
         Individual.factoryGraph = graph
         for restriction, intermediateCl, nominal, prop in graph.query(
                                  self.NOMINAL_QUERY,
-                                 initNs={'owl': OWL_NS}):
+                                 initNs={u'owl': OWL_NS}):
             nominalCollection = Collection(graph, nominal)
-            # purge restriction
+            #purge restriction
             restr = Class(restriction)
             parentSets = [i for i in restr.subClassOf]
             restr.clearOutDegree()
@@ -69,7 +57,7 @@ class NominalRangeTransformer(object):
                                      graph)
             newConjunct.subClassOf = parentSets
 
-            # purge nominalization placeholder
+            #purge nominalization placeholder
             iClass = BooleanClass(intermediateCl)
             iClass.clear()
             iClass.delete()
@@ -90,18 +78,17 @@ class UniversalNominalRangeTransformer(object):
         conjunction of value restriction (using set theory and demorgan's laws)
         """
         Individual.factoryGraph = graph
-        for restriction, intermediateCl, \
-            nominal, prop, partition in graph.query(
+        for restriction, intermediateCl, nominal, prop, partition in graph.query(
                                  self.NOMINAL_QUERY,
-                                 initNs={'owl': OWL_NS,
-                                         'rdfs': RDFS}):
+                                 initNs={u'owl': OWL_NS,
+                                         u'rdfs': str(RDFS)}):
             exceptions = EnumeratedClass()
             partition = Collection(graph, partition)
             nominalCollection = Collection(graph, nominal)
             for i in partition:
                 if i not in nominalCollection:
                     exceptions._rdfList.append(i)
-                    # exceptions += i
+                    #exceptions+=i
             exists = Class(complementOf=(Property(prop) | some | exceptions))
             for s, p, o in graph.triples((None, None, restriction)):
                 graph.add((s, p, exists.identifier))
@@ -119,12 +106,10 @@ class GeneralUniversalTransformer(object):
         Transforms a universal restriction to a negated existential restriction
         """
         Individual.factoryGraph = graph
-        for restr, p, o in graph.triples(
-                (None, OWL_NS.allValuesFrom, None)):
+        for restr, p, o in graph.triples((None, OWL_NS.allValuesFrom, None)):
             graph.remove((restr, p, o))
             innerCompl = Class(complementOf=o)
-            graph.add(
-                (restr, OWL_NS.someValuesFrom, innerCompl.identifier))
+            graph.add((restr, OWL_NS.someValuesFrom, innerCompl.identifier))
             outerCompl = Class()
             for _s, _p, _o in graph.triples((None, None, restr)):
                 graph.add((_s, _p, outerCompl.identifier))
@@ -144,8 +129,8 @@ class DoubleNegativeTransformer(object):
         Individual.factoryGraph = graph
         for compl1, compl2, compl3 in graph.query(
                                  self.UNIVERSAL_QUERY,
-                                 initNs={'owl': OWL_NS,
-                                         'rdfs': RDFS}):
+                                 initNs={u'owl': OWL_NS,
+                                         u'rdfs': RDFS}):
             Individual(compl1).replace(compl3)
             Individual(compl2).delete()
 
@@ -153,20 +138,19 @@ class DoubleNegativeTransformer(object):
 class DemorganTransformer(object):
     def transform(self, graph):
         """
-        Uses DeMorgan's laws to reduce negated disjunctions to a conjunction of
+        Uses demorgan's laws to reduce negated disjunctions to a conjunction of
         negated formulae
         """
         Individual.factoryGraph = graph
         for disjunctId in graph.subjects(predicate=OWL_NS.unionOf):
             if (None, OWL_NS.complementOf, disjunctId) in graph and \
                isinstance(disjunctId, BNode):
-                # not (     A1 or      A2  or .. or      An )
+                #not (     A1 or      A2  or .. or      An )
                 #                 =
                 #    ( not A1 and not A2 and .. and not An )
                 disjunct = BooleanClass(disjunctId, operator=OWL_NS.unionOf)
                 items = list(disjunct)
-                newConjunct = BooleanClass(
-                        members=[~Class(item) for item in items])
+                newConjunct = BooleanClass(members=[~Class(item) for item in items])
                 for negation in graph.subjects(predicate=OWL_NS.complementOf,
                                                object=disjunctId):
                     Class(negation).replace(newConjunct)
@@ -202,17 +186,15 @@ class ConjunctionFlattener(object):
         Individual.factoryGraph = graph
         for conjunctId in graph.subjects(predicate=OWL_NS.intersectionOf):
             conjunct = BooleanClass(conjunctId)
-            nestedConjuncts = [
-                BooleanClass(i) for i in conjunct
-                        if (i, OWL_NS.intersectionOf, None) in graph]
+            nestedConjuncts = [BooleanClass(i) for i in conjunct
+                                    if (i, OWL_NS.intersectionOf, None) in graph]
             if nestedConjuncts:
                 def collapseConjunctTerms(left, right):
                     list(left) + list(right)
                 if len(nestedConjuncts) == 1:
                     newTopLevelItems = list(nestedConjuncts[0])
                 else:
-                    newTopLevelItems = reduce(
-                        collapseConjunctTerms, nestedConjuncts)
+                    newTopLevelItems = reduce(collapseConjunctTerms, nestedConjuncts)
                 for nc in nestedConjuncts:
                     nc.clear()
                     del conjunct[conjunct.index(nc.identifier)]
@@ -244,13 +226,11 @@ class ReductionTestA(unittest.TestCase):
                                     members=[EX_NS.individual1,
                                              EX_NS.individual2,
                                              EX_NS.individual3])
-        subPartition = EnumeratedClass(
-                EX_NS.partition, members=[EX_NS.individual1])
+        subPartition = EnumeratedClass(EX_NS.partition, members=[EX_NS.individual1])
         partitionProp = Property(EX_NS.propFoo,
                                  range=partition)
         self.foo = EX.foo
-        self.foo.subClassOf = [
-            partitionProp | only | subPartition]
+        self.foo.subClassOf = [partitionProp | only | subPartition]
 
     def testUnivInversion(self):
         UniversalNominalRangeTransformer().transform(self.ontGraph)
@@ -260,25 +240,20 @@ class ReductionTestA(unittest.TestCase):
         subC = CastClass(first(self.foo.subClassOf))
         self.failUnless(not isinstance(subC, Restriction),
                         "subclass of a restriction")
-        self.failUnless(
-                subC.complementOf is not None, "Should be a complement!")
+        self.failUnless(subC.complementOf is not None, "Should be a complement.")
         innerC = CastClass(subC.complementOf)
         self.failUnless(isinstance(innerC, Restriction),
                         "complement of a restriction, not %r" % innerC)
         self.failUnlessEqual(innerC.onProperty,
                              EX_NS.propFoo,
                              "restriction on propFoo")
-        self.failUnless(
-                innerC.someValuesFrom,
-                "converted to an existential restriction not %r" % innerC)
+        self.failUnless(innerC.someValuesFrom, "converted to an existential restriction not %r" % innerC)
         invertedC = CastClass(innerC.someValuesFrom)
-        self.failUnless(
-                isinstance(invertedC, EnumeratedClass),
-                "existencial restriction on enumerated class")
-        self.assertEqual(
-            len(invertedC),
-                 2,
-                "existencial restriction on enumerated class of length 2")
+        self.failUnless(isinstance(invertedC, EnumeratedClass),
+                        "existential restriction on enumerated class")
+        self.assertEqual(len(invertedC),
+                         2,
+                        "existencial restriction on enumerated class of length 2")
         self.assertEqual(repr(invertedC),
                          "{ ex:individual2 ex:individual3 }",
                          "The negated partition should exclude individual1")
@@ -286,10 +261,8 @@ class ReductionTestA(unittest.TestCase):
         DemorganTransformer().transform(self.ontGraph)
 
         subC = CastClass(first(self.foo.subClassOf))
-        self.assertEqual(
-            repr(subC),
-            "( ( not ( ex:propFoo value ex:individual2 ) ) " +
-            "and ( not ( ex:propFoo value ex:individual3 ) ) )")
+        self.assertEqual(repr(subC),
+                        "( ( not ( ex:propFoo value ex:individual2 ) ) and ( not ( ex:propFoo value ex:individual3 ) ) )")
 
 
 class ReductionTestB(unittest.TestCase):
@@ -322,12 +295,12 @@ class FlatteningTest(unittest.TestCase):
         nestedConjunct = EX.omega & EX.gamma
         self.topLevelConjunct = EX.alpha & nestedConjunct
 
-    def testFlatenning(self):
+    def testFlattening(self):
         self.assertEquals(repr(self.topLevelConjunct),
-                          "ex:alpha that ( ex:omega and ex:gamma )")
+                          'ex:alpha THAT ( ex:omega AND ex:gamma )')
         ConjunctionFlattener().transform(self.ontGraph)
         self.assertEquals(repr(self.topLevelConjunct),
-                          "( ex:alpha and ex:omega and ex:gamma )")
+                          '( ex:alpha AND ex:omega AND ex:gamma )')
 
 
 class UniversalComplementXFormTest(unittest.TestCase):
@@ -338,28 +311,26 @@ class UniversalComplementXFormTest(unittest.TestCase):
         Individual.factoryGraph = self.ontGraph
 
     def testUniversalInversion(self):
-        testClass1 = EX.omega & (
-            Property(EX_NS.someProp) | only | ~EX.gamma)
+        testClass1 = EX.omega & (Property(EX_NS.someProp) | only | ~EX.gamma)
         testClass1.identifier = EX_NS.Foo
-        self.assertEquals(
-            repr(testClass1),
-                 "ex:omega that ( ex:someProp only ( not ex:gamma ) )")
+        self.assertEquals(repr(testClass1),
+                          'ex:omega THAT ( ex:someProp ONLY ( NOT ex:gamma ) )')
         NormalFormReduction(self.ontGraph)
-        self.assertEquals(
-            repr(testClass1),
-                 "ex:omega that ( not ( ex:someProp some ex:gamma ) )")
+        self.assertEquals(repr(testClass1),
+                          'ex:omega THAT ( NOT ( ex:someProp SOME ex:gamma ) )')
 
 if __name__ == '__main__':
     unittest.main()
 
-# from FuXi.DLP.DLNormalization import NominalRangeTransformer
-# from FuXi.DLP.DLNormalization import UniversalNominalRangeTransformer
-# from FuXi.DLP.DLNormalization import GeneralUniversalTransformer
-# from FuXi.DLP.DLNormalization import DoubleNegativeTransformer
-# from FuXi.DLP.DLNormalization import DemorganTransformer
-# from FuXi.DLP.DLNormalization import ConjunctionFlattener
 # from FuXi.DLP.DLNormalization import NormalFormReduction
+
+# from FuXi.DLP.DLNormalization import ConjunctionFlattener
+# from FuXi.DLP.DLNormalization import DemorganTransformer
+# from FuXi.DLP.DLNormalization import DoubleNegativeTransformer
+# from FuXi.DLP.DLNormalization import FlatteningTest
+# from FuXi.DLP.DLNormalization import GeneralUniversalTransformer
+# from FuXi.DLP.DLNormalization import NominalRangeTransformer
 # from FuXi.DLP.DLNormalization import ReductionTestA
 # from FuXi.DLP.DLNormalization import ReductionTestB
-# from FuXi.DLP.DLNormalization import FlatteningTest
 # from FuXi.DLP.DLNormalization import UniversalComplementXFormTest
+# from FuXi.DLP.DLNormalization import UniversalNominalRangeTransformer

@@ -1,21 +1,12 @@
 #!/usr/bin/env python
 # encoding: utf-8
-
 import unittest
-from pprint import pformat
+from pprint import pprint
+from cStringIO import StringIO
 from rdflib import Graph, Namespace
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Rete.Util import generateTokenSet
 from FuXi.DLP.DLNormalization import NormalFormReduction
-import logging
-
-logging.basicConfig(level=logging.DEBUG, format="%(message)s")
-
-
-def _debug(*args, **kw):
-    _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.DEBUG)
-    _logger.debug(*args, **kw)
 
 EX = Namespace('http://example.org/')
 EX_TERMS = Namespace('http://example.org/terms/')
@@ -69,35 +60,33 @@ exterms:brother
 
 class test_superproperty_entailment(unittest.TestCase):
     def setUp(self):
-        self.rule_store, self.rule_graph, self.network = \
-                            SetupRuleStore(makeNetwork=True)
-        self.tBoxGraph = Graph().parse(data=TBOX, format='n3')
+        self.rule_store, self.rule_graph, self.network = SetupRuleStore(
+                                                    makeNetwork=True)
+        self.tBoxGraph = Graph().parse(StringIO(TBOX), format='n3')
 
-        self.aBoxGraph = Graph().parse(data=ABOX, format='n3')
+        self.aBoxGraph = Graph().parse(StringIO(ABOX), format='n3')
         NormalFormReduction(self.tBoxGraph)
 
     def testReasoning(self):
-        _debug('setting up DLP...')
+        print('setting up DLP...')
         self.network.setupDescriptionLogicProgramming(self.tBoxGraph)
-        _debug("Rules:\n %s" % pformat(list(self.network.rules)))
-        _debug(self.network)
+        pprint(list(self.network.rules))
+        print(self.network)
 
-        _debug('feeding TBox... ')
+        print('feeding TBox... ')
         self.network.feedFactsToAdd(generateTokenSet(self.tBoxGraph))
-        _debug('feeding ABox...')
+        print('feeding ABox...')
         self.network.feedFactsToAdd(generateTokenSet(self.aBoxGraph))
 
         self.network.inferredFacts.bind('ex', EX)
         self.network.inferredFacts.bind('exterms', EX_TERMS)
-        _debug("Facts:\n%s" % (
-            self.network.inferredFacts.serialize(format='n3')))
+        print(self.network.inferredFacts.serialize(format='n3'))
 
+        print('Checking...')
         for triple in expected_triples:
             self.failUnless(
-                triple in self.network.inferredFacts, \
-                    "Missing %s" % (repr(triple)))
-
-        self.failUnless(3 == 2)
+                triple in self.network.inferredFacts, "Missing %s" % (
+                        repr(triple)))
 
 if __name__ == '__main__':
     unittest.main()

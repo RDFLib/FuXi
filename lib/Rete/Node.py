@@ -1,8 +1,6 @@
 """
 """
 
-__all__ = ['Node']
-
 
 class Node(object):
     """
@@ -16,6 +14,13 @@ class Node(object):
 
     def connectToBetaNode(self, betaNode, position):
         # from BetaNode import (
-        #    BetaNode, LEFT_MEMORY, RIGHT_MEMORY, PartialInstantiation)
+        #     BetaNode,
+        #     LEFT_MEMORY,
+        #     RIGHT_MEMORY,
+        #     PartialInstantiation
+        #     )
         self.updateDescendentMemory(betaNode.memories[position])
         self.descendentBetaNodes.add(betaNode)
+
+
+# from FuXi.Rete.Node import Node

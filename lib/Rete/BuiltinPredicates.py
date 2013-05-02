@@ -2,38 +2,22 @@
 See: http://www.w3.org/2000/10/swap/doc/CwmBuiltins
 """
 import unittest
-from io import StringIO
+try:
+    from functools import reduce
+except ImportError:
+    pass
+try:
+    from io import StringIO
+except ImportError:
+    from StringIO import StringIO
+
 from rdflib.graph import Graph
-from rdflib import Namespace, Variable, Literal, URIRef
 from rdflib.util import first
+from rdflib import Namespace, Variable, Literal, URIRef
 
-
-__all__ = [
-    'STRING_NS',
-    'LOG_NS',
-    'MATH_NS',
-    'EULER_NS',
-    'FUNCTIONS',
-    'FILTERS',
-    'LogEqualTo',
-    'LogNotEqualTo',
-    'MathEqualTo',
-    'MathGreaterThan',
-    'MathLessThan',
-    'MathNotLessThan',
-    'NonEqualityPredicatesTestSuite',
-    'StringContains',
-    'StringEqualIgnoringCase',
-    'StringGreaterThan',
-    'StringLessThan',
-    ]
-
-STRING_NS = Namespace(
-    "http://www.w3.org/2000/10/swap/string#")
-LOG_NS = Namespace(
-    "http://www.w3.org/2000/10/swap/log#")
-MATH_NS = Namespace(
-    "http://www.w3.org/2000/10/swap/math#")
+STRING_NS = Namespace("http://www.w3.org/2000/10/swap/string#")
+LOG_NS = Namespace("http://www.w3.org/2000/10/swap/log#")
+MATH_NS = Namespace("http://www.w3.org/2000/10/swap/math#")
 EULER_NS = Namespace(
     "http://eulersharp.sourceforge.net/2003/03swap/owl-rules#")
 
@@ -42,7 +26,6 @@ def LogNotEqualTo(subject, object_):
     """
     Equality in this sense is actually the same URI.
     """
-
     def func(s, o):
         return s != o
     return func
@@ -61,7 +44,7 @@ def StringContains(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-                "str:greaterThan can only be used with Literals! (%s)" % term
+                "str:greaterThan can only be used with Literals. (%s)" % term
 
     def containsF(s, o):
         return s[-1].contains(o[-1])
@@ -72,13 +55,12 @@ def StringGreaterThan(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-                "str:greaterThan can only be used with Literals! (%s)" % term
+            "str:greaterThan can only be used with Literals: (%s)" % term
 
     def greaterThanF(s, o):
         for term in [s, o]:
             assert isinstance(term, Literal), \
-                "str:greaterThan can only be used with Literals!: %s %s" % (
-                    s, o)
+            "str:greaterThan can only be used with Literals: %s %s" % (s, o)
         return str(s) > str(o)
     return greaterThanF
 
@@ -87,12 +69,12 @@ def StringLessThan(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-                "str:lessThan can only be used with Literals! (%s)" % term
+            "str:lessThan can only be used with Literals (%s)" % term
 
     def lessThanF(s, o):
         for term in [s, o]:
-            assert isinstance(
-                term, Literal), "str:lessThan can only be used with Literals!"
+            assert isinstance(term, Literal), \
+            "str:lessThan can only be used with Literals: %s %s" % (s, o)
         return s < o
         #return str(s) < str(o)
     return lessThanF
@@ -101,10 +83,11 @@ def StringLessThan(subject, object_):
 def StringEqualIgnoringCase(subject, object_):
     pass
 
-#def MathProduct(arguments):
+# def MathProduct(arguments):
 #    def productF(bindings):
-#        return eval(' * '.join([isinstance(arg,Variable) and \
-#                    'bindings[u"%s"]'%arg or str(arg) for arg in arguments]))
+#        return eval(' * '.join([isinstance(arg, Variable) \
+#                   and 'bindings[u"%s"]' % arg or str(arg)
+#                                       for arg in arguments]))
 #    return productF
 
 
@@ -112,18 +95,18 @@ def MathEqualTo(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-                "math:equalTo can only be used with Literals! (%s)" % term
-            assert isinstance(
-                term.toPython(), (int, float, long)), \
-                "math:equalTo can only be used with Numeric Literals! (%s)" % (
-                    term)
+                "math:equalTo can only be used with Literals (%s)" % term
+            assert isinstance(term.toPython(), (int, float)), \
+                "math:equalTo can only be used " + \
+                "with Numeric Literals (%s)" % term
 
     def func(s, o):
         for term in [s, o]:
-            assert isinstance(
-                term, Literal), "math:equalTo can only be used with Literals!"
-            assert isinstance(term.toPython(), (int, float, long)), \
-                "math:equalTo can only be used with Numeric Literals"
+            assert isinstance(term, Literal), \
+                "math:equalTo can only be used with Literals (%s)" % term
+            assert isinstance(term.toPython(), (int, float)), \
+                "math:equalTo can only be used with " + \
+                "Numeric Literals (%s)" % term
         return s.toPython() == o.toPython()
     return func
 
@@ -132,17 +115,18 @@ def MathGreaterThan(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-                "math:lessThan can only be used with Literals! (%s)" % term
-            assert isinstance(term.toPython(), (int, float, long)), \
-                "math:lessThan can only be used with Numeric Literals (%s)" % (
-                    term)
+                "math:lessThan can only be used with Literals (%s)" % term
+            assert isinstance(term.toPython(), (int, float)), \
+                "math:lessThan can only be used with " + \
+                "Numeric Literals (%s)" % term
 
     def greaterThanF(s, o):
         for term in [s, o]:
             assert isinstance(term, Literal), \
-                "math:greaterThan can only be used with Literals!"
-            assert isinstance(term.toPython(), (int, float, long)), \
-                "math:greaterThan can only be used with Numeric Literals!"
+                "math:greaterThan can only be used with Literals (%s)" % term
+            assert isinstance(term.toPython(), (int, float)), \
+                "math:greaterThan can only be used " + \
+                "with Numeric Literals (%s)" % term
         return s.toPython() > o.toPython()
     return greaterThanF
 
@@ -151,17 +135,18 @@ def MathLessThan(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-                "math:lessThan can only be used with Literals! (%s)" % term
-            assert isinstance(term.toPython(), (int, float, long)), \
-                "math:lessThan can only be used with Numeric Literals (%s)" % (
-                    term)
+                "math:lessThan can only be used with Literals (%s)" % term
+            assert isinstance(term.toPython(), (int, float)), \
+                "math:lessThan can only be used with " + \
+                "Numeric Literals. (%s)" % term
 
     def lessThanF(s, o):
         for term in [s, o]:
             assert isinstance(term, Literal), \
-                "math:lessThan can only be used with Literals!"
-            assert isinstance(term.toPython(), (int, float, long)), \
-                "math:lessThan can only be used with Numeric Literals!"
+                "math:lessThan can only be used with Literals (%s)" % term
+            assert isinstance(term.toPython(), (int, float)), \
+                "math:lessThan can only be used with " + \
+                "Numeric Literals (%s)" % term
         return s.toPython() < o.toPython()
     return lessThanF
 
@@ -170,17 +155,18 @@ def MathNotLessThan(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-                "math:notLessThan can only be used with Literals! (%s)" % term
-            assert isinstance(term.toPython(), (int, float, long)), \
-                "math:lessThan can only be used with Numeric Literals (%s)" % \
-                term
+                "math:notLessThan can only be used with Literals (%s)" % term
+            assert isinstance(term.toPython(), (int, float)), \
+                "math:lessThan can only be used with " + \
+                "Numeric Literals (%s)" % term
 
     def nLessThanF(s, o):
         for term in [s, o]:
             assert isinstance(term, Literal), \
-                "math:notLessThan can only be used with Literals!"
-            assert isinstance(term.toPython(), (int, float, long)), \
-                "math:lessThan can only be used with Numeric Literals!"
+                "math:notLessThan can only be used with Literals"
+            assert isinstance(term.toPython(), (int, float)), \
+                "math:lessThan can only be used with " + \
+                "Numeric Literals (%s)" % term
         return not(s.toPython() < o.toPython())
     return nLessThanF
 
@@ -212,6 +198,7 @@ FILTERS = {
     STRING_NS.startsWith: None,
 }
 
+
 testN3 = """
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -235,44 +222,49 @@ class NonEqualityPredicatesTestSuite(unittest.TestCase):
         self.ruleGraph.parse(StringIO(testN3), format='n3')
         self.testGraph.parse(StringIO(testN3), format='n3')
         self.closureDeltaGraph = Graph()
-        self.network = ReteNetwork(self.ruleStore,
-                                   initialWorkingMemory=generateTokenSet(
-                                       self.testGraph),
-                                   inferredTarget=self.closureDeltaGraph,
-                                   nsMap={})
+        self.network = ReteNetwork(
+                self.ruleStore,
+                initialWorkingMemory=generateTokenSet(self.testGraph),
+                inferredTarget=self.closureDeltaGraph,
+                nsMap={})
 
     def testParseBuiltIns(self):
+        # from FuXi.Rete.RuleStore import N3Builtin
         from FuXi.Rete.AlphaNode import BuiltInAlphaNode
-        self.failUnless(
-            self.ruleStore.rules > 0, "No rules parsed out form N3!")
+        self.failUnless(self.ruleStore.rules > 0, \
+                            "No rules parsed out from N3.")
         for alphaNode in self.network.alphaNodes:
             if isinstance(alphaNode, BuiltInAlphaNode):
                 self.failUnless(alphaNode.n3builtin.uri == MATH_NS.greaterThan,
                                 "Unable to find math:greaterThan func")
 
     def testEvaluateBuiltIns(self):
-        self.failUnless(
-            first(self.closureDeltaGraph.triples(
+        # from FuXi.Rete.RuleStore import N3Builtin
+        # from FuXi.Rete.AlphaNode import BuiltInAlphaNode
+        self.failUnless(first(
+            self.closureDeltaGraph.triples(
                 (None, URIRef('http://test/pred1'), Literal(3)))),
             "Missing inferred :pred1 assertions")
+
 
 if __name__ == '__main__':
     unittest.main()
 
-# from FuXi.Rete.BuiltinPredicates import STRING_NS
+# from FuXi.Rete.BuiltinPredicates import EULER_NS
 # from FuXi.Rete.BuiltinPredicates import LOG_NS
 # from FuXi.Rete.BuiltinPredicates import MATH_NS
-# from FuXi.Rete.BuiltinPredicates import EULER_NS
+# from FuXi.Rete.BuiltinPredicates import STRING_NS
+
 # from FuXi.Rete.BuiltinPredicates import FUNCTIONS
 # from FuXi.Rete.BuiltinPredicates import FILTERS
-# from FuXi.Rete.BuiltinPredicates import LogNotEqualTo
+
 # from FuXi.Rete.BuiltinPredicates import LogEqualTo
-# from FuXi.Rete.BuiltinPredicates import StringContains
-# from FuXi.Rete.BuiltinPredicates import StringGreaterThan
-# from FuXi.Rete.BuiltinPredicates import StringLessThan
-# from FuXi.Rete.BuiltinPredicates import StringEqualIgnoringCase
+# from FuXi.Rete.BuiltinPredicates import LogNotEqualTo
 # from FuXi.Rete.BuiltinPredicates import MathEqualTo
 # from FuXi.Rete.BuiltinPredicates import MathGreaterThan
 # from FuXi.Rete.BuiltinPredicates import MathLessThan
 # from FuXi.Rete.BuiltinPredicates import MathNotLessThan
-# from FuXi.Rete.BuiltinPredicates import NonEqualityPredicatesTestSuite
+# from FuXi.Rete.BuiltinPredicates import StringContains
+# from FuXi.Rete.BuiltinPredicates import StringEqualIgnoringCase
+# from FuXi.Rete.BuiltinPredicates import StringGreaterThan
+# from FuXi.Rete.BuiltinPredicates import StringLessThan

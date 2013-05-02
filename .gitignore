@@ -1,0 +1,4 @@
+/.tox/
+/build/
+/FuXi.egg-info/
+FuXi.sublime-*

@@ -1,101 +1,79 @@
 # -*- coding: utf-8 -*-
 """
-"One method, called magic sets,is a general algorithm for rewriting logical
-rules so that they may be implemented bottom-UP (= forward chaining) in a way
-that is that by working bottom-up, we can take advantage of efficient methods
-for doing massive joins." -- Magic Sets and Other Strange Ways to Implement
-Logic Programs, F. Bancilhon, D. Maier, Y. Sagiv and J. Ullman, Proc. 5th ACM
-SIGMOD-SIGACT Symposium on Principles of Database Systems, 1986.
+====================================================================================
 
-" [..] proposed transformation is to define additional predicates that compute
-the values that are passed from one predicate to another in the original rules,
-according to the sip strategy chosen for each rule. Each of the original rules
-is then modified so that it fires only when values for these additional
-predicates are available. These auxiliary predicates are called "magic
-predicates" and the sets of values that they compute are called "magic sets".
-The intention is that the bottom-up evaluation of the modified set of rules
-simulate the sip we have chosen for each adorned rule, thus restricting the
-search space."
+[[[
+    One method, called magic sets, is a general algorithm for rewriting logical rules
+so that they may be implemented bottom-UP (= forward chaining) in a way that
+is that by working bottom-up, we can take advantage of efficient methods for doing
+massive joins.
+]]] -- Magic Sets and Other Strange Ways to Implement Logic Programs, F. Bancilhon,
+D. Maier, Y. Sagiv and J. Ullman, Proc. 5th ACM SIGMOD-SIGACT Symposium on
+Principles of Database Systems, 1986.
 
-" [..] we are interested in binding propagation and how it can be used to
-improve the efficiency of evaluation in the presence of recursion"
+" [..] proposed transformation is to define additional predicates that compute the values that
+are passed from one predicate to another in the original rules, according to the sip strategy chosen for each
+rule. Each of the original rules is then modified so that it fires only when values for these
+additional predicates are available. These auxiliary predicates are called "magic predicates" and
+the sets of values that they compute are called "magic sets". The intention is that the bottom-up
+evaluation of the modified set of rules simulate the sip we have chosen for each adorned rule,
+thus restricting the search space."
+
+" we are interested in binding propagation and how it can be used to improve the
+ efficiency of evaluation in the presence of recursion
+
+"""
+import copy
+import itertools
+import unittest
+try:
+    from functools import reduce
+except ImportError:
+    pass
+
+
+NON_LINEAR_MS_QUERY = """\
+PREFIX ex: <http://doi.acm.org/10.1145/28659.28689#>
+
+SELECT * WHERE { ex:john ex:sg ?X }
 
 """
 
-import copy
-import itertools
-import logging
-import unittest
-from functools import reduce
-from rdflib import Namespace, py3compat, RDF, URIRef, Variable
-from rdflib.util import first
-from rdflib.collection import Collection
-from rdfextras.sparql.algebra import RenderSPARQLAlgebra
-from rdfextras.sparql.parser import parse
-
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
-from FuXi.Horn.HornRules import Clause, Rule
-from FuXi.Horn.PositiveConditions import (
-    buildUniTerm,
-    BuildUnitermFromTuple,
-    GetUterm,
-    And,
-    Exists,
-    Uniterm
-)
-from FuXi.Rete.RuleStore import N3Builtin, LOG
-from FuXi.Rete.SidewaysInformationPassing import (
-    BuildNaturalSIP,
-    GetArgs,
-    getOccurrenceId,
-    GetOp,
-    IncomingSIPArcs,
-    iterCondition,
-    SetOp,
-    SIPRepresentation,
-)
+from FuXi.Horn.HornRules import Clause
+from FuXi.Horn.HornRules import Rule
+from FuXi.Horn.PositiveConditions import And
+from FuXi.Horn.PositiveConditions import buildUniTerm
+from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
+from FuXi.Horn.PositiveConditions import Exists
+from FuXi.Horn.PositiveConditions import GetUterm
+from FuXi.Horn.PositiveConditions import Uniterm
+from FuXi.Rete.RuleStore import LOG
+from FuXi.Rete.RuleStore import N3Builtin
+from FuXi.Rete.SidewaysInformationPassing import BuildNaturalSIP
+from FuXi.Rete.SidewaysInformationPassing import GetArgs
+from FuXi.Rete.SidewaysInformationPassing import getOccurrenceId
+from FuXi.Rete.SidewaysInformationPassing import GetOp
+from FuXi.Rete.SidewaysInformationPassing import IncomingSIPArcs
+from FuXi.Rete.SidewaysInformationPassing import iterCondition
+from FuXi.Rete.SidewaysInformationPassing import SetOp
+from FuXi.Rete.SidewaysInformationPassing import SIPRepresentation
 from FuXi.Syntax.InfixOWL import OWL_NS
 
+from rdflib import (
+    Graph,
+    Namespace,
+    RDF,
+    URIRef,
+    Variable
+)
+from rdflib.util import first
+from rdflib.collection import Collection
+# from rdflib.plugins.sparql.algebra import RenderSPARQLAlgebra
+from rdflib.plugins.sparql.algebra import translateQuery as RenderSPARQLAlgebra
+from rdflib.plugins.sparql.parser import parseQuery
+from rdflib.plugins.sparql.sparql import Query as sparqlQuery
 
-def _debug(*args, **kw):
-    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
-    logger = logging.getLogger(__name__)
-    logger.debug(*args, **kw)
-
-__all__ = [
-    'EX_ULMAN',
-    'LOG_NS',
-    'MAGIC',
-    'DDL_STRICTNESS_LOOSE',
-    'DDL_STRICTNESS_HARSH',
-    'DDL_STRICTNESS_FALLBACK_DERIVED',
-    'DDL_STRICTNESS_FALLBACK_BASE',
-    'DDL_MUST_CHECK',
-    'DDL_FALLBACK',
-    'nameMap',
-    'OWL_PROPERTIES_QUERY',
-    'EXCLUDED_DERIVED_PREDS',
-    'ReplaceHybridPredcates',
-    'SetupDDLAndAdornProgram',
-    'CreateHybridPredicateRule',
-    'MagicSetTransformation',
-    'NormalizeGoals',
-    'AdornedRule',
-    'NormalizeUniterm',
-    'AdornRule',
-    'BasePredicateFromHybrid',
-    'IsHybridPredicateRule',
-    'IsHybridPredicate',
-    'compareAdornedPredToRuleHead',
-    'AdornProgram',
-    'AdornedUniTerm',
-    'AdornLiteral',
-    'DerivedPredicateIterator',
-    'iter_non_base_non_derived_preds',
-    'buildMagicBody',
-    'PrettyPrintRule',
-    'IdentifyDerivedPredicates',
-]
 
 EX_ULMAN = Namespace('http://doi.acm.org/10.1145/6012.15399#')
 LOG_NS = Namespace("http://www.w3.org/2000/10/swap/log#")
@@ -114,23 +92,11 @@ DDL_FALLBACK = [
 ]
 
 nameMap = {
-    'loose': DDL_STRICTNESS_LOOSE,
-    'defaultDerived': DDL_STRICTNESS_FALLBACK_DERIVED,
-    'defaultBase': DDL_STRICTNESS_FALLBACK_BASE,
-    'harsh': DDL_STRICTNESS_HARSH,
+  'loose': DDL_STRICTNESS_LOOSE,
+  'defaultDerived': DDL_STRICTNESS_FALLBACK_DERIVED,
+  'defaultBase': DDL_STRICTNESS_FALLBACK_BASE,
+  'harsh': DDL_STRICTNESS_HARSH,
 }
-
-
-def ReplaceHybridPredcates(rules, hybridPreds2Replace):
-    for rule in rules:
-        for headLiteral in iterCondition(rule.formula.head):
-            headOp = GetOp(headLiteral)
-            if headOp in hybridPreds2Replace:
-                headLiteral.setOperator(URIRef(headOp + u'_derived'))
-        for bodyAtom in iterCondition(rule.formula.body):
-            bodyPred = GetOp(bodyAtom)
-            if bodyPred in hybridPreds2Replace:
-                bodyAtom.setOperator(URIRef(bodyPred + u'_derived'))
 
 
 def SetupDDLAndAdornProgram(factGraph,
@@ -143,10 +109,10 @@ def SetupDDLAndAdornProgram(factGraph,
                             hybridPreds2Replace=None):
     if not defaultPredicates:
         defaultPredicates = [], []
+    # _dPredsProvided = bool(derivedPreds)
     if not derivedPreds:
         _derivedPreds = DerivedPredicateIterator(
-            factGraph,
-            rules,
+            factGraph, rules,
             strict=strictCheck,
             defaultPredicates=defaultPredicates)
         if not isinstance(derivedPreds, (set, list)):
@@ -155,62 +121,58 @@ def SetupDDLAndAdornProgram(factGraph,
             derivedPreds.extend(_derivedPreds)
     hybridPreds2Replace = hybridPreds2Replace or []
     adornedProgram = AdornProgram(
-        factGraph,
-        rules,
-        GOALS,
-        derivedPreds,
-        ignoreUnboundDPreds,
-        hybridPreds2Replace=hybridPreds2Replace)
+                        factGraph,
+                        rules,
+                        GOALS,
+                        derivedPreds,
+                        ignoreUnboundDPreds,
+                        hybridPreds2Replace=hybridPreds2Replace)
+    if adornedProgram != set([]):
+        rt = reduce(lambda l, r: l + r,
+                  [list(iterCondition(clause.formula.body))
+                        for clause in adornedProgram])
+    else:
+        rt = set()
+    for hybridPred, adornment in [(t, a)
+        for t, a in set(
+            [(URIRef(GetOp(term).split('_derived')[0]
+                   ) if GetOp(term).find('_derived') + 1 else GetOp(term),
+               ''.join(term.adornment)
+               ) for term in rt if isinstance(term, AdornedUniTerm)])
+            if t in hybridPreds2Replace]:
+        #If there are hybrid predicates, add rules that derived their IDB counterpart
+        #using information from the adorned queries to determine appropriate arity
+        #and adornment
+        hybridPred = URIRef(hybridPred)
+        hPred = URIRef(hybridPred + u'_derived')
+        if len(adornment) == 1:
+            # p_derived^{a}(X) :- p(X)
+            body = BuildUnitermFromTuple(
+                                (Variable('X'),
+                                 RDF.type,
+                                 hybridPred))
+            head = BuildUnitermFromTuple(
+                                (Variable('X'),
+                                 RDF.type,
+                                 hPred))
+        else:
+            # p_derived^{a}(X, Y) :- p(X, Y)
+            body = BuildUnitermFromTuple(
+                                (Variable('X'),
+                                 hybridPred,
+                                 Variable('Y')))
+            head = BuildUnitermFromTuple(
+                                (Variable('X'),
+                                 hPred,
+                                 Variable('Y')))
+        _head = AdornedUniTerm(head, list(adornment))
+        rule = AdornedRule(Clause(And([body]), _head.clone()))
+        rule.sip = Graph()
+        adornedProgram.add(rule)
 
     if factGraph is not None:
         factGraph.adornedProgram = adornedProgram
     return adornedProgram
-
-
-def CreateHybridPredicateRule(hybridPred, program, nsMap=None):
-    hPred = URIRef(hybridPred + u'_derived')
-    literals = set(reduce(lambda l, r: l + r,
-                          [list(iterCondition(clause.formula.body)) +
-                           list(iterCondition(clause.formula.head))
-                           for clause in program]))
-    for literal in literals:
-        if GetOp(literal) == hybridPred:
-            noArgs = len(GetArgs(literal))
-            if noArgs == 1:
-                # p_derived(X) :- p(X)
-                body = BuildUnitermFromTuple(
-                    (Variable('X'),
-                     RDF.type,
-                     hybridPred),
-                    newNss=nsMap
-                )
-                head = BuildUnitermFromTuple(
-                    (Variable('X'),
-                     RDF.type,
-                     hPred),
-                    newNss=nsMap
-                )
-                vars = [Variable('X')]
-            else:
-                # p_derived(X,Y) :- p(X,Y)
-                body = BuildUnitermFromTuple(
-                    (Variable('X'),
-                     hybridPred,
-                     Variable('Y')),
-                    newNss=nsMap
-                )
-                head = BuildUnitermFromTuple(
-                    (Variable('X'),
-                     hPred,
-                     Variable('Y')),
-                    newNss=nsMap
-                )
-                vars = [Variable('Y'), Variable('X')]
-            return Rule(
-                Clause(And([body]), head),
-                nsMapping=nsMap,
-                declare=vars
-            )
 
 
 def MagicSetTransformation(factGraph,
@@ -227,93 +189,84 @@ def MagicSetTransformation(factGraph,
     """
     noMagic = noMagic and noMagic or []
     magicPredicates = set()
-    # replacement={}
+    # replacement = {}
     adornedProgram = SetupDDLAndAdornProgram(
-        factGraph,
-        rules,
-        GOALS,
-        derivedPreds=derivedPreds,
-        strictCheck=strictCheck,
-        defaultPredicates=defaultPredicates)
+                                   factGraph,
+                                   rules,
+                                   GOALS,
+                                   derivedPreds=derivedPreds,
+                                   strictCheck=strictCheck,
+                                   defaultPredicates=defaultPredicates)
     newRules = []
     for rule in adornedProgram:
         if rule.isSecondOrder():
             import warnings
             warnings.warn(
-                "Second order rule not supported by GMS: %s" % rule,
-                RuntimeWarning)
+            "Second order rule no supported by GMS: %s" % rule,
+                    RuntimeWarning)
 
         magicPositions = {}
-        # Generate magic rules
+        #Generate magic rules
         for idx, pred in enumerate(iterCondition(rule.formula.body)):
             # magicBody = []
-            if isinstance(pred, AdornedUniTerm):
-                    # and pred not in magicPredicates:
+            if isinstance(pred, AdornedUniTerm):  # and pred not in magicPredicates:
                 # For each rule r in Pad, and for each occurrence of an adorned
-                # predicate p a in its body, we generate a magic rule defining
-                # magic_p a
-                prevPreds = [item
-                             for _idx, item in enumerate(rule.formula.body)
-                             if _idx < idx]
+                # predicate p a in its body, we generate a magic rule defining magic_p a
+                prevPreds = [item for _idx, item in enumerate(rule.formula.body)
+                                            if _idx < idx]
                 if 'b' not in pred.adornment:
                     import warnings
                     warnings.warn(
-                        "adorned predicate w/out any bound arguments(%s in %s) !" % (
-                        pred, rule.formula),
-                        RuntimeWarning)
+"adorned predicate w/out any bound arguments (%s in %s)" % (pred, rule.formula),
+                            RuntimeWarning)
                 if GetOp(pred) not in noMagic:
                     magicPred = pred.makeMagicPred()
                     magicPositions[idx] = (magicPred, pred)
-                    inArcs = [(N, x)
-                              for (N, x) in IncomingSIPArcs(
-                              rule.sip, getOccurrenceId(pred))
-                              if not set(x).difference(GetArgs(pred))]
+                    inArcs = [(N, x) for (N, x) in IncomingSIPArcs(rule.sip, getOccurrenceId(pred))
+                                        if not set(x).difference(GetArgs(pred))]
                     if len(inArcs) > 1:
-
                         # If there are several arcs entering qi, we define the
-                        # magic rule defining magic_qi in two steps. First, for
-                        # each arc Nj --> qi with label cj , we define a rule
-                        # with head label_qi_j(cj). The body of the rule is the
-                        # same as the body of the magic rule in the case where
-                        # there is a single arc entering qi (described above).
-                        # Then the magic rule is defined as follows. The head
-                        # is magic_q(0). The body contains label_qi_j(cj) for
-                        # all j (that is, for all arcs entering qi ).
-
+                        # magic rule defining magic_qi in two steps. First,
+                        # for each arc Nj --> qi with label cj , we define a
+                        # rule with head label_qi_j(cj ). The body of the rule
+                        # is the same as the body of the magic rule in the
+                        # case where there is a single arc entering qi
+                        # (described above). Then the magic rule is defined as
+                        # follows. The head is magic_q(0). The body contains
+                        # label_qi_j(cj) for all j (that is, for all arcs
+                        # entering qi ).
+                        #
                         # We combine all incoming arcs into a single list of
                         # (body) conditions for the magic set
                         PrettyPrintRule(rule)
                         SIPRepresentation(rule.sip)
-                        _debug("%s %s" % (pred, magicPred))
+                        print(pred, magicPred)
                         _body = []
                         additionalRules = []
                         for idxSip, (N, x) in enumerate(inArcs):
                             newPred = pred.clone()
-                            SetOp(newPred, URIRef(
-                                '%s_label_%s' % (newPred.op, idxSip)))
+                            SetOp(newPred, URIRef('%s_label_%s' % (newPred.op, idxSip)))
                             ruleBody = And(buildMagicBody(
-                                N,
-                                prevPreds,
-                                rule.formula.head,
-                                derivedPreds))
-                            additionalRules.append(Rule(
-                                Clause(ruleBody, newPred)))
+                                    N,
+                                    prevPreds,
+                                    rule.formula.head,
+                                    derivedPreds))
+                            additionalRules.append(Rule(Clause(ruleBody, newPred)))
                             _body.extend(newPred)
                             # _body.extend(ruleBody)
-                        additionalRules.append(Rule(
-                            Clause(And(_body), magicPred)))
+                        additionalRules.append(Rule(Clause(And(_body), magicPred)))
                         newRules.extend(additionalRules)
                         for i in additionalRules:
-                            _debug(i)
+                            print(i)
                         raise NotImplementedError()
                     else:
                         for idxSip, (N, x) in enumerate(inArcs):
                             ruleBody = And(buildMagicBody(
-                                N,
-                                prevPreds,
-                                rule.formula.head,
-                                derivedPreds,
-                                noMagic))
+                                    N,
+                                    prevPreds,
+                                    rule.formula.head,
+                                    derivedPreds,
+                                    noMagic))
                             newRule = Rule(Clause(ruleBody, magicPred))
                             newRules.append(newRule)
                     magicPredicates.add(magicPred)
@@ -327,12 +280,10 @@ def MagicSetTransformation(factGraph,
         for idx, (magicPred, origPred) in list(magicPositions.items()):
             newRule.formula.body.formulae.insert(idx + idxIncrement, magicPred)
             idxIncrement += 1
-        if 'b' in rule.formula.head.adornment \
-                and GetOp(rule.formula.head) not in noMagic:
+        if 'b' in rule.formula.head.adornment and GetOp(rule.formula.head) not in noMagic:
             headMagicPred = rule.formula.head.makeMagicPred()
             if isinstance(newRule.formula.body, Uniterm):
-                newRule.formula.body = And(
-                    [headMagicPred, newRule.formula.body])
+                newRule.formula.body = And([headMagicPred, newRule.formula.body])
             else:
                 newRule.formula.body.formulae.insert(0, headMagicPred)
         newRules.append(newRule)
@@ -349,12 +300,11 @@ def NormalizeGoals(goals):
         for goal in goals:
             yield goal, {}
     elif isinstance(goals, tuple):
-        # @@FIXME: incomplete code
         yield sparqlQuery, {}
     else:
-        query = RenderSPARQLAlgebra(parse(goals))
+        query = RenderSPARQLAlgebra(parseQuery(goals))
         for pattern in query.patterns:
-            yield pattern[:3], query.prolog.prefixBindings
+            yield pattern[:3], query.prologue.prefixBindings
 
 
 class AdornedRule(Rule):
@@ -364,9 +314,9 @@ class AdornedRule(Rule):
         self.ruleStr = ''
         for pred in itertools.chain(iterCondition(clause.head),
                                     iterCondition(clause.body)):
-            decl.update(
-                [term for term in GetArgs(pred)
-                 if isinstance(term, Variable)])
+            decl.update([term
+                for term in GetArgs(pred)
+                    if isinstance(term, Variable)])
             if isinstance(pred, AdornedUniTerm):
                 self.ruleStr += ''.join(pred.adornment)
             self.ruleStr += ''.join(pred.toRDFTuple())
@@ -374,15 +324,13 @@ class AdornedRule(Rule):
 
     def isRecursive(self):
         def termHash(term):
-            return GetOp(term),\
-                reduce(lambda x, y: x + y, term.adornment)
+            return GetOp(term), \
+                   reduce(lambda x, y: x + y, term.adornment)
         headHash = termHash(self.formula.head)
 
         def recursiveLiteral(term):
-            return isinstance(term, AdornedUniTerm) \
-                and termHash(term) == headHash
-        if first(filter(
-                 recursiveLiteral, iterCondition(self.formula.body))):
+            return isinstance(term, AdornedUniTerm) and termHash(term) == headHash
+        if first(filter(recursiveLiteral, iterCondition(self.formula.body))):
             return True
         else:
             return False
@@ -413,75 +361,59 @@ def AdornRule(derivedPreds,
     assert len(list(iterCondition(clause.head))) == 1
     hybridPreds2Replace = hybridPreds2Replace or []
     adornedHead = AdornedUniTerm(clause.head,
-                                 newHead.adornment)
+                               newHead.adornment)
     sip = BuildNaturalSIP(clause,
-                          derivedPreds,
-                          adornedHead,
-                          hybridPreds2Replace=hybridPreds2Replace,
-                          ignoreUnboundDPreds=ignoreUnboundDPreds)
+                        derivedPreds,
+                        adornedHead,
+                        hybridPreds2Replace=hybridPreds2Replace,
+                        ignoreUnboundDPreds=ignoreUnboundDPreds)
     bodyPredReplace = {}
 
     def adornment(arg, headArc, x):
         if headArc:
             # Sip arc from head
-            # Don't mark bound if query has no bound/distinguished terms
+            # don't mark bound if query has no bound/distinguished terms
             return (arg in x and
                     arg in adornedHead.getDistinguishedVariables(True)) \
-                and 'b' or 'f'
+                        and 'b' or 'f'
         else:
             return arg in x and 'b' or 'f'
     for literal in iterCondition(sip.sipOrder):
         op = GetOp(literal)
         args = GetArgs(literal)
-        if op in derivedPreds or (
-                op in hybridPreds2Replace if hybridPreds2Replace else False):
+        if op in derivedPreds or (op in hybridPreds2Replace if hybridPreds2Replace else False):
             for N, x in IncomingSIPArcs(sip, getOccurrenceId(literal)):
                 headArc = len(N) == 1 and N[0] == GetOp(newHead)
                 if not set(x).difference(args):
-                    # A binding for q is useful, however, only if it is a
-                    # binding for an argument of q.
-                    bodyPredReplace[literal] = AdornedUniTerm(
-                        NormalizeUniterm(literal),
-                        [adornment(arg, headArc, x)
-                         for arg in args],
-                        literal.naf)
-                    # For a predicate occurrence with no incoming
-                    # arc, the adornment contains only f. For our purposes here
-                    # we do not distinguish between a predicate with such an
-                    # adornment and an unadorned predicate (we do in order to
-                    # support open queries)
+                    # A binding
+                    # for q is useful, however, only if it is a binding for an argument of q.
+                    bodyPredReplace[literal] = AdornedUniTerm(NormalizeUniterm(literal),
+                            [adornment(arg, headArc, x) for arg in args], literal.naf)
+                # For a predicate occurrence with no incoming
+                # arc, the adornment contains only f. For our purposes here,
+                # we do not distinguish between a predicate with such an
+                # adornment and an unadorned predicate (we do in order to support open queries)
             if literal not in bodyPredReplace and ignoreUnboundDPreds:
-                bodyPredReplace[literal] = AdornedUniTerm(
-                    NormalizeUniterm(literal),
-                    ['f' for arg in GetArgs(literal)],
-                    literal.naf)
+                bodyPredReplace[literal] = AdornedUniTerm(NormalizeUniterm(literal),
+                        ['f' for arg in GetArgs(literal)], literal.naf)
     if hybridPreds2Replace:
         atomPred = GetOp(adornedHead)
         if atomPred in hybridPreds2Replace:
             adornedHead.setOperator(URIRef(atomPred + u'_derived'))
         for bodAtom in [bodyPredReplace.get(p, p)
-                        for p in iterCondition(sip.sipOrder)]:
+                                for p in iterCondition(sip.sipOrder)]:
             bodyPred = GetOp(bodAtom)
             if bodyPred in hybridPreds2Replace:
                 bodAtom.setOperator(URIRef(bodyPred + u'_derived'))
     rule = AdornedRule(Clause(And([bodyPredReplace.get(p, p)
-                                   for p in iterCondition(sip.sipOrder)]),
-                              adornedHead))
+                                for p in iterCondition(sip.sipOrder)]),
+                            adornedHead))
     rule.sip = sip
     return rule
 
 
 def BasePredicateFromHybrid(pred):
     return URIRef(pred[:-8])
-
-
-def IsHybridPredicateRule(rule, derivedSuffix='derived'):
-    fullSuffix = '_' + derivedSuffix
-    basePred = URIRef(GetOp(rule.formula.head).split(fullSuffix)[0])
-    return GetOp(
-        rule.formula.head).find(fullSuffix) + 1 and len(
-            list(iterCondition(rule.formula.body))) == 1 and \
-        GetOp(list(iterCondition(rule.formula.body))[0]) == basePred
 
 
 def IsHybridPredicate(pred, hybridPreds2Replace):
@@ -491,15 +423,16 @@ def IsHybridPredicate(pred, hybridPreds2Replace):
 
 def compareAdornedPredToRuleHead(aPred, head, hybridPreds2Replace):
     """
-    If p_a is an unmarked adorned predicate, then for each rule that has p in
-    its head, ..
+    If p_a is an unmarked adorned predicate, then for each rule that has p in its head, ..
     """
     headPredicateTerm = GetOp(head)
     aPredTerm = GetOp(aPred)
     assert isinstance(head, Uniterm)
     if head.getArity() == aPred.getArity():
         return headPredicateTerm == aPredTerm or isinstance(headPredicateTerm,
-                                                            Variable)
+                                                            Variable) or (
+               IsHybridPredicate(aPred, hybridPreds2Replace) and
+               aPredTerm[:-8] == headPredicateTerm)
     return False
 
 
@@ -510,23 +443,21 @@ def AdornProgram(factGraph,
                  ignoreUnboundDPreds=False,
                  hybridPreds2Replace=None):
     """
-    The process starts from the given query. The query determines bindings for
-    q, and we replace q by an adorned version, in which precisely the positions
-    bound in the query are designated as bound, say q e . In general, we have a
-    collection of adorned predicates and as each one is processed, we will mark
-    it, so that it will not be processed again. If p a is an unmarked adorned
-    predicate, then for each rule that has p in its head we generate an adorned
-    version for the rule and add it to Pad; then p is marked as processed.
+    The process starts from the given query. The query determines bindings for q, and we replace
+    q by an adorned version, in which precisely the positions bound in the query are designated as
+    bound, say q e . In general, we have a collection of adorned predicates, and as each one is processed,
+    we will mark it, so that it will not be processed again. If p a is an unmarked adorned
+    predicate, then for each rule that has p in its head, we generate an adorned version for the rule
+    and add it to Pad; then p is marked as processed.
 
     The adorned version of a rule contains additional
-    adorned predicates, and these are added to the collection, unless they
-    already appear there. The process terminates when no unmarked adorned
-    predicates are left.
+    adorned predicates, and these are added to the collection, unless they already appear
+    there. The process terminates when no unmarked adorned predicates are left.
+
     """
     from FuXi.DLP import LloydToporTransformation
     from collections import deque
     goalDict = {}
-    handled = set()
     hybridPreds2Replace = hybridPreds2Replace or []
     adornedPredicateCollection = set()
     for goal, nsBindings in NormalizeGoals(goals):
@@ -537,7 +468,7 @@ def AdornProgram(factGraph,
     def unprocessedPreds(aPredCol):
         rt = []
         for p in aPredCol:
-            if p.herbrand_hash not in handled:
+            if not  p.marked:
                 rt.append(p)
             if p not in goalDict:
                 goalDict.setdefault(GetOp(p), set()).add(p)
@@ -546,40 +477,36 @@ def AdornProgram(factGraph,
     adornedProgram = set()
     while len(toDo):
         term = toDo.popleft()
-        # check if there is a rule with term as its head
+        #check if there is a rule with term as its head
         for rule in rs:
             for clause in LloydToporTransformation(rule.formula):
-                head = isinstance(clause.head, Exists) \
-                    and clause.head.formula or clause.head
+                head = isinstance(clause.head, Exists) and clause.head.formula or clause.head
                 # headPredicate = GetOp(head)
-                if compareAdornedPredToRuleHead(
-                        term, head, hybridPreds2Replace):
-                    # for each rule that has p in its head, we generate an
-                    # adorned version for the rule
-                    adornedRule = AdornRule(
-                        derivedPreds,
-                        clause,
-                        term,
-                        ignoreUnboundDPreds=ignoreUnboundDPreds,
-                        hybridPreds2Replace=hybridPreds2Replace)
+                if compareAdornedPredToRuleHead(term, head, hybridPreds2Replace):
+                    #for each rule that has p in its head, we generate an adorned version for the rule
+                    adornedRule = AdornRule(derivedPreds,
+                                          clause,
+                                          term,
+                                          ignoreUnboundDPreds=ignoreUnboundDPreds,
+                                          hybridPreds2Replace=hybridPreds2Replace)
                     adornedProgram.add(adornedRule)
-                    # The adorned version of a rule contains additional adorned
-                    # predicates, and these are added
+                    #The adorned version of a rule contains additional adorned
+                    #predicates, and these are added
                     for pred in iterCondition(adornedRule.formula.body):
                         if isinstance(pred, N3Builtin):
                             aPred = pred
                         else:
                             aPred = not isinstance(pred, AdornedUniTerm) and \
-                                AdornLiteral(pred.toRDFTuple(),
-                                             nsBindings,
-                                             pred.naf) or pred
+                                        AdornLiteral(pred.toRDFTuple(),
+                                                     nsBindings,
+                                                     pred.naf) or pred
                         op = GetOp(pred)
                         if (op in derivedPreds or
                             (op in hybridPreds2Replace if hybridPreds2Replace
                             else False)
                             ) and aPred not in adornedPredicateCollection:
                             adornedPredicateCollection.add(aPred)
-        handled.add(term.herbrand_hash)  # term.marked=True
+        term.marked = True
         toDo.extendleft(unprocessedPreds(adornedPredicateCollection))
 
     factGraph.queryAtoms = goalDict
@@ -592,15 +519,11 @@ class AdornedUniTerm(Uniterm):
         self.adornment = adornment
         self.nsMgr = GetUterm(uterm).nsMgr
         newArgs = copy.deepcopy(GetUterm(uterm).arg)
-        super(AdornedUniTerm, self).__init__(
-                GetUterm(uterm).op, newArgs, naf=naf)
+        super(AdornedUniTerm, self).__init__(GetUterm(uterm).op, newArgs, naf=naf)
         self.isMagic = False
 
     def clone(self):
         return AdornedUniTerm(self, self.adornment, self.naf)
-
-    def convert2NormalUterm(self):
-        return buildUniTerm(self.toRDFTuple())
 
     def makeMagicPred(self):
         """
@@ -612,7 +535,7 @@ class AdornedUniTerm(Uniterm):
         newAdornedPred = AdornedUniTerm(self, self.adornment, self.naf)
         if self.op == RDF.type:
             newAdornedPred.arg[-1] = URIRef(self.arg[-1] + '_magic')
-        elif len([i for i in self.adornment if i == 'b']) == 1:
+        elif len([i for i in self.adornment if i == ' b']) == 1:
             #adorned predicate occurrence with one out of two arguments bound
             #converted into a magic predicate: It becomes a unary predicate
             #(an rdf:type assertion)
@@ -629,29 +552,28 @@ class AdornedUniTerm(Uniterm):
     def __hash__(self):
         return self._hash ^ hash(reduce(lambda x, y: x + y, self.adornment))
 
-    # def __eq__(self,other):
+    # def __eq__(self, other):
     #     return self.adornment==other.adornment and\
     #            self.op==other.op and\
     #            self.arg==other.arg
 
-    def hasBindings(self, varsOnly=False):
+    def hasBindings(self):
         for idx, term in enumerate(GetArgs(self)):
             if self.adornment[idx] == 'b':
                 if not varsOnly or isinstance(term, Variable):
                     return True
         return False
 
-    def getDistinguishedVariables(self, varsOnly=False, bound=True):
-        adornment2Compare = 'b' if bound else 'f'
+    def getDistinguishedVariables(self, varsOnly=False):
         if self.op == RDF.type:
             for idx, term in enumerate(GetArgs(self)):
-                if self.adornment[idx] == adornment2Compare:
+                if self.adornment[idx] == 'b':
                     if not varsOnly or isinstance(term, Variable):
                         yield term
         else:
             for idx, term in enumerate(self.arg):
                 try:
-                    if self.adornment[idx] == adornment2Compare:
+                    if self.adornment[idx] == 'b':
                         if not varsOnly or isinstance(term, Variable):
                             yield term
                 except IndexError:
@@ -662,9 +584,8 @@ class AdornedUniTerm(Uniterm):
         for idx, term in enumerate(self.arg):
             goalArg = self.arg[idx]
             candidateArg = uniterm.arg[idx]
-            if self.adornment[idx] == 'b' \
-                and isinstance(candidateArg, Variable):
-                #binding
+            if self.adornment[idx] == 'b' and isinstance(candidateArg, Variable):
+                # binding
                 rt[candidateArg] = goalArg
         return rt
 
@@ -688,22 +609,24 @@ class AdornedUniTerm(Uniterm):
                                      self.normalizeTerm(self.arg[-1]),
                                      self.normalizeTerm(self.arg[0]))
             else:
-                return "%s%s(%s)" % (negPrefix, pred, ' '.join(
-                                        [self.normalizeTerm(i)
-                                          for idx, i in enumerate(self.arg)
-                                              if self.adornment[idx] == 'b']))
+                return "%s%s(%s)" % (negPrefix,
+                                     pred,
+                                ' '.join([self.normalizeTerm(i)
+                                            for idx, i in enumerate(self.arg)
+                                                    if self.adornment[idx] == 'b']))
         elif self.op == RDF.type:
             return "%s%s%s(%s)" % (negPrefix,
-                                   self.normalizeTerm(self.arg[-1]),
-                                   adornSuffix,
-                                   self.normalizeTerm(self.arg[0]))
+                                 self.normalizeTerm(self.arg[-1]),
+                                 adornSuffix,
+                                 self.normalizeTerm(self.arg[0]))
         else:
-            return "%s%s%s(%s)" % (negPrefix, pred, adornSuffix,
-                                   ' '.join([self.normalizeTerm(i)
+            return "%s%s%s(%s)" % (negPrefix,
+                                 pred,
+                                 adornSuffix,
+                                 ' '.join([self.normalizeTerm(i)
                                             for i in self.arg]))
 
 
-@py3compat.format_doctest_out
 def AdornLiteral(rdfTuple, newNss=None, naf=False):
     """
     An adornment for an n-ary predicate p is a string a of length n on the
@@ -715,17 +638,17 @@ def AdornLiteral(rdfTuple, newNss=None, naf=False):
     the other arguments free, where the bound arguments are those that are
     so indicated by the adornment.
 
-    >>> EX=Namespace('http://doi.acm.org/10.1145/6012.15399#') # doctest: +SKIP
-    >>> query = RenderSPARQLAlgebra(parse(NON_LINEAR_MS_QUERY)) # doctest: +SKIP
-    >>> literal = query.patterns[0][:3] # doctest: +SKIP
-    >>> literal # doctest: +SKIP
-    (rdflib.term.URIRef(%(u)s'http://doi.acm.org/10.1145/6012.15399#john'), rdflib.term.URIRef(%(u)s'http://doi.acm.org/10.1145/6012.15399#sg'), ?X)
-    >>> aLit = AdornLiteral(literal, query.prolog.prefixBindings) # doctest: +SKIP
-    >>> aLit # doctest: +SKIP
+    >>> EX = Namespace('http://doi.acm.org/10.1145/6012.15399#')
+    >>> query = RenderSPARQLAlgebra(parse(NON_LINEAR_MS_QUERY))  #doctest: +SKIP
+    >>> literal = query.patterns[0][:3]  #doctest: +SKIP
+    >>> literal  #doctest: +SKIP
+    (rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#john'), rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#sg'), ?X)
+    >>> aLit = AdornLiteral(literal, query.prologue.prefixBindings)  #doctest: +SKIP
+    >>> aLit  #doctest: +SKIP
     mst:sg_bf(mst:john ?X)
-    >>> aLit.adornment # doctest: +SKIP
+    >>> aLit.adornment  #doctest: +SKIP
     ['b', 'f']
-    >>> aLit.getBindings(Uniterm(EX.sg, [Variable('X'), EX.jill])) # doctest: +SKIP
+    >>> aLit.getBindings(Uniterm(EX.sg, [Variable('X'), EX.jill]))  #doctest: +SKIP
     {?X: rdflib.URIRef('http://doi.acm.org/10.1145/6012.15399#john')}
     """
     args = [rdfTuple[0], rdfTuple[-1]]
@@ -735,8 +658,7 @@ def AdornLiteral(rdfTuple, newNss=None, naf=False):
 
     def isFreeTerm(term):
         return isinstance(term, Variable)
-    adornment = [isFreeTerm(term) and 'f' or 'b' for idx,
-                            term in enumerate(opArgs)]
+    adornment = [isFreeTerm(term) and 'f' or 'b' for idx, term in enumerate(opArgs)]
     return AdornedUniTerm(uTerm, adornment, naf)
 
 
@@ -757,8 +679,7 @@ def DerivedPredicateIterator(factsOrBasePreds,
     ruleHeads = set()
     for rule in ruleset:
         if rule.formula.body:
-            for idx, term in enumerate(
-                    itertools.chain(iterCondition(rule.formula.head),
+            for idx, term in enumerate(itertools.chain(iterCondition(rule.formula.head),
                                       iterCondition(rule.formula.body))):
                 # iterate over terms from head to end of body
                 op = GetOp(term)
@@ -775,9 +696,8 @@ def DerivedPredicateIterator(factsOrBasePreds,
                         # checking DDL well formedness and
                         # op is a base predicate *and* a head literal (derived)
                         if strict in DDL_FALLBACK:
-                            mark = strict == \
-                                DDL_STRICTNESS_FALLBACK_DERIVED and \
-                                'derived' or 'base'
+                            mark = strict == DDL_STRICTNESS_FALLBACK_DERIVED and \
+                            'derived' or 'base'
                             if strict == DDL_STRICTNESS_FALLBACK_DERIVED and \
                                 op not in defaultBasePreds:
                                 # a clashing predicate is marked as derived due
@@ -790,12 +710,10 @@ def DerivedPredicateIterator(factsOrBasePreds,
                                 defaultBasePreds.append(op)
                             import warnings
                             warnings.warn(
-            "predicate symbol of %s is in both IDB and EDB. Marking as %s" % (
-                            term, mark))
+      "predicate symbol of %s is in both IDB and EDB. Marking as %s" % (term, mark))
                         else:
                             raise SyntaxError(
-            "%s is a member of a derived predicate and a base predicate!" %
-                        term)
+                                "%s is a member of a derived predicate and a base predicate." % term)
                     if op in basePreds:
                         # base predicates are marked for later validation
                         uncertainPreds.add(op)
@@ -812,8 +730,8 @@ def DerivedPredicateIterator(factsOrBasePreds,
     for pred in uncertainPreds:
         # for each predicate marked as 'uncertain'
         # do further checking
-        if (pred not in ruleBodyPreds and not isinstance(pred, Variable)) \
-            or pred in ruleHeads:
+        if (pred not in ruleBodyPreds and not isinstance(pred, Variable)) or\
+           pred in ruleHeads:
             # pred is not in a body literal and is a proper predicate symbol
             # or it is a rule head -> mark as a derived predicate
             derivedPreds.add(pred)
@@ -831,8 +749,7 @@ def iter_non_base_non_derived_preds(ruleset, intensional_db):
             if uterm.op in intensional_preds and uterm.op not in rt:
                 rt.add(uterm.op)
                 yield uterm.op, (fact
-                         for fact in intensional_db.triples(
-                                            (None, uterm.op, None)))
+                         for fact in intensional_db.triples((None, uterm.op, None)))
 
 
 def buildMagicBody(N, prevPredicates, adornedHead, derivedPreds, noMagic=[]):
@@ -847,14 +764,14 @@ def buildMagicBody(N, prevPredicates, adornedHead, derivedPreds, noMagic=[]):
         op = GetOp(prevAPred)
         if op in N or isinstance(op, Variable):
             # If qj, j<i, is in N, we add qj to the body of the magic rule
-            # Note, if the atom has a variable for the predicate, treat it as
-            # a base predicate occurrence
+            # Note, if the atom has a variable for the predicate, treat it as a base
+            # predicate occurrence
             body.append(prevAPred)
         if op in derivedPreds \
             and isinstance(prevAPred, AdornedUniTerm) \
             and prevAPred.adornment.count('b') > 0:
-            #If qj is a derived predicate and its adornment contains at least
-            #one b, we also add the corresponding magic predicate to the body
+            # If qj is a derived predicate and its adornment contains at least
+            # one b, we also add the corresponding magic predicate to the body
             if op in noMagic:
                 body.append(prevAPred)
             else:
@@ -864,13 +781,13 @@ def buildMagicBody(N, prevPredicates, adornedHead, derivedPreds, noMagic=[]):
 
 def PrettyPrintRule(rule):
     if isinstance(rule.formula.body, And):
-        _debug(rule.formula.head)
-        _debug("    :- %s" % rule.formula.body.formulae[0])
+        print(rule.formula.head)
+        print("    :- %s" % rule.formula.body.formulae[0])
         for idx, literal in enumerate(rule.formula.body.formulae[1:]):
-            _debug("       %s%s" % (literal,
-                literal == rule.formula.body.formulae[-1] and '' or ', '))
+            print("       %s%s" % (literal,
+                                   literal == rule.formula.body.formulae[-1] and '' or ', '))
     else:
-        _debug(rule.formula)
+        print(rule.formula)
 
 OWL_PROPERTIES_QUERY = \
 """
@@ -897,8 +814,7 @@ def IdentifyDerivedPredicates(ddlMetaGraph, tBox, ruleset=None):
     """
     dPreds = set()
     basePreds = set()
-    DDL = Namespace(
-        'http://code.google.com/p/fuxi/wiki/DataDescriptionLanguage#')
+    DDL = Namespace('http://code.google.com/p/fuxi/wiki/DataDescriptionLanguage#')
 
     if ruleset:
         for rule in ruleset:
@@ -912,31 +828,27 @@ def IdentifyDerivedPredicates(ddlMetaGraph, tBox, ruleset=None):
         dPreds.update(Collection(ddlMetaGraph, derivedClassList))
     derivedPropPrefixes = []
     basePropPrefixes = []
-    for derivedPropPrefixList in ddlMetaGraph.subjects(
-                    predicate=RDF.type, object=DDL.DerivedPropertyPrefix):
-        derivedPropPrefixes.extend(
-                    Collection(ddlMetaGraph, derivedPropPrefixList))
-    for basePropPrefixList in ddlMetaGraph.subjects(
-                    predicate=RDF.type, object=DDL.BasePropertyPrefix):
+    for derivedPropPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                               object=DDL.DerivedPropertyPrefix):
+        derivedPropPrefixes.extend(Collection(ddlMetaGraph, derivedPropPrefixList))
+    for basePropPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                               object=DDL.BasePropertyPrefix):
         basePropPrefixes.extend(Collection(ddlMetaGraph, basePropPrefixList))
 
     for prop in tBox.query(OWL_PROPERTIES_QUERY):
-        if first(itertools.ifilter(lambda prefix: prop.startswith(prefix),
+        if first(filter(lambda prefix: prop.startswith(prefix),
                                    derivedPropPrefixes)) and \
                        (prop, RDF.type, OWL_NS.AnnotationProperty) not in tBox:
             dPreds.add(prop)
-        if first(itertools.ifilter(
-                lambda prefix:
-                    prop.startswith(prefix),
-                        basePropPrefixes)) and \
-                        (prop, RDF.type, OWL_NS.AnnotationProperty
-                                ) not in tBox and \
-                         prop not in dPreds:
+        if first(filter(lambda prefix: prop.startswith(prefix),
+                                   basePropPrefixes)) and \
+                       (prop, RDF.type, OWL_NS.AnnotationProperty) not in tBox and \
+                       prop not in dPreds:
             basePreds.add(prop)
 
     derivedClassPrefixes = []
-    for derivedClsPrefixList in ddlMetaGraph.subjects(
-                    predicate=RDF.type, object=DDL.DerivedClassPrefix):
+    for derivedClsPrefixList in ddlMetaGraph.subjects(predicate=RDF.type,
+                                              object=DDL.DerivedClassPrefix):
         derivedClassPrefixes.extend(Collection(ddlMetaGraph,
                                                derivedClsPrefixList))
     baseClassPrefixes = []
@@ -946,11 +858,11 @@ def IdentifyDerivedPredicates(ddlMetaGraph, tBox, ruleset=None):
                                            baseClsPrefixList))
     for cls in tBox.subjects(predicate=RDF.type,
                              object=OWL_NS.Class):
-        if first(itertools.ifilter(lambda prefix: cls.startswith(prefix),
+        if first(filter(lambda prefix: cls.startswith(prefix),
                                    baseClassPrefixes)):
             if cls not in dPreds:
                 basePreds.add(cls)
-        if first(itertools.ifilter(lambda prefix: cls.startswith(prefix),
+        if first(filter(lambda prefix: cls.startswith(prefix),
                                    derivedClassPrefixes)):
             if cls not in basePreds:
                 dPreds.add(cls)
@@ -963,7 +875,8 @@ def IdentifyDerivedPredicates(ddlMetaGraph, tBox, ruleset=None):
     for queryNode in ddlMetaGraph.subjects(predicate=RDF.type,
                                    object=DDL.DerivedClassQuery):
         query = first(ddlMetaGraph.objects(queryNode, RDF.value))
-        for cls in tBox.query(query, initNs=nsBindings):
+        for cls in tBox.query(query,
+                              initNs=nsBindings):
             dPreds.add(cls)
 
     for baseClsList in ddlMetaGraph.subjects(predicate=RDF.type,
@@ -982,7 +895,6 @@ def test():
 if __name__ == '__main__':
     test()
 
-
 # from FuXi.Rete.Magic import EX_ULMAN
 # from FuXi.Rete.Magic import LOG_NS
 # from FuXi.Rete.Magic import MAGIC
@@ -994,21 +906,19 @@ if __name__ == '__main__':
 # from FuXi.Rete.Magic import DDL_FALLBACK
 # from FuXi.Rete.Magic import nameMap
 # from FuXi.Rete.Magic import OWL_PROPERTIES_QUERY
-# from FuXi.Rete.Magic import EXCLUDED_DERIVED_PREDS
-# from FuXi.Rete.Magic import ReplaceHybridPredcates
+
+# from FuXi.Rete.Magic import AdornedRule
+# from FuXi.Rete.Magic import AdornedUniTerm
+
 # from FuXi.Rete.Magic import SetupDDLAndAdornProgram
-# from FuXi.Rete.Magic import CreateHybridPredicateRule
 # from FuXi.Rete.Magic import MagicSetTransformation
 # from FuXi.Rete.Magic import NormalizeGoals
-# from FuXi.Rete.Magic import AdornedRule
 # from FuXi.Rete.Magic import NormalizeUniterm
 # from FuXi.Rete.Magic import AdornRule
 # from FuXi.Rete.Magic import BasePredicateFromHybrid
-# from FuXi.Rete.Magic import IsHybridPredicateRule
 # from FuXi.Rete.Magic import IsHybridPredicate
 # from FuXi.Rete.Magic import compareAdornedPredToRuleHead
 # from FuXi.Rete.Magic import AdornProgram
-# from FuXi.Rete.Magic import AdornedUniTerm
 # from FuXi.Rete.Magic import AdornLiteral
 # from FuXi.Rete.Magic import DerivedPredicateIterator
 # from FuXi.Rete.Magic import iter_non_base_non_derived_preds
