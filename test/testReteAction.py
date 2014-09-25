@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import unittest
 from cStringIO import StringIO
 from rdflib import Graph, Literal, Namespace, Variable
@@ -27,6 +28,7 @@ N3_FACTS = \
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
 m:chimezie foaf:mbox <mailto:chimezie@example.com> .
+m:zoë foaf:mbox <mailto:zoë@example.com> .
 """
 
 matchingHeadTriple = (Variable('person'),

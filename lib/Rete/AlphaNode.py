@@ -114,7 +114,7 @@ class ReteToken:
 
     @memoize
     def concatenateTerms(terms):
-        return reduce(lambda x, y: str(x) + str(y), [term[VALUE] for term in terms])
+        return reduce(lambda x, y: unicode(x) + unicode(y), [term[VALUE] for term in terms])
 
     def __eq__(self, other):
         return hash(self) == hash(other)
