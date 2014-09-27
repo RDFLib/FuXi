@@ -114,7 +114,7 @@ class ReteToken:
 
     @memoize
     def concatenateTerms(terms):
-        return reduce(lambda x, y: unicode(x) + unicode(y), [term[VALUE] for term in terms])
+        return reduce(lambda x, y: str(hash(x)) + str(hash(y)), [term[VALUE] for term in terms])
 
     def __eq__(self, other):
         return hash(self) == hash(other)
@@ -201,6 +201,7 @@ class ReteToken:
                 else:
                     bindHashItems.append(val)
             #self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
+
             self.hash = hash(reduce(lambda x, y: x + y, bindHashItems))
             return self
         elif isinstance(thing, dict):
