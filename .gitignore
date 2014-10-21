@@ -2,3 +2,5 @@
 /build/
 /FuXi.egg-info/
 FuXi.sublime-*
+__pycache__
+/.idea
