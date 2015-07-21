@@ -28,7 +28,7 @@ script:
     # the python2 code from the current directory instead of the installed
     # 2to3 version in build/src.
     - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '2' ]]; then nosetests; fi
-    - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '3' ]]; then nosetests --where=./build/src; fi
+    - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '3' ]]; then nosetests3 --where=./build/src; fi
 # notifications:
 #   irc:
 #     channels: "irc.freenode.org#rdflib"
