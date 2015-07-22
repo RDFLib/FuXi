@@ -21,9 +21,6 @@ env:
 install:
     - pip install tox
 
-before_script:
-    - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '2' ]]; then flake8 --exclude=tools,examples --exit-zero FuXi; fi
-
 script:
     tox -e $TOX_ENV
 
