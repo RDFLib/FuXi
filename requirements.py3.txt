@@ -1,5 +1,5 @@
 flake8
--e git://github.com/gjhiggins/html5libpy3#egg=html5lib
+html5lib
 pyparsing
 isodate
 SPARQLWrapper
