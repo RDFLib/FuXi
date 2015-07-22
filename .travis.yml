@@ -7,6 +7,7 @@ branches:
     - master
 
 python:
+    - 2.5
     - 2.6
     - 2.7
     # - 3.2
@@ -15,6 +16,7 @@ python:
    - "pypy"
 
 install:
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.5' ]]; then pip install --default-timeout 60 ordereddict; pip install --default-timeout 60 "simplejson"; pip install --default-timeout 60 "elementtree"; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install --default-timeout 60 ordereddict; fi
     - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '2' ]]; then pip install --default-timeout 60 -r requirements.py2.txt;  pip install --default-timeout 60 "html5lib";fi
     - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '3' ]]; then pip install --default-timeout 60 -r requirements.py3.txt; fi
