@@ -2,17 +2,16 @@
 # encoding: utf-8
 import unittest
 from nose.exc import SkipTest
-from cStringIO import StringIO
+try:
+    from io import StringIO
+    assert StringIO
+except ImportError:
+    from StringIO import StringIO
 from rdflib.graph import Graph
 from rdflib import (
-    # RDF,
-    # RDFS,
     Namespace,
     Variable,
-    # Literal,
-    # URIRef,
-    # BNode
-    )
+)
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Syntax.InfixOWL import OWL_NS
 from FuXi.Horn.HornRules import HornFromN3
@@ -20,8 +19,7 @@ from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
 
 EX = Namespace('http://example.org/')
 
-FACTS = \
-"""
+FACTS = """\
 @prefix ex: <http://example.org/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 
@@ -31,8 +29,7 @@ ex:bar ex:y "yyyy";
        owl:sameAs ex:baz .
 """
 
-RULES = \
-"""
+RULES = """\
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 
 { ?x owl:sameAs ?y } => { ?y owl:sameAs ?x } .
@@ -56,7 +53,7 @@ class test_sameAs(unittest.TestCase):
 
     def setUp(self):
         self.rule_store, self.rule_graph, self.network = SetupRuleStore(
-                            makeNetwork=True)
+            makeNetwork=True)
         self.graph = Graph().parse(StringIO(FACTS), format='n3')
         # adornedProgram = SetupDDLAndAdornProgram(
         #                                self.graph,
@@ -70,13 +67,13 @@ class test_sameAs(unittest.TestCase):
         raise SkipTest("SKIPFAIL testTransitivity, see test/test_sameAs.py")
         nsBindings = {u'owl': OWL_NS, u'ex': EX}
         topDownStore = TopDownSPARQLEntailingStore(
-                        self.graph.store,
-                        self.graph,
-                        idb=HornFromN3(StringIO(RULES)),
-                        DEBUG=True,
-                        derivedPredicates=[OWL_NS.sameAs],
-                        nsBindings=nsBindings,
-                        hybridPredicates=[OWL_NS.sameAs])
+            self.graph.store,
+            self.graph,
+            idb=HornFromN3(StringIO(RULES)),
+            DEBUG=True,
+            derivedPredicates=[OWL_NS.sameAs],
+            nsBindings=nsBindings,
+            hybridPredicates=[OWL_NS.sameAs])
         targetGraph = Graph(topDownStore)
         for query, solns in QUERIES.items():
             result = set(targetGraph.query(query, initNs=nsBindings))

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 http://code.google.com/p/fuxi/issues/detail?id=41
 
@@ -9,7 +10,11 @@ import unittest
 from rdflib import Variable
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Horn.HornRules import HornFromN3
-from StringIO import StringIO
+try:
+    from io import StringIO
+    assert StringIO
+except ImportError:
+    from StringIO import StringIO
 
 rule_fixture = """\
 @prefix test: <http://example.org/>.
@@ -22,6 +27,7 @@ rule_fixture = """\
 
 
 class TestUnitermAction(unittest.TestCase):
+
     def setUp(self):
         self.rules = HornFromN3(StringIO(rule_fixture))
 

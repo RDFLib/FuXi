@@ -1,29 +1,35 @@
 ﻿#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import unittest
 # from pprint import pprint
-from cStringIO import StringIO
+try:
+    from io import StringIO
+    assert StringIO
+except ImportError:
+    from StringIO import StringIO
+
 from rdflib.graph import (
     # Graph,
     ConjunctiveGraph,
     QuotedGraph
-    )
+)
 from rdflib import (
     Literal,
     Variable,
     URIRef,
     Namespace
-    )
+)
 from FuXi.Rete.BuiltinPredicates import (
     # FILTERS,
     STRING_NS
-    )
+)
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Rete.Util import generateTokenSet
 from FuXi.Horn.HornRules import (
     # HornFromN3,
     NetworkFromN3
-    )
+)
 # from FuXi.Rete.BuiltinPredicates import FILTERS, STRING_NS
 
 TEST_NS = Namespace("http://example.org/test#")
@@ -68,8 +74,8 @@ def build_network2(rules):
     graph = ConjunctiveGraph()
     graph.load(StringIO(rules), publicID='test', format='n3')
     rule_store, rule_graph = SetupRuleStore(
-                  StringIO(rules),
-                  additionalBuiltins={STRING_NS.startsWith: StringStartsWith})
+        StringIO(rules),
+        additionalBuiltins={STRING_NS.startsWith: StringStartsWith})
     from FuXi.Rete.Network import ReteNetwork
     network = ReteNetwork(rule_store)
     network.feedFactsToAdd(generateTokenSet(extractBaseFacts(graph)))

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 RIF Core parser for FuXi.
 
@@ -32,10 +33,11 @@ __all__ = [
     'RIF_NS',
     'XSD_NS',
     'mimetypes',
-    ]
+]
 
 
 class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
+
     def http_error_301(self, req, fp, code, msg, headers):
         result = urllib2.HTTPRedirectHandler.http_error_301(
             self, req, fp, code, msg, headers)
@@ -69,7 +71,7 @@ TRANSFORM_URI = 'file://' + os.path.join(__fpath__, 'rif-core-rdf.xsl')
 
 
 IMPLIES_PARTS = \
-"""
+    """
 SELECT DISTINCT ?impl ?body ?bodyType ?head ?headType {
     ?impl a             rif:Implies;
           rif:if        ?body;
@@ -80,7 +82,7 @@ SELECT DISTINCT ?impl ?body ?bodyType ?head ?headType {
 """
 
 RULE_PARTS = \
-"""
+    """
 SELECT DISTINCT ?rule ?vars ?impl {
     ?rule a             rif:Forall;
           rif:formula   ?impl;
@@ -89,7 +91,7 @@ SELECT DISTINCT ?rule ?vars ?impl {
 """
 
 FRAME_PARTS = \
-"""
+    """
 SELECT ?frame ?object ?slots {
     ?frame  a           rif:Frame;
             rif:object  ?object;
@@ -98,7 +100,7 @@ SELECT ?frame ?object ?slots {
 """
 
 EXTERNAL_PARTS = \
-"""
+    """
 SELECT ?external ?args ?op {
     ?external   a           rif:External;
                 rif:content [ a rif:Atom; rif:args ?args; rif:op ?op ]
@@ -106,7 +108,7 @@ SELECT ?external ?args ?op {
 """
 
 ATOM_PARTS = \
-"""
+    """
 SELECT ?atom ?args ?op {
     ?atom   a        rif:Atom;
             rif:args ?args;
@@ -118,6 +120,7 @@ rif_namespaces = {u'rif': RIF_NS}
 
 
 class RIFCoreParser(object):
+
     def __init__(self, location=None, graph=None, debug=False):
         self.location = location
         self.rules = {}
@@ -133,8 +136,8 @@ class RIFCoreParser(object):
             if self.location.find('http:') + 1:
                 req = urllib2.Request(self.location)
 
-                #From:
-                #http://www.diveintopython.org/http_web_services/redirects.html
+                # From:
+                # http://www.diveintopython.org/http_web_services/redirects.html
                 # points an 'opener' to the address to 'sniff' out final
                 # Location header
                 opener = urllib2.build_opener(SmartRedirectHandler())
@@ -168,25 +171,23 @@ class RIFCoreParser(object):
         >>> for rule in parser.getRuleset(): print(rule)
         """
         self.implications = dict([(impl, (body, bodyType, head, headType))
-                                    for impl, body, bodyType, head, headType in
-                                        self.graph.query(IMPLIES_PARTS, initNs=rif_namespaces)])
+                                  for impl, body, bodyType, head, headType in
+                                  self.graph.query(IMPLIES_PARTS, initNs=rif_namespaces)])
         self.rules = dict([(rule, (vars, impl))
-                                for rule, vars, impl
-                                    in self.graph.query(RULE_PARTS,
-                                                        initNs=rif_namespaces)])
+                           for rule, vars, impl
+                           in self.graph.query(RULE_PARTS,
+                                               initNs=rif_namespaces)])
         self.frames = dict([(frame, (obj, slots))
-            for frame, obj, slots in self.graph.query(FRAME_PARTS,
-                                                    initNs=rif_namespaces)])
+                            for frame, obj, slots in self.graph.query(FRAME_PARTS,
+                                                                      initNs=rif_namespaces)])
 
-        self.atoms = dict([(atom, (args, op))
-                                for atom, args, op in self.graph.query(
-                                        ATOM_PARTS,
-                                        initNs=rif_namespaces)])
+        self.atoms = dict(
+            [(atom, (args, op)) for atom, args, op in self.graph.query(
+                ATOM_PARTS, initNs=rif_namespaces)])
 
-        self.externals = dict([(external, (args, op))
-                               for external, args, op in self.graph.query(
-                                    EXTERNAL_PARTS,
-                                    initNs=rif_namespaces)])
+        self.externals = dict(
+            [(external, (args, op)) for external, args, op in self.graph.query(
+                EXTERNAL_PARTS, initNs=rif_namespaces)])
         rt = []
         for sentenceCollection in self.graph.objects(predicate=RIF_NS.sentences):
             col = Collection(self.graph, sentenceCollection)
@@ -215,10 +216,10 @@ class RIFCoreParser(object):
         head = first(self.extractPredication(head, headType))
         if bodyType == RIF_NS.And:
             body = [first(self.extractPredication(
-                       i,
-                       first(self.graph.objects(i, RDF.type)))
-                   ) for i in Collection(self.graph,
-                        first(self.graph.objects(body, RIF_NS.formulas)))]
+                i,
+                first(self.graph.objects(i, RDF.type)))
+            ) for i in Collection(self.graph,
+                                  first(self.graph.objects(body, RIF_NS.formulas)))]
 
         else:
             body = self.extractPredication(body, bodyType)
@@ -258,8 +259,10 @@ class RIFCoreParser(object):
         obj, slots = self.frames[frame]
         rt = []
         for slot in Collection(self.graph, slots):
-            k = self.extractTerm(first(self.graph.objects(slot, RIF_NS.slotkey)))
-            v = self.extractTerm(first(self.graph.objects(slot, RIF_NS.slotvalue)))
+            k = self.extractTerm(
+                first(self.graph.objects(slot, RIF_NS.slotkey)))
+            v = self.extractTerm(
+                first(self.graph.objects(slot, RIF_NS.slotvalue)))
             rt.append(
                 Uniterm(k, [self.extractTerm(obj), v])
             )
@@ -282,7 +285,8 @@ def test():
 
 if __name__ == '__main__':
     # test()
-    parser = RIFCoreParser('http://www.w3.org/2005/rules/test/repository/tc/Guards_and_subtypes/Guards_and_subtypes-premise.rif')
+    parser = RIFCoreParser(
+        'http://www.w3.org/2005/rules/test/repository/tc/Guards_and_subtypes/Guards_and_subtypes-premise.rif')
     for rule in parser.getRuleset():
         _debug(rule)
 
