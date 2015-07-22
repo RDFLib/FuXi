@@ -13,7 +13,7 @@ python:
     # - 3.2
     - 3.3
     - 3.4
-    # - "pypy"
+    - "pypy"
 
 install:
     # - if [[ $TRAVIS_PYTHON_VERSION == '2.5' ]]; then pip install --use-mirrors ordereddict; pip install --use-mirrors "simplejson"; pip install --use-mirrors "elementtree"; fi
