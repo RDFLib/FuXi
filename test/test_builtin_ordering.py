@@ -84,14 +84,13 @@ def build_network2(rules):
 
 class LiteralStringStartsWith(unittest.TestCase):
     fact = (TEST_NS.test, TEST_NS.passes, Literal(1))
-    rules = """
-    @prefix test: <http://example.org/test#> .
-    @prefix str: <http://www.w3.org/2000/10/swap/string#> .
+    rules = u"""\
+@prefix test: <http://example.org/test#> .
+@prefix str: <http://www.w3.org/2000/10/swap/string#> .
 
-    test:example test:value "example" .
-    { test:example test:value ?value .
-      ?value str:startsWith "ex" } => { test:test test:passes 1 } .
-    """
+test:example test:value "example" .
+{ test:example test:value ?value .
+  ?value str:startsWith "ex" } => { test:test test:passes 1 } ."""
 
     def setUp(self):
         self.network = build_network(self.rules)
@@ -106,15 +105,14 @@ class LiteralStringStartsWith(unittest.TestCase):
 
 class URIRefStringStartsWith(unittest.TestCase):
     fact = (TEST_NS.test, TEST_NS.passes, Literal(1))
-    rules = """
-    @prefix test: <http://example.org/test#> .
-    @prefix str: <http://www.w3.org/2000/10/swap/string#> .
+    rules = u"""\
+@prefix test: <http://example.org/test#> .
+@prefix str: <http://www.w3.org/2000/10/swap/string#> .
 
-    test:example test:value test:example .
-    { test:example test:value ?value .
-      ?value str:startsWith "http://example.org/test#ex" } =>
-            { test:test test:passes 1 } .
-    """
+test:example test:value test:example .
+{ test:example test:value ?value .
+  ?value str:startsWith "http://example.org/test#ex" } =>
+        { test:test test:passes 1 } ."""
 
     def setUp(self):
         self.network = build_network(self.rules)

@@ -16,7 +16,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-rule_fixture = """\
+rule_fixture = u"""\
 @prefix test: <http://example.org/>.
 
 { ?x a ?y } => {

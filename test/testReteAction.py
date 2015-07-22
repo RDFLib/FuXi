@@ -16,14 +16,14 @@ from FuXi.Rete.RuleStore import SetupRuleStore
 FOAF = Namespace('http://xmlns.com/foaf/0.1/')
 EX = Namespace('http://example.com/#')
 
-N3_PROGRAM = """\
+N3_PROGRAM = u"""\
 @prefix m: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
 { ?person foaf:mbox ?email } => { ?person foaf:mbox_sha1sum rdf:Literal } ."""
-N3_FACTS = """\
+N3_FACTS = u"""\
 @prefix m: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .

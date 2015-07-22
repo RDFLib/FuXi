@@ -24,7 +24,7 @@ from FuXi.SPARQL.BackwardChainingStore import (
 from FuXi.Syntax.InfixOWL import OWL_NS
 
 
-EX_ONT = """\
+EX_ONT = u"""\
 @prefix first: <http://www.w3.org/2002/03owlt/intersectionOf/premises001#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.

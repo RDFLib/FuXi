@@ -19,7 +19,7 @@ from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
 
 EX = Namespace('http://example.org/')
 
-FACTS = """\
+FACTS = u"""\
 @prefix ex: <http://example.org/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 
@@ -29,7 +29,7 @@ ex:bar ex:y "yyyy";
        owl:sameAs ex:baz .
 """
 
-RULES = """\
+RULES = u"""\
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 
 { ?x owl:sameAs ?y } => { ?y owl:sameAs ?x } .

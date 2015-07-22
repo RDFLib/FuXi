@@ -17,7 +17,7 @@ from FuXi.Rete.Util import (
 # from FuXi.Horn.PositiveConditions import Uniterm, BuildUnitermFromTuple
 from FuXi.Horn.HornRules import HornFromN3
 
-N3_PROGRAM = """\
+N3_PROGRAM = u"""\
 @prefix m: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -29,7 +29,7 @@ N3_PROGRAM = """\
 }.
 
 """
-N3_FACTS = """\
+N3_FACTS = u"""\
 @prefix : <#> .
 @prefix m: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -68,8 +68,7 @@ class ExistentialInHeadTest(unittest.TestCase):
         # cg = network.closureGraph(factGraph, store=ruleStore)
         # print(cg.serialize(format="n3"))
 
-SKOLEM_MACHINE_RULES = \
-    """
+SKOLEM_MACHINE_RULES = u"""\
 @prefix ex: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -77,8 +76,7 @@ SKOLEM_MACHINE_RULES = \
 {?X ex:e ?Y} => {_:Z ex:p ?Y}.
 """
 
-SKOLEM_MACHINE_FACTS = \
-    """
+SKOLEM_MACHINE_FACTS = u"""\
 @prefix ex: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .

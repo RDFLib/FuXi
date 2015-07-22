@@ -72,8 +72,7 @@ nsMap = {
     u'math': URIRef("http://www.w3.org/2000/10/swap/math#"),
 }
 
-MANIFEST_QUERY = \
-    """
+MANIFEST_QUERY = u"""\
 SELECT ?status ?premise ?conclusion ?feature ?descr
 WHERE {
   [
