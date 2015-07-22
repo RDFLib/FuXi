@@ -3,4 +3,4 @@ html5lib
 pyparsing
 isodate
 SPARQLWrapper
--e git+https://github.com/RDFLib/rdflib.git#egg=rdflib
+rdflib
