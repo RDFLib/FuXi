@@ -11,3 +11,4 @@ It originally formed from an idea to express the underlying symbols (and their r
 
 For an overview of the architecture, please read [FuXi Overview](https://github.com/gjhiggins/FuXi/blob/master/docs/Overview.rst) and [FuXi User Manual](https://github.com/gjhiggins/FuXi/blob/master/docs/FuXiUserManual.rst) for more information.
 
+[![Build Status](https://travis-ci.org/gjhiggins/FuXi.svg?branch=master)](https://travis-ci.org/gjhiggins/FuXi)
