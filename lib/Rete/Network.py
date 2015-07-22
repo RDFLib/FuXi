@@ -135,19 +135,6 @@ class HashablePatternList(object):
         else:
             self._l = []
 
-    def _hashRulePattern(self, item):
-        """
-        Generates a unique hash for RDF triples and N3 builtin invokations.  The
-        hash function consists of the hash of the terms concatenated in order
-        """
-        if isinstance(item, tuple):
-            return reduce(lambda x, y: x + y, [
-                            i for i in item
-                                if not self.skipBNodes or not isinstance(i, BNode)
-                            ])
-        elif isinstance(item, N3Builtin):
-            return reduce(lambda x, y: x + y, [item.argument, item.result])
-
     def __len__(self):
         return len(self._l)
 
@@ -155,14 +142,22 @@ class HashablePatternList(object):
         return HashablePatternList(self._l[beginIdx:endIdx])
 
     def __hash__(self):
-        if self._l:
-            _concatPattern = [pattern and self._hashRulePattern(pattern) or "None" for pattern in self._l]
-            #nulify the impact of order in patterns
-            _concatPattern.sort()
-            return hash(reduce(lambda x, y: x + y, _concatPattern))
-        else:
-            return hash(None)
-
+        out = []
+        for item in self._l:
+            if not item:
+                out.append('None')
+            elif isinstance(item, tuple):
+                out.extend([i for i in item
+                            if not self.skipBNodes or not isinstance(i, BNode)])
+            elif isinstance(item, N3Builtin):
+                out.extend([item.argument, item.result])
+            else:
+                raise NotImplementedError("don't know how to hash %r" % item)
+                
+        #nulify the impact of order in patterns
+        out.sort()
+        return hash(tuple(out))
+        
     def __add__(self, other):
         assert isinstance(other, HashablePatternList), other
         return HashablePatternList(self._l + other._l)
