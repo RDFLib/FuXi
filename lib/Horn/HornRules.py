@@ -14,12 +14,8 @@ from FuXi.Horn.PositiveConditions import (
 
 from FuXi.Horn import (
     DATALOG_SAFETY_NONE,
-    DATALOG_SAFETY_STRICT,
-    DATALOG_SAFETY_LOOSE,
 )
-assert DATALOG_SAFETY_NONE
-assert DATALOG_SAFETY_STRICT
-assert DATALOG_SAFETY_LOOSE
+
 from rdflib.graph import (
     ConjunctiveGraph,
 )
