@@ -1,5 +1,6 @@
 # http://travis-ci.org/#!/RDFLib/FuXi
 language: python
+sudo: false
 # whitelist
 branches:
   only:
