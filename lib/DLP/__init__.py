@@ -433,7 +433,7 @@ def ExtendN3Rules(network, horn_clause, constructNetwork=False):
     else:
         for hC in LloydToporTransformation(horn_clause, fullReduction=True):
             rt.append(hC)
-            #print("normalized clause: ", hC)
+            # print("normalized clause: ", hC)
             for i in ExtendN3Rules(network, hC, constructNetwork):
                 rt.append(hC)
     return rt
@@ -656,7 +656,7 @@ def T(owlGraph, complementExpansions=[], derivedPreds=[]):
             warnings.warn("Unable to handle negation in DL axiom (%s), skipping" % c,  # e.msg,
                           SyntaxWarning,
                           3)
-        #assert isinstance(c, URIRef), "%s is a kind of %s"%(c, d)
+        # assert isinstance(c, URIRef), "%s is a kind of %s"%(c, d)
     for c, p, d in owlGraph.triples((None, OWL_NS.equivalentClass, None)):
         if c not in derivedPreds:
             yield NormalizeClause(Clause(Tb(owlGraph, c), Th(owlGraph, d)))
@@ -669,7 +669,7 @@ def T(owlGraph, complementExpansions=[], derivedPreds=[]):
                                   SyntaxWarning,
                                   3)
                 elif isinstance(s, BNode):  # and (None, None, s) not in owlGraph:# and \
-                     #(s, RDFS.subClassOf, None) in owlGraph:
+                    # (s, RDFS.subClassOf, None) in owlGraph:
                     # complex GCI, pass over (handled) by Tb
                     continue
                 conjunction = []
@@ -920,7 +920,7 @@ def Tb(owlGraph, _class, variable=Variable('X')):
         return Tc(owlGraph, first(owlGraph.objects(_class, OWL_NS.complementOf)))
     else:
         # simple class
-        #"Named" Uniterm
+        # "Named" Uniterm
         _classTerm = SkolemizeExistentialClasses(_class)
         return Uniterm(RDF.type, [variable, _classTerm], newNss=owlGraph.namespaces())
 

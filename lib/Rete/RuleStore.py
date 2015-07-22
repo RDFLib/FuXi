@@ -402,12 +402,12 @@ BuiltIn used out of order
             if predicate in self.filters:
                 newFilter = N3Builtin(
                     predicate, self.filters[predicate](subject, obj), subject, obj)
-                #@attention: The non-deterministic parse order of an RDF graph makes this
+                # @attention: The non-deterministic parse order of an RDF graph makes this
                 # check hard to enforce
-                #self._checkVariableReferences(self.referencedVariables, [subject, obj], newFilter)
+                # self._checkVariableReferences(self.referencedVariables, [subject, obj], newFilter)
                 formula.append(newFilter)
             else:
-                #print("(%s, %s, %s) pattern in %s"%(subject, predicate, obj, context.identifier))
+                # print("(%s, %s, %s) pattern in %s"%(subject, predicate, obj, context.identifier))
                 variables = [
                     arg for arg in [subject, predicate, obj] if isinstance(arg, Variable)]
                 self.referencedVariables.update(variables)
