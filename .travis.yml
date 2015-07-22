@@ -1,4 +1,4 @@
-# http://travis-ci.org/#!/RDFLib/FuXi
+# http://travis-ci.org/#!/gjhiggins/FuXi
 language: python
 sudo: false
 # whitelist
@@ -7,37 +7,28 @@ branches:
     - master
 
 python:
-    - 2.5
-    - 2.6
     - 2.7
-    # - 3.2
-    - 3.3
-    - 3.4
-   - "pypy"
+
+env:
+    - TOX_ENV=pyflakes
+    - TOX_ENV=docs
+    - TOX_ENV=py26
+    - TOX_ENV=py27
+    - TOX_ENV=py33
+    - TOX_ENV=py34
+    - TOX_ENV=pypy
 
 install:
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.5' ]]; then pip install --default-timeout 60 ordereddict; pip install --default-timeout 60 "simplejson"; pip install --default-timeout 60 "elementtree"; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install --default-timeout 60 ordereddict; fi
-    - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '2' ]]; then pip install --default-timeout 60 -r requirements.py2.txt;  pip install --default-timeout 60 "html5lib";fi
-    - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '3' ]]; then pip install --default-timeout 60 -r requirements.py3.txt; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == 'pypy' ]]; then pip install --upgrade "https://bitbucket.org/gjhiggins/isodate/downloads/isodate-0.4.8.tar.gz"; pip install --default-timeout 60 "elementtree"; fi
-    - python setup.py install
+    - pip install tox
 
 before_script:
     - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '2' ]]; then flake8 --exclude=tools,examples --exit-zero FuXi; fi
 
 script:
-    # Must run the tests in build/src so python3 doesn't get confused and run
-    # the python2 code from the current directory instead of the installed
-    # 2to3 version in build/src.
-    - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '2' ]]; then nosetests --with-timer --timer-top-n 42 --with-coverage --cover-tests --cover-package=FuXi ; fi
-    - if [[ ${TRAVIS_PYTHON_VERSION%%.*} == '3' ]]; then nosetests --with-timer --timer-top-n 42 --with-coverage --cover-tests --cover-package=build/src/FuXi --where=./build/src; fi
+    tox -e $TOX_ENV
 
 after_success:
     - if [[ $HAS_COVERALLS ]] ; then coveralls ; fi
 
-# notifications:
-#   irc:
-#     channels: "irc.freenode.org#rdflib"
-#     on_success: change
-#     on_failure: change
+notifications:
+    email: false
