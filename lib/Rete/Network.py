@@ -22,10 +22,6 @@ import sys
 import time
 from pprint import pprint
 try:
-    from functools import reduce
-except ImportError:
-    pass
-try:
     from io import StringIO
 except ImportError:
     from StringIO import StringIO
@@ -155,11 +151,11 @@ class HashablePatternList(object):
                 out.extend([item.argument, item.result])
             else:
                 raise NotImplementedError("don't know how to hash %r" % item)
-                
-        #nulify the impact of order in patterns
+
+        # nullify the impact of order in patterns
         out.sort()
         return hash(tuple(out))
-        
+
     def __add__(self, other):
         assert isinstance(other, HashablePatternList), other
         return HashablePatternList(self._l + other._l)
