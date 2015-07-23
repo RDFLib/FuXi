@@ -461,7 +461,7 @@ def main():
         nsBinds.update(network.nsMap)
         network.nsMap = nsBinds
         if not query.prologue:
-            query.prologue = Prologue(None, [])
+            query.prologue = Prologue()
             query.prologue.prefixBindings.update(nsBinds)
         else:
             for prefix, nsInst in list(nsBinds.items()):
