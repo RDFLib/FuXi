@@ -1,38 +1,26 @@
-# import copy
-# import sys
 import unittest
 from rdflib.graph import Graph
-# from rdflib.namespace import NamespaceManager
-from rdflib import (
-  # RDF,
-  # RDFS,
-  Namespace,
-  # Variable,
-  # Literal,
-  # URIRef,
-  # BNode
-  )
+from rdflib import Namespace
 from rdflib.util import first
-from FuXi.Rete.RuleStore import (
-    # N3RuleStore,
-    SetupRuleStore
-    )
-# from FuXi.Rete import ReteNetwork
-# from FuXi.Horn.PositiveConditions import PredicateExtentFactory
-# from FuXi.Rete.RuleStore import N3RuleStore
-# from FuXi.Rete.Util import generateTokenSet
-from FuXi.Syntax.InfixOWL import *
-from FuXi.DLP import (
-    SKOLEMIZED_CLASS_NS,
-    # MapDLPtoNetwork,
-    # MalformedDLPFormulaError
-    )
+from FuXi.Rete.RuleStore import SetupRuleStore
+from FuXi.Syntax.InfixOWL import (
+    OWL_NS,
+    Class,
+    ClassNamespaceFactory,
+    EnumeratedClass,
+    Individual,
+    Property,
+    some,
+    value
+)
+from FuXi.DLP import SKOLEMIZED_CLASS_NS
 
 EX_NS = Namespace('http://example.com/')
 EX = ClassNamespaceFactory(EX_NS)
 
 
 class AdditionalDescriptionLogicTests(unittest.TestCase):
+
     def setUp(self):
         self.ontGraph = Graph()
         self.ontGraph.bind('ex', EX_NS)
@@ -43,18 +31,18 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
         conjunct = EX.Foo & (EX.Omega | EX.Alpha)
         (EX.Bar) += conjunct
         ruleStore, ruleGraph, network = SetupRuleStore(
-                                        makeNetwork=True)
+            makeNetwork=True)
         rules = network.setupDescriptionLogicProgramming(
-                              self.ontGraph,
-                              derivedPreds=[EX_NS.Bar],
-                              addPDSemantics=False,
-                              constructNetwork=False)
+            self.ontGraph,
+            derivedPreds=[EX_NS.Bar],
+            addPDSemantics=False,
+            constructNetwork=False)
         self.assertEqual(
             repr(rules),
             'set([Forall ?X ( ex:Bar(?X) :- And( ex:Foo(?X) ex:Alpha(?X) ) ), Forall ?X ( ex:Bar(?X) :- And( ex:Foo(?X) ex:Omega(?X) ) )])')
         self.assertEqual(len(rules),
                          2,
-                        "There should be 2 rules")
+                         "There should be 2 rules")
 
 #    def testMalformedUnivRestriction(self):
 #        someProp = Property(EX_NS.someProp)
@@ -71,19 +59,19 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
     def testBasePredicateEquivalence(self):
         (EX.Foo).equivalentClass = [EX.Bar]
         self.assertEqual(repr(Class(EX_NS.Foo)),
-                        "Class: ex:Foo EquivalentTo: ex:Bar")
+                         "Class: ex:Foo EquivalentTo: ex:Bar")
         ruleStore, ruleGraph, network = SetupRuleStore(
-                                        makeNetwork=True)
+            makeNetwork=True)
         rules = network.setupDescriptionLogicProgramming(
-                              self.ontGraph,
-                              addPDSemantics=False,
-                              constructNetwork=False)
+            self.ontGraph,
+            addPDSemantics=False,
+            constructNetwork=False)
         self.assertEqual(
             repr(rules),
             'set([Forall ?X ( ex:Bar(?X) :- ex:Foo(?X) ), Forall ?X ( ex:Foo(?X) :- ex:Bar(?X) )])')
         self.assertEqual(len(rules),
                          2,
-                        "There should be 2 rules")
+                         "There should be 2 rules")
 
     def testExistentialInRightOfGCI(self):
         someProp = Property(EX_NS.someProp)
@@ -93,19 +81,19 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
             repr(Class(EX_NS.Foo)),
             "Class: ex:Foo SubClassOf: ( ex:someProp SOME ex:Omega )")
         ruleStore, ruleGraph, network = SetupRuleStore(
-                                            makeNetwork=True)
-        rules = network.setupDescriptionLogicProgramming(
-                              self.ontGraph,
-                              addPDSemantics=False,
-                              constructNetwork=False)
-#        self.assertEqual(len(rules),
-#                         1,
-#                        "There should be 1 rule: %s"%rules)
-#        rule=rules[0]
-#        self.assertEqual(repr(rule.formula.body),
-#                         "ex:Foo(?X)")
-#        self.assertEqual(len(rule.formula.head.formula),
-#                         2)
+            makeNetwork=True)
+        # rules = network.setupDescriptionLogicProgramming(
+        #     self.ontGraph,
+        #     addPDSemantics=False,
+        #     constructNetwork=False)
+        # self.assertEqual(len(rules),
+        #                 1,
+        #                "There should be 1 rule: %s"%rules)
+        # rule=rules[0]
+        # self.assertEqual(repr(rule.formula.body),
+        #                 "ex:Foo(?X)")
+        # self.assertEqual(len(rule.formula.head.formula),
+        #                 2)
 
     def testValueRestrictionInLeftOfGCI(self):
         someProp = Property(EX_NS.someProp)
@@ -116,12 +104,12 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
                          'ex:Bar THAT ( ex:someProp VALUE <http://example.com/fish> )')
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
         rules = network.setupDescriptionLogicProgramming(
-                              self.ontGraph,
-                              addPDSemantics=False,
-                              constructNetwork=False)
+            self.ontGraph,
+            addPDSemantics=False,
+            constructNetwork=False)
         self.assertEqual(
             repr(rules),
-            "set([Forall ?X ( ex:Foo(?X) :- " + \
+            "set([Forall ?X ( ex:Foo(?X) :- " +
             "And( ex:someProp(?X ex:fish) ex:Bar(?X) ) )])")
 
     def testNestedConjunct(self):
@@ -129,43 +117,43 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
         (EX.Omega) += nestedConj
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
         rules = network.setupDescriptionLogicProgramming(
-                              self.ontGraph,
-                              addPDSemantics=False,
-                              constructNetwork=False)
+            self.ontGraph,
+            addPDSemantics=False,
+            constructNetwork=False)
         for rule in rules:
             if rule.formula.head.arg[-1] == EX_NS.Omega:
                 self.assertEqual(len(rule.formula.body), 2)
                 skolemPredicate = [term.arg[-1]
-                         for term in rule.formula.body
-                            if term.arg[-1].find(SKOLEMIZED_CLASS_NS) != -1]
+                                   for term in rule.formula.body
+                                   if term.arg[-1].find(SKOLEMIZED_CLASS_NS) != -1]
                 self.assertEqual(len(skolemPredicate), 1,
-                                "Couldn't find skolem unary predicate!")
+                                 "Couldn't find skolem unary predicate!")
             else:
                 self.assertEqual(len(rule.formula.body), 2)
                 skolemPredicate = rule.formula.head.arg[-1]
                 self.failUnless(
                     skolemPredicate.find(SKOLEMIZED_CLASS_NS) != -1,
-                                "Head should be a unary skolem predicate")
+                    "Head should be a unary skolem predicate")
                 skolemPredicate = skolemPredicate[0]
 
     def testOtherForm(self):
         contains = Property(EX_NS.contains)
         locatedIn = Property(EX_NS.locatedIn)
         topConjunct = (
-           EX.Cath &
-             (contains | some |
-                (EX.MajorStenosis & (locatedIn | value | EX_NS.LAD))) &
-             (contains | some |
-                (EX.MajorStenosis & (locatedIn | value | EX_NS.RCA))))
+            EX.Cath &
+            (contains | some |
+             (EX.MajorStenosis & (locatedIn | value | EX_NS.LAD))) &
+            (contains | some |
+             (EX.MajorStenosis & (locatedIn | value | EX_NS.RCA))))
         (EX.NumDisV2D) += topConjunct
         from FuXi.DLP.DLNormalization import NormalFormReduction
         NormalFormReduction(self.ontGraph)
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
         rules = network.setupDescriptionLogicProgramming(
-                              self.ontGraph,
-                              derivedPreds=[EX_NS.NumDisV2D],
-                              addPDSemantics=False,
-                              constructNetwork=False)
+            self.ontGraph,
+            derivedPreds=[EX_NS.NumDisV2D],
+            addPDSemantics=False,
+            constructNetwork=False)
         from FuXi.Rete.Magic import PrettyPrintRule
         for rule in rules:
             PrettyPrintRule(rule)
@@ -175,9 +163,9 @@ class AdditionalDescriptionLogicTests(unittest.TestCase):
 
         ITALeft = EX.ITALeft
         ITALeft += (
-          hasCoronaryBypassConduit | some | EnumeratedClass(members=[
-            EX_NS.CoronaryBypassConduit_internal_thoracic_artery_left_insitu,
-            EX_NS.CoronaryBypassConduit_internal_thoracic_artery_left_free]))
+            hasCoronaryBypassConduit | some | EnumeratedClass(members=[
+                EX_NS.CoronaryBypassConduit_internal_thoracic_artery_left_insitu,
+                EX_NS.CoronaryBypassConduit_internal_thoracic_artery_left_free]))
         from FuXi.DLP.DLNormalization import NormalFormReduction
         self.assertEquals(
             repr(Class(first(ITALeft.subSumpteeIds()))),

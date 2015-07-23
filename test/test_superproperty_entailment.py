@@ -2,7 +2,11 @@
 # encoding: utf-8
 import unittest
 from pprint import pprint
-from cStringIO import StringIO
+try:
+    from io import StringIO
+    assert StringIO
+except ImportError:
+    from StringIO import StringIO
 from rdflib import Graph, Namespace
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Rete.Util import generateTokenSet
@@ -17,8 +21,7 @@ expected_triples = [
     (EX.jack, EX_TERMS.has_brother, EX.john),
 ]
 
-ABOX = \
-"""
+ABOX = u"""\
 @prefix exterms: <http://example.org/terms/> .
 @prefix : <http://example.org/> .
 
@@ -26,8 +29,7 @@ ABOX = \
 :jack exterms:brother     :john .
 """
 
-TBOX = \
-"""
+TBOX = u"""\
 @prefix exterms: <http://example.org/terms/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -59,9 +61,10 @@ exterms:brother
 
 
 class test_superproperty_entailment(unittest.TestCase):
+
     def setUp(self):
         self.rule_store, self.rule_graph, self.network = SetupRuleStore(
-                                                    makeNetwork=True)
+            makeNetwork=True)
         self.tBoxGraph = Graph().parse(StringIO(TBOX), format='n3')
 
         self.aBoxGraph = Graph().parse(StringIO(ABOX), format='n3')
@@ -86,7 +89,7 @@ class test_superproperty_entailment(unittest.TestCase):
         for triple in expected_triples:
             self.failUnless(
                 triple in self.network.inferredFacts, "Missing %s" % (
-                        repr(triple)))
+                    repr(triple)))
 
 if __name__ == '__main__':
     unittest.main()

@@ -2,50 +2,45 @@
 """
 """
 import copy
-from rdflib import (
-    BNode,
-    RDF,
-    Namespace,
-    Variable,
-    RDFS
-    )
 from FuXi.Horn.PositiveConditions import (
     And,
     Or,
     Uniterm,
-    PredicateExtentFactory,
-    SetOperator,
-    Exists
-    )
+)
+
 
 def HasNestedConjunction(conjunct):
-    rt=False
+    rt = False
     for item in conjunct:
-        if isinstance(item,And):
-            rt=True
+        if isinstance(item, And):
+            rt = True
             break
     return rt
 
+
 def flattenHelper(condition):
-    toDo = [item for item in condition if isinstance(item,And)]
+    toDo = [item for item in condition if isinstance(item, And)]
     for i in toDo:
         condition.formulae.remove(i)
     for i in toDo:
         condition.formulae.extend(i)
 
+
 def HasBreadthFirstNestedConj(condition):
     from FuXi.DLP import breadth_first
     return HasNestedConjunction(condition) or\
-           [i for i in breadth_first(condition)
-                if isinstance(i,And) and HasNestedConjunction(i)]
+        [i for i in breadth_first(condition)
+         if isinstance(i, And) and HasNestedConjunction(i)]
 
-def FlattenConjunctions(condition,isNested=False):
+
+def FlattenConjunctions(condition, isNested=False):
     from FuXi.DLP import breadth_first
     if isNested or HasNestedConjunction(condition):
         flattenHelper(condition)
     for nestedConj in [i for i in breadth_first(condition)
-                       if isinstance(i,And) and HasNestedConjunction(i)]:
+                       if isinstance(i, And) and HasNestedConjunction(i)]:
         FlattenConjunctions(nestedConj, isNested=True)
+
 
 def ApplyDemorgans(clause):
     """
@@ -72,15 +67,17 @@ def ApplyDemorgans(clause):
     from FuXi.DLP import breadth_first, breadth_first_replace
     replacementMap = {}
     for negDisj in [i for i in breadth_first(clause.body)
-                        if isinstance(i,Or) and i.naf]:
+                    if isinstance(i, Or) and i.naf]:
         replacementList = []
         for innerTerm in negDisj:
-            assert isinstance(negDisj,Uniterm)
+            assert isinstance(negDisj, Uniterm)
             innerTerm.naf = not innerTerm.naf
             replacementList.append(innerTerm)
         replacementMap[negDisj] = And(replacementList)
-    for old,new in list(replacementMap.items()):
-        list(breadth_first_replace(clause.body,candidate=old,replacement=new))
+    for old, new in list(replacementMap.items()):
+        list(breadth_first_replace(
+            clause.body, candidate=old, replacement=new))
+
 
 def HandleNonDisjunctiveClauses(ruleset, network, constructNetwork, negativeStratus, ignoreNegativeStratus, clause):
     from FuXi.DLP import NormalizeClause, ExtendN3Rules, makeRule
@@ -90,6 +87,7 @@ def HandleNonDisjunctiveClauses(ruleset, network, constructNetwork, negativeStra
             negativeStratus.append(rule)
         if not rule.negativeStratus or not ignoreNegativeStratus:
             ruleset.add(rule)
+
 
 def NormalizeDisjunctions(disj,
                           clause,
@@ -107,19 +105,23 @@ def NormalizeDisjunctions(disj,
         ApplyDemorgans(clause)
         if HasBreadthFirstNestedConj(clause.body):
             FlattenConjunctions(clause.body)
-        disj=[i for i in breadth_first(clause.body) if isinstance(i,Or)]
-        assert len(disj)<2,"Unable to effectively reduce disjunctions"
+        disj = [i for i in breadth_first(clause.body) if isinstance(i, Or)]
+        assert len(disj) < 2, "Unable to effectively reduce disjunctions"
     if len(disj) == 1:
-        #There is one disjunction in the body, we can reduce from:
-        #H :- B1 V B2  to H : - B1 and H :- B2
+        # There is one disjunction in the body, we can reduce from:
+        # H :- B1 V B2  to H : - B1 and H :- B2
         origDisj = disj[0]
         for item in origDisj:
-            #First we want to replace the entire disjunct with an item within it
-            list(breadth_first_replace(clause.body,candidate=origDisj,replacement=item))
+            # First we want to replace the entire disjunct with an item within
+            # it
+            list(breadth_first_replace(
+                clause.body, candidate=origDisj, replacement=item))
             clause_clone = copy.deepcopy(clause)
-            disj = [i for i in breadth_first(clause_clone.body) if isinstance(i,Or)]
+            disj = [i for i in breadth_first(
+                clause_clone.body) if isinstance(i, Or)]
             if len(disj) > 0:
-                #If the formula has disjunctions of it's own, we handle them recursively
+                # If the formula has disjunctions of it's own, we handle them
+                # recursively
                 NormalizeDisjunctions(disj,
                                       clause_clone,
                                       ruleset,
@@ -130,16 +132,20 @@ def NormalizeDisjunctions(disj,
             else:
                 if HasBreadthFirstNestedConj(clause_clone.body):
                     FlattenConjunctions(clause_clone.body)
-                #Otherwise handle normally
-                HandleNonDisjunctiveClauses(ruleset, network, constructNetwork, negativeStratus, ignoreNegativeStratus, clause_clone)
-            #restore the replaced term (for the subsequent iteration)
-            list(breadth_first_replace(clause.body,candidate=item,replacement=origDisj))
+                # Otherwise handle normally
+                HandleNonDisjunctiveClauses(
+                    ruleset, network, constructNetwork, negativeStratus, ignoreNegativeStratus, clause_clone)
+            # restore the replaced term (for the subsequent iteration)
+            list(breadth_first_replace(
+                clause.body, candidate=item, replacement=origDisj))
     else:
-        #The disjunction has been handled by normal form transformation, we just need to
-        #handle normally
+        # The disjunction has been handled by normal form transformation, we just need to
+        # handle normally
         if HasBreadthFirstNestedConj(clause_clone.body):
             FlattenConjunctions(clause_clone.body)
-        HandleNonDisjunctiveClauses(ruleset, network, constructNetwork, negativeStratus, ignoreNegativeStratus, clause)
+        HandleNonDisjunctiveClauses(
+            ruleset, network, constructNetwork, negativeStratus, ignoreNegativeStratus, clause)
+
 
 def test():
     import doctest

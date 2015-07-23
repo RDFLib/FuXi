@@ -1,7 +1,5 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """
-====================================================================================
 Helper Functions for reducing DL axioms into a normal forms
 """
 
@@ -29,13 +27,12 @@ except ImportError:
     pass
 
 
-
 class NominalRangeTransformer(object):
-    NOMINAL_QUERY = \
-    """SELECT ?RESTRICTION ?INTERMEDIATE_CLASS ?NOMINAL ?PROP
-       { ?RESTRICTION owl:onProperty ?PROP;
-                      owl:someValuesFrom ?INTERMEDIATE_CLASS .
-         ?INTERMEDIATE_CLASS owl:oneOf ?NOMINAL .  } """
+    NOMINAL_QUERY = """\
+SELECT ?RESTRICTION ?INTERMEDIATE_CLASS ?NOMINAL ?PROP
+   { ?RESTRICTION owl:onProperty ?PROP;
+                  owl:someValuesFrom ?INTERMEDIATE_CLASS .
+     ?INTERMEDIATE_CLASS owl:oneOf ?NOMINAL .  }"""
 
     def transform(self, graph):
         """
@@ -43,34 +40,34 @@ class NominalRangeTransformer(object):
         """
         Individual.factoryGraph = graph
         for restriction, intermediateCl, nominal, prop in graph.query(
-                                 self.NOMINAL_QUERY,
-                                 initNs={u'owl': OWL_NS}):
+                self.NOMINAL_QUERY,
+                initNs={u'owl': OWL_NS}):
             nominalCollection = Collection(graph, nominal)
-            #purge restriction
+            # purge restriction
             restr = Class(restriction)
             parentSets = [i for i in restr.subClassOf]
             restr.clearOutDegree()
             newConjunct = BooleanClass(restriction,
-                                     OWL_NS.unionOf,
-                                     [Property(prop) | value | val
-                                                 for val in nominalCollection],
-                                     graph)
+                                       OWL_NS.unionOf,
+                                       [Property(prop) | value | val
+                                        for val in nominalCollection],
+                                       graph)
             newConjunct.subClassOf = parentSets
 
-            #purge nominalization placeholder
+            # purge nominalization placeholder
             iClass = BooleanClass(intermediateCl)
             iClass.clear()
             iClass.delete()
 
 
 class UniversalNominalRangeTransformer(object):
-    NOMINAL_QUERY = \
-    """SELECT ?RESTRICTION ?INTERMEDIATE_CLASS ?NOMINAL ?PROP ?PARTITION
-       { ?RESTRICTION owl:onProperty ?PROP;
-                      owl:allValuesFrom ?INTERMEDIATE_CLASS .
-         ?INTERMEDIATE_CLASS owl:oneOf ?NOMINAL .
-         ?PROP rdfs:range [ owl:oneOf ?PARTITION ] .
-       } """
+    NOMINAL_QUERY = """\
+SELECT ?RESTRICTION ?INTERMEDIATE_CLASS ?NOMINAL ?PROP ?PARTITION
+   { ?RESTRICTION owl:onProperty ?PROP;
+                  owl:allValuesFrom ?INTERMEDIATE_CLASS .
+     ?INTERMEDIATE_CLASS owl:oneOf ?NOMINAL .
+     ?PROP rdfs:range [ owl:oneOf ?PARTITION ] .
+   } """
 
     def transform(self, graph):
         """
@@ -79,22 +76,21 @@ class UniversalNominalRangeTransformer(object):
         """
         Individual.factoryGraph = graph
         for restriction, intermediateCl, nominal, prop, partition in graph.query(
-                                 self.NOMINAL_QUERY,
-                                 initNs={u'owl': OWL_NS,
-                                         u'rdfs': str(RDFS)}):
+                self.NOMINAL_QUERY,
+                initNs={u'owl': OWL_NS, u'rdfs': str(RDFS)}):
             exceptions = EnumeratedClass()
             partition = Collection(graph, partition)
             nominalCollection = Collection(graph, nominal)
             for i in partition:
                 if i not in nominalCollection:
                     exceptions._rdfList.append(i)
-                    #exceptions+=i
+                    # exceptions+=i
             exists = Class(complementOf=(Property(prop) | some | exceptions))
             for s, p, o in graph.triples((None, None, restriction)):
                 graph.add((s, p, exists.identifier))
             Individual(restriction).delete()
 
-            #purge nominalization placeholder
+            # purge nominalization placeholder
             iClass = BooleanClass(intermediateCl)
             iClass.clear()
             iClass.delete()
@@ -118,19 +114,18 @@ class GeneralUniversalTransformer(object):
 
 
 class DoubleNegativeTransformer(object):
-    UNIVERSAL_QUERY = \
-    """SELECT ?COMPL1 ?COMPL2 ?COMPL3
-       { ?COMPL1 owl:complementOf ?COMPL2 .
-         ?COMPL2 owl:complementOf ?COMPL3
-         FILTER( isBlank(?COMPL1) && isBlank(?COMPL2) )
-       } """
+    UNIVERSAL_QUERY = """\
+SELECT ?COMPL1 ?COMPL2 ?COMPL3
+   { ?COMPL1 owl:complementOf ?COMPL2 .
+     ?COMPL2 owl:complementOf ?COMPL3
+     FILTER( isBlank(?COMPL1) && isBlank(?COMPL2) )
+   } """
 
     def transform(self, graph):
         Individual.factoryGraph = graph
         for compl1, compl2, compl3 in graph.query(
-                                 self.UNIVERSAL_QUERY,
-                                 initNs={u'owl': OWL_NS,
-                                         u'rdfs': RDFS}):
+                self.UNIVERSAL_QUERY,
+                initNs={u'owl': OWL_NS, u'rdfs': RDFS}):
             Individual(compl1).replace(compl3)
             Individual(compl2).delete()
 
@@ -145,7 +140,7 @@ class DemorganTransformer(object):
         for disjunctId in graph.subjects(predicate=OWL_NS.unionOf):
             if (None, OWL_NS.complementOf, disjunctId) in graph and \
                isinstance(disjunctId, BNode):
-                #not (     A1 or      A2  or .. or      An )
+                # not (     A1 or      A2  or .. or      An )
                 #                 =
                 #    ( not A1 and not A2 and .. and not An )
                 disjunct = BooleanClass(disjunctId, operator=OWL_NS.unionOf)
@@ -159,12 +154,12 @@ class DemorganTransformer(object):
                 disjunct.clear()
                 disjunct.delete()
             elif ((disjunctId, OWL_NS.unionOf, None) in graph) and not \
-                   [item for item in BooleanClass(disjunctId,
-                                                  operator=OWL_NS.unionOf)
-                        if not Class(item).complementOf]:
-                #( not A1 or  not A2  or .. or  not An )
+                [item for item in BooleanClass(disjunctId,
+                                               operator=OWL_NS.unionOf)
+                 if not Class(item).complementOf]:
+                # ( not A1 or  not A2  or .. or  not An )
                 #                 =
-                #not ( A1 and A2 and .. and An )
+                # not ( A1 and A2 and .. and An )
                 disjunct = BooleanClass(disjunctId, operator=OWL_NS.unionOf)
                 items = [Class(item).complementOf for item in disjunct]
                 for negation in disjunct:
@@ -187,7 +182,7 @@ class ConjunctionFlattener(object):
         for conjunctId in graph.subjects(predicate=OWL_NS.intersectionOf):
             conjunct = BooleanClass(conjunctId)
             nestedConjuncts = [BooleanClass(i) for i in conjunct
-                                    if (i, OWL_NS.intersectionOf, None) in graph]
+                               if (i, OWL_NS.intersectionOf, None) in graph]
             if nestedConjuncts:
                 def collapseConjunctTerms(left, right):
                     list(left) + list(right)
@@ -253,7 +248,7 @@ class ReductionTestA(unittest.TestCase):
                         "existential restriction on enumerated class")
         self.assertEqual(len(invertedC),
                          2,
-                        "existencial restriction on enumerated class of length 2")
+                         "existencial restriction on enumerated class of length 2")
         self.assertEqual(repr(invertedC),
                          "{ ex:individual2 ex:individual3 }",
                          "The negated partition should exclude individual1")
@@ -262,7 +257,7 @@ class ReductionTestA(unittest.TestCase):
 
         subC = CastClass(first(self.foo.subClassOf))
         self.assertEqual(repr(subC),
-                        "( ( not ( ex:propFoo value ex:individual2 ) ) and ( not ( ex:propFoo value ex:individual3 ) ) )")
+                         "( ( not ( ex:propFoo value ex:individual2 ) ) and ( not ( ex:propFoo value ex:individual3 ) ) )")
 
 
 class ReductionTestB(unittest.TestCase):
@@ -280,7 +275,7 @@ class ReductionTestB(unittest.TestCase):
         self.failUnless(first(self.foo.subClassOf).complementOf,
                         "should be the negation of a boolean class")
         innerC = CastClass(first(self.foo.subClassOf).complementOf)
-        self.failUnless(isinstance(innerC, BooleanClass) and \
+        self.failUnless(isinstance(innerC, BooleanClass) and
                         innerC._operator == OWL_NS.intersectionOf,
                         "should be the negation of a conjunct")
         self.assertEqual(repr(innerC), "( ex:alpha and ex:omega )")

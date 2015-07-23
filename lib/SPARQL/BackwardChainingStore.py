@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-==================================================================================
-"""
 import sys
 from pprint import pprint
 from rdflib import RDF, URIRef, Variable
@@ -44,10 +41,11 @@ BFP_METHOD = 1
 DEFAULT_BUILTIN_MAP = {
     LOG.equal: "%s  = %s",
     LOG.notEqualTo: "%s != %s"
-    }
+}
 
 
 class NonSymmetricBinaryOperator(AlgebraExpression):
+
     def fetchTerminalExpression(self):
         if self.right.name == 'BGP':
             yield self.right
@@ -57,6 +55,7 @@ class NonSymmetricBinaryOperator(AlgebraExpression):
 
 
 class TopDownSPARQLEntailingStore(Store):
+
     """
     A Store which uses FuXi's magic set "sip strategies" and the in-memory SPARQL Algebra
     implementation as a store-agnostic, top-down decision procedure for
@@ -112,8 +111,8 @@ class TopDownSPARQLEntailingStore(Store):
         else:
             query = parseQuery(queryString)
         if not query.prologue:
-                query.prologue = Prologue(None, [])
-                query.prologue.prefixBindings.update(self.nsBindings)
+            query.prologue = Prologue(None, [])
+            query.prologue.prefixBindings.update(self.nsBindings)
         else:
             for prefix, nsInst in list(self.nsBindings.items()):
                 if prefix not in query.prologue.prefixBindings:
@@ -124,29 +123,30 @@ class TopDownSPARQLEntailingStore(Store):
         return first(self.getDerivedPredicates(algebra, sparqlModule.prologue)) and algebra or query
 
     def __init__(self,
-                store,
-                edb,
-                derivedPredicates=None,
-                idb=None,
-                DEBUG=False,
-                nsBindings={},
-                decisionProcedure=BFP_METHOD,
-                templateMap=None,
-                identifyHybridPredicates=False,
-                hybridPredicates=[]):
+                 store,
+                 edb,
+                 derivedPredicates=None,
+                 idb=None,
+                 DEBUG=False,
+                 nsBindings={},
+                 decisionProcedure=BFP_METHOD,
+                 templateMap=None,
+                 identifyHybridPredicates=False,
+                 hybridPredicates=[]):
         self.dataset = store
         if hasattr(store, '_db'):
             self._db = store._db
         self.idb = idb and idb or set()
         self.edb = edb
         if derivedPredicates is None:
-            self.derivedPredicates = list(DerivedPredicateIterator(self.edb, self.idb))
+            self.derivedPredicates = list(
+                DerivedPredicateIterator(self.edb, self.idb))
         else:
             self.derivedPredicates = derivedPredicates
         self.DEBUG = DEBUG
         self.nsBindings = nsBindings
         self.edb.templateMap = DEFAULT_BUILTIN_MAP if templateMap is None\
-                                 else templateMap
+            else templateMap
         self.queryNetworks = []
         self.edbQueries = set()
         if identifyHybridPredicates:
@@ -155,7 +155,8 @@ class TopDownSPARQLEntailingStore(Store):
         else:
             self.hybridPredicates = hybridPredicates if hybridPredicates else []
 
-        #Update derived predicate list for synchrony with hybrid predicate rules
+        # Update derived predicate list for synchrony with hybrid predicate
+        # rules
         for hybridPred in self.hybridPredicates:
             self.derivedPredicates.remove(hybridPred)
             if isinstance(self.derivedPredicates, list):
@@ -165,8 +166,8 @@ class TopDownSPARQLEntailingStore(Store):
             else:
                 import warnings
                 warnings.warn(
-                "Collection of derived predicates is neither a list or a set.",
-                RuntimeWarning)
+                    "Collection of derived predicates is neither a list or a set.",
+                    RuntimeWarning)
 
         # Add a cache of the namespace bindings to use later in coining Qnames in
         # generated queries
@@ -184,21 +185,21 @@ class TopDownSPARQLEntailingStore(Store):
                             lambda i: isinstance(i, Variable), tp))
         rule_store, rule_graph, network = SetupRuleStore(makeNetwork=True)
         bfp = BackwardFixpointProcedure(
-                    factGraph,
-                    network,
-                    self.derivedPredicates,
-                    tp,
-                    sipCollection,
-                    hybridPredicates=self.hybridPredicates,
-                    debug=self.DEBUG)
+            factGraph,
+            network,
+            self.derivedPredicates,
+            tp,
+            sipCollection,
+            hybridPredicates=self.hybridPredicates,
+            debug=self.DEBUG)
         bfp.createTopDownReteNetwork(self.DEBUG)
         # rt = bfp.answers(debug=self.DEBUG)
         self.queryNetworks.append((bfp.metaInterpNetwork, tp))
         self.edbQueries.update(bfp.edbQueries)
         if self.DEBUG:
             print("Goal/Query: ", tp)
-            print("Query was not ground" \
-                if isNotGround is not None else "Query was ground")
+            print("Query was not ground"
+                  if isNotGround is not None else "Query was ground")
         if isNotGround is not None:
             for item in bfp.goalSolutions:
                 yield item, None
@@ -225,15 +226,16 @@ class TopDownSPARQLEntailingStore(Store):
                                         self.edb,
                                         bindings=bindings)
                 if self.DEBUG:
-                    print("Evaluating TP against EDB:%s" % baseEDBQuery.asSPARQL())
+                    print("Evaluating TP against EDB:%s" %
+                          baseEDBQuery.asSPARQL())
                 query, rt = baseEDBQuery.evaluate()
                 # _vars = baseEDBQuery.returnVars
                 for item in rt:
                     bindings.update(item)
                 for ansDict in self.conjunctiveSipStrategy(
-                                         goalsRemaining,
-                                         factGraph,
-                                         bindings):
+                        goalsRemaining,
+                        factGraph,
+                        bindings):
                     yield ansDict
 
             else:
@@ -241,7 +243,7 @@ class TopDownSPARQLEntailingStore(Store):
                 currentOp = GetOp(queryLit)
                 queryLit.setOperator(currentOp)
                 query = EDBQuery(
-                        [queryLit], self.edb, bindings=bindings)
+                    [queryLit], self.edb, bindings=bindings)
                 if bindings:
                     tp = first(query.formulae).toRDFTuple()
                 if self.DEBUG:
@@ -269,28 +271,29 @@ class TopDownSPARQLEntailingStore(Store):
                 elif self.DEBUG:
                     print("No SIP graph.")
                 for nextAnswer, ns in self.invokeDecisionProcedure(
-                                            tp,
-                                            factGraph,
-                                            bindings,
-                                            self.DEBUG,
-                                            sipCollection):
+                        tp,
+                        factGraph,
+                        bindings,
+                        self.DEBUG,
+                        sipCollection):
                     nonGroundGoal = isinstance(nextAnswer, dict)
                     if nonGroundGoal or nextAnswer:
-                        #Either we recieved bindings from top-down evaluation
-                        #or we (successfully) proved a ground query
+                        # Either we recieved bindings from top-down evaluation
+                        # or we (successfully) proved a ground query
                         if not nonGroundGoal:
-                            #Attempt to prove a ground query, return the response
+                            # Attempt to prove a ground query, return the
+                            # response
                             rt = nextAnswer
                         else:
-                            #Recieved solutions to 'open' query, merge with given bindings
-                            #and continue
+                            # Recieved solutions to 'open' query, merge with given bindings
+                            # and continue
                             rt = mergeMappings1To2(bindings, nextAnswer)
-                        #either answers were provided (the goal wasn't grounded) or
-                        #the goal was ground and successfully proved
+                        # either answers were provided (the goal wasn't grounded) or
+                        # the goal was ground and successfully proved
                         for ansDict in self.conjunctiveSipStrategy(
-                                                 goalsRemaining,
-                                                 factGraph,
-                                                 rt):
+                                goalsRemaining,
+                                factGraph,
+                                rt):
                             yield ansDict
         except StopIteration:
             yield bindings
@@ -304,7 +307,7 @@ class TopDownSPARQLEntailingStore(Store):
         if p in self.derivedPredicates or p in self.hybridPredicates:
             return p
         elif p == RDF.type and o != p and (
-            o in self.derivedPredicates or o in self.hybridPredicates):
+                o in self.derivedPredicates or o in self.hybridPredicates):
             return o
         else:
             return None
@@ -328,12 +331,12 @@ class TopDownSPARQLEntailingStore(Store):
         from rdflib.sparql.bison.Query import AskQuery
         _expr = self.isaBaseQuery(None, queryObj)
         if isinstance(queryObj.query, AskQuery) and \
-          _expr.name == 'BGP':
-           # isinstance(_expr, BasicGraphPattern):
-            #This is a ground, BGP, involving IDB and can be solved directly
-            #using top-down decision procedure
-            #First separate out conjunct into EDB and IDB predicates
-            #(solving the former first)
+                _expr.name == 'BGP':
+            # isinstance(_expr, BasicGraphPattern):
+            # This is a ground, BGP, involving IDB and can be solved directly
+            # using top-down decision procedure
+            # First separate out conjunct into EDB and IDB predicates
+            # (solving the former first)
             from FuXi.SPARQL import EDBQuery
             groundConjunct = []
             derivedConjunct = []
@@ -352,7 +355,7 @@ class TopDownSPARQLEntailingStore(Store):
                 askResult = True
                 for derivedLiteral in derivedConjunct:
                     goal = derivedLiteral.toRDFTuple()
-                    #Solve ground, derived goal directly
+                    # Solve ground, derived goal directly
                     SetupDDLAndAdornProgram(
                         self.edb,
                         self.idb,
@@ -368,7 +371,8 @@ class TopDownSPARQLEntailingStore(Store):
                             lit.setOperator(URIRef(op + u'_derived'))
                             goal = lit.toRDFTuple()
 
-                    sipCollection = PrepareSipCollection(self.edb.adornedProgram)
+                    sipCollection = PrepareSipCollection(
+                        self.edb.adornedProgram)
                     if self.DEBUG and sipCollection:
                         for sip in SIPRepresentation(sipCollection):
                             print(sip)
@@ -377,22 +381,22 @@ class TopDownSPARQLEntailingStore(Store):
                         print("No SIP graph.")
 
                     rt, node = first(self.invokeDecisionProcedure(
-                            goal,
-                            self.edb,
-                            {},
-                            self.DEBUG,
-                            sipCollection))
+                        goal,
+                        self.edb,
+                        {},
+                        self.DEBUG,
+                        sipCollection))
                     if not rt:
                         askResult = False
                         break
             return plugin.get('SPARQLQueryResult', QueryResult)(askResult)
         else:
             rt = TopEvaluate(queryObj,
-                               graph,
-                               initBindings,
-                               DEBUG=self.DEBUG,
-                               dataSetBase=dataSetBase,
-                               extensionFunctions=extensionFunctions)
+                             graph,
+                             initBindings,
+                             DEBUG=self.DEBUG,
+                             dataSetBase=dataSetBase,
+                             extensionFunctions=extensionFunctions)
             return plugin.get('SPARQLQueryResult', QueryResult)(rt)
 
     def batch_unify(self, patterns):
@@ -421,21 +425,21 @@ class TopDownSPARQLEntailingStore(Store):
             else:
                 dPreds.add(p == RDF.type and o or p)
         if set(dPreds).intersection(self.derivedPredicates):
-            #Patterns involve derived predicates
+            # Patterns involve derived predicates
             self.batch_unification = False
             for ansDict in self.conjunctiveSipStrategy(
-                                        iter(goals),
-                                        self.edb):
+                    iter(goals),
+                    self.edb):
                 yield ansDict
             self.batch_unification = True
         else:
-            #conjunctive query involving EDB predicateso only
+            # conjunctive query involving EDB predicateso only
             vars = []
             triples = []
             for pat in patterns:
                 triples.append(BuildUnitermFromTuple(pat[:3]))
                 vars.extend([term for term in pat[:3]
-                                if isinstance(term, Variable)])
+                             if isinstance(term, Variable)])
 
             query = RDFTuplesToSPARQL(triples, self.edb, vars=vars)
             if self.DEBUG:
@@ -445,9 +449,9 @@ class TopDownSPARQLEntailingStore(Store):
             rt = self.edb.query(query, initNs=self.nsBindings)
 
             rt = len(vars) > 1 and (dict([(vars[idx], i)
-                                           for idx, i in enumerate(v)])
-                                                for v in rt) \
-                   or (dict([(vars[0], v)]) for v in rt)
+                                          for idx, i in enumerate(v)])
+                                    for v in rt) \
+                or (dict([(vars[0], v)]) for v in rt)
             for item in rt:
                 yield item
 
@@ -505,7 +509,7 @@ class TopDownSPARQLEntailingStore(Store):
 
     def bind(self, prefix, namespace):
         self.nsBindings[prefix] = namespace
-        #self.targetGraph.bind(prefix, namespace)
+        # self.targetGraph.bind(prefix, namespace)
 
     def prefix(self, namespace):
         revDict = dict([(v, k) for k, v in list(self.nsBindings.items())])

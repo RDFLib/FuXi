@@ -1,5 +1,10 @@
+# -*- coding: utf-8 -*-
 import unittest
-from cStringIO import StringIO
+try:
+    from io import StringIO
+    assert StringIO
+except ImportError:
+    from StringIO import StringIO
 from rdflib import Graph, Literal, Namespace, Variable
 # from rdflib.graph import Graph
 # from rdflib import RDF, RDFS, Namespace, Variable, Literal, URIRef, BNode
@@ -11,16 +16,14 @@ from FuXi.Rete.RuleStore import SetupRuleStore
 FOAF = Namespace('http://xmlns.com/foaf/0.1/')
 EX = Namespace('http://example.com/#')
 
-N3_PROGRAM = \
-"""
+N3_PROGRAM = u"""\
 @prefix m: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
 { ?person foaf:mbox ?email } => { ?person foaf:mbox_sha1sum rdf:Literal } ."""
-N3_FACTS = \
-"""
+N3_FACTS = u"""\
 @prefix m: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -33,9 +36,9 @@ matchingHeadTriple = (Variable('person'),
                       FOAF['mbox_sha1sum'],
                       Literal)
 resultingTriple = (
-        EX.chimezie,
-        FOAF['mbox_sha1sum'],
-        Literal('8f90d9335f967f58b40d5b6a49f8d9afca64b5ae'))
+    EX.chimezie,
+    FOAF['mbox_sha1sum'],
+    Literal('8f90d9335f967f58b40d5b6a49f8d9afca64b5ae'))
 
 
 def encodeAction(tNode, inferredTriple, token, binding, debug=False):
@@ -50,6 +53,7 @@ def encodeAction(tNode, inferredTriple, token, binding, debug=False):
 
 
 class ReteActionTest(unittest.TestCase):
+
     def testReteActionTest(self):
         factGraph = Graph().parse(StringIO(N3_FACTS), format='n3')
         rule_store, rule_graph, network = SetupRuleStore(makeNetwork=True)

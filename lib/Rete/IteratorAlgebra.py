@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/492216
 
@@ -12,6 +13,7 @@ Author: Jim Baker, jbaker@zyasoft.com
 
 import operator
 from rdflib import py3compat
+
 
 def identity(x):
     """x -> x
@@ -35,7 +37,7 @@ def inner(X):
         yield x
 
 
-#The original hash_join
+# The original hash_join
 # throughout, we assume S is the smaller relation of R and S.
 def hash_join(R, S, predicate=identity, join=inner, combine=operator.concat):
     hashed = {}
@@ -119,12 +121,16 @@ def merge_join(R, S, predicate=identity, join=inner, combine=operator.concat):
             for rp, r in R_matched:
                 for sp, s in join(S_matched):
                     yield combine(r, s)
-            rk, R_matched = next(R_grouped) if py3compat.PY3 else R_grouped.next()
-            sk, S_matched = next(S_grouped) if py3compat.PY3 else S_grouped.next()
+            rk, R_matched = next(
+                R_grouped) if py3compat.PY3 else R_grouped.next()
+            sk, S_matched = next(
+                S_grouped) if py3compat.PY3 else S_grouped.next()
         elif comparison > 0:
-            sk, S_matched = next(S_grouped) if py3compat.PY3 else S_grouped.next()
+            sk, S_matched = next(
+                S_grouped) if py3compat.PY3 else S_grouped.next()
         else:
-            rk, R_matched = next(R_grouped) if py3compat.PY3 else R_grouped.next()
+            rk, R_matched = next(
+                R_grouped) if py3compat.PY3 else R_grouped.next()
 
 # from FuXi.Rete.IteratorAlgebra import identity
 # from FuXi.Rete.IteratorAlgebra import inner

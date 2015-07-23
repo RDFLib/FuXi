@@ -1,8 +1,4 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-==================================================================================
-"""
 import sys
 import time
 import warnings
@@ -60,7 +56,8 @@ RDF_SERIALIZATION_FORMATS = [
 
 def main():
     from optparse import OptionParser
-    op = OptionParser('usage: %prog [options] factFile1 factFile2 ... factFileN')
+    op = OptionParser(
+        'usage: %prog [options] factFile1 factFile2 ... factFileN')
 
     op.add_option('--why',
                   default=None,
@@ -71,37 +68,37 @@ def main():
                   action='store_true',
                   default=False,
                   help='Whether or not to serialize the inferred triples' +
-                        ' along with the original triples.  Otherwise ' +
-                        '(the default behavior), serialize only the inferred triples')
+                  ' along with the original triples.  Otherwise ' +
+                  '(the default behavior), serialize only the inferred triples')
 
     op.add_option('--imports',
-                action='store_true',
-                default=False,
-                help='Whether or not to follow owl:imports in the fact graph')
+                  action='store_true',
+                  default=False,
+                  help='Whether or not to follow owl:imports in the fact graph')
 
     op.add_option('--output',
                   default='n3',
                   metavar='RDF_FORMAT',
                   choices=['xml',
-                             'TriX',
-                             'n3',
-                             'pml',
-                             'proof-graph',
-                             'nt',
-                             'rif',
-                             'rif-xml',
-                             'conflict',
-                             'man-owl'],
+                           'TriX',
+                           'n3',
+                           'pml',
+                           'proof-graph',
+                           'nt',
+                           'rif',
+                           'rif-xml',
+                           'conflict',
+                           'man-owl'],
                   help="Serialize the inferred triples and/or original RDF triples to STDOUT " +
-                        "using the specified RDF syntax ('xml', 'pretty-xml', 'nt', 'turtle', " +
-                         "or 'n3') or to print a summary of the conflict set (from the RETE " +
-                         "network) if the value of this option is 'conflict'.  If the the " +
-                         " value is 'rif' or 'rif-xml', Then the rules used for inference " +
-                         "will be serialized as RIF.  If the value is 'pml' and --why is used, " +
-                         " then the PML RDF statements are serialized.  If output is " +
-                         "'proof-graph then a graphviz .dot file of the proof graph is printed. " +
-                         "Finally if the value is 'man-owl', then the RDF facts are assumed " +
-                         "to be OWL/RDF and serialized via Manchester OWL syntax. The default is %default")
+                  "using the specified RDF syntax ('xml', 'pretty-xml', 'nt', 'turtle', " +
+                  "or 'n3') or to print a summary of the conflict set (from the RETE " +
+                  "network) if the value of this option is 'conflict'.  If the the " +
+                  " value is 'rif' or 'rif-xml', Then the rules used for inference " +
+                  "will be serialized as RIF.  If the value is 'pml' and --why is used, " +
+                  " then the PML RDF statements are serialized.  If output is " +
+                  "'proof-graph then a graphviz .dot file of the proof graph is printed. " +
+                  "Finally if the value is 'man-owl', then the RDF facts are assumed " +
+                  "to be OWL/RDF and serialized via Manchester OWL syntax. The default is %default")
 
     op.add_option('--class',
                   dest='classes',
@@ -135,7 +132,7 @@ def main():
                   "The default is %default")
 
     op.add_option('--ddlGraph',
-                default=False,
+                  default=False,
                   help="The location of a N3 Data Description document describing the IDB predicates")
 
     op.add_option('--input-format',
@@ -144,17 +141,17 @@ def main():
                   metavar='RDF_FORMAT',
                   choices=['xml', 'trix', 'n3', 'nt', 'rdfa'],
                   help="The format of the RDF document(s) which serve as the initial facts " +
-                         " for the RETE network. One of 'xml', 'n3', 'trix', 'nt', " +
-                         "or 'rdfa'.  The default is %default")
+                  " for the RETE network. One of 'xml', 'n3', 'trix', 'nt', " +
+                  "or 'rdfa'.  The default is %default")
 
     op.add_option('--safety',
                   default='none',
                   metavar='RULE_SAFETY',
                   choices=['loose', 'strict', 'none'],
                   help="Determines how to handle RIF Core safety.  A value of 'loose' " +
-                         " means that unsafe rules will be ignored.  A value of 'strict' " +
-                         " will cause a syntax exception upon any unsafe rule.  A value of " +
-                         "'none' (the default) does nothing")
+                  " means that unsafe rules will be ignored.  A value of 'strict' " +
+                  " will cause a syntax exception upon any unsafe rule.  A value of " +
+                  "'none' (the default) does nothing")
 
     op.add_option('--pDSemantics',
                   action='store_true',
@@ -189,9 +186,9 @@ def main():
                   default='defaultBase',
                   metavar='DDL_STRICTNESS',
                   choices=['loose',
-                             'defaultBase',
-                             'defaultDerived',
-                             'harsh'],
+                           'defaultBase',
+                           'defaultDerived',
+                           'harsh'],
                   help='Used with --why to specify whether to: *not* check if predicates are ' +
                   ' both derived and base (loose), if they are, mark as derived (defaultDerived) ' +
                   'or as base (defaultBase) predicates, else raise an exception (harsh)')
@@ -224,10 +221,10 @@ def main():
                   'predicate will be designated as a derived predicate')
 
     op.add_option('--hybridPredicate',
-                default=[],
-                action='append',
-                metavar='PREDICATE_QNAME',
-                help='Used with --why to explicitely specify a hybrid predicate (in both ' +
+                  default=[],
+                  action='append',
+                  metavar='PREDICATE_QNAME',
+                  help='Used with --why to explicitely specify a hybrid predicate (in both ' +
                        ' IDB and EDB) ')
 
     op.add_option('--noMagic',
@@ -261,9 +258,9 @@ def main():
                   help='Use Description Logic Programming (DLP) to extract rules from OWL/RDF.  The default is %default')
 
     op.add_option('--sparqlEndpoint',
-                action='store_true',
-                default=False,
-                help='Indicates that the sole argument is the URI of a SPARQL endpoint to query')
+                  action='store_true',
+                  default=False,
+                  help='Indicates that the sole argument is the URI of a SPARQL endpoint to query')
 
     op.add_option('--ontology',
                   action='append',
@@ -273,11 +270,11 @@ def main():
                   '(other wise, fact graph(s) are used)  ')
 
     op.add_option('--ontologyFormat',
-                default='xml',
-                dest='ontologyFormat',
-                metavar='RDF_FORMAT',
-                choices=['xml', 'trix', 'n3', 'nt', 'rdfa'],
-                help="The format of the OWL RDF/XML graph specified via --ontology.  The default is %default")
+                  default='xml',
+                  dest='ontologyFormat',
+                  metavar='RDF_FORMAT',
+                  choices=['xml', 'trix', 'n3', 'nt', 'rdfa'],
+                  help="The format of the OWL RDF/XML graph specified via --ontology.  The default is %default")
 
     op.add_option('--builtinTemplates',
                   default=None,
@@ -322,7 +319,7 @@ def main():
             rs = HornFromN3(fileN)
         nsBinds.update(rs.nsMapping)
         ruleSet.formulae.extend(rs)
-        #ruleGraph.parse(fileN, format='n3')
+        # ruleGraph.parse(fileN, format='n3')
 
     ruleSet.nsMapping = nsBinds
 
@@ -348,12 +345,12 @@ def main():
         assert not options.sparqlEndpoint, "Cannot use --stdin with --sparqlEndpoint"
         factGraph.parse(sys.stdin, format=options.inputFormat)
 
-    #Normalize namespace mappings
-    #prune redundant, rdflib-allocated namespace prefix mappings
+    # Normalize namespace mappings
+    # prune redundant, rdflib-allocated namespace prefix mappings
     newNsMgr = NamespaceManager(factGraph)
     from FuXi.Rete.Util import CollapseDictionary
     for k, v in list(CollapseDictionary(dict([(k, v)
-                                    for k, v in factGraph.namespaces()])).items()):
+                                              for k, v in factGraph.namespaces()])).items()):
         newNsMgr.bind(k, v)
     factGraph.namespace_manager = newNsMgr
 
@@ -366,8 +363,8 @@ def main():
         import imp
         userFuncs = imp.load_source('builtins', options.builtins)
         rule_store, rule_graph, network = SetupRuleStore(
-                             makeNetwork=True,
-                             additionalBuiltins=userFuncs.ADDITIONAL_FILTERS)
+            makeNetwork=True,
+            additionalBuiltins=userFuncs.ADDITIONAL_FILTERS)
     else:
         rule_store, rule_graph, network = SetupRuleStore(makeNetwork=True)
     network.inferredFacts = closureDeltaGraph
@@ -388,11 +385,11 @@ def main():
             ontGraph = factGraph
         NormalFormReduction(ontGraph)
         dlp = network.setupDescriptionLogicProgramming(
-                                 ontGraph,
-                                 addPDSemantics=options.pDSemantics,
-                                 constructNetwork=False,
-                                 ignoreNegativeStratus=options.negation,
-                                 safety=safetyNameMap[options.safety])
+            ontGraph,
+            addPDSemantics=options.pDSemantics,
+            constructNetwork=False,
+            ignoreNegativeStratus=options.negation,
+            safety=safetyNameMap[options.safety])
         ruleSet.formulae.extend(dlp)
     if options.output == 'rif' and not options.why:
         for rule in ruleSet:
@@ -422,20 +419,21 @@ def main():
             for c in AllClasses(cGraph):
                 if options.normalize:
                     if c.isPrimitive():
-                        primAnc = [sc for sc in c.subClassOf if sc.isPrimitive()]
+                        primAnc = [
+                            sc for sc in c.subClassOf if sc.isPrimitive()]
                         if len(primAnc) > 1:
                             warnings.warn("Branches of primitive skeleton taxonomy" +
-                              " should form trees: %s has %s primitive parents: %s" % (
-                             c.qname, len(primAnc), primAnc), UserWarning, 1)
+                                          " should form trees: %s has %s primitive parents: %s" % (
+                                              c.qname, len(primAnc), primAnc), UserWarning, 1)
                         children = [desc for desc in c.subSumpteeIds()]
                         for child in children:
                             for otherChild in [o for o in children if o is not child]:
-                                if not otherChild in [c.identifier
-                                          for c in Class(child).disjointWith]:  # and \
-                                            warnings.warn(
-                                                "Primitive children (of %s) " % (c.qname) + \
-                                                "must be mutually disjoint: %s and %s" % (
-                                      Class(child).qname, Class(otherChild).qname), UserWarning, 1)
+                                if otherChild not in [c.identifier
+                                                      for c in Class(child).disjointWith]:  # and \
+                                    warnings.warn(
+                                        "Primitive children (of %s) " % (c.qname) +
+                                        "must be mutually disjoint: %s and %s" % (
+                                            Class(child).qname, Class(otherChild).qname), UserWarning, 1)
                 # if not isinstance(c.identifier, BNode):
                 print(c.__repr__(True))
 
@@ -449,14 +447,12 @@ def main():
         builtinTemplateGraph = Graph()
         if options.builtinTemplates:
             builtinTemplateGraph = Graph().parse(options.builtinTemplates,
-                                                format='n3')
+                                                 format='n3')
         factGraph.templateMap = \
             dict([(pred, template)
-                      for pred, _ignore, template in
-                            builtinTemplateGraph.triples(
-                                (None,
-                                 TEMPLATES.filterTemplate,
-                                 None))])
+                  for pred, _ignore, template in
+                  builtinTemplateGraph.triples(
+                      (None, TEMPLATES.filterTemplate, None))])
         goals = []
         query = ParseSPARQL(options.why)
         network.nsMap['pml'] = PML
@@ -465,8 +461,8 @@ def main():
         nsBinds.update(network.nsMap)
         network.nsMap = nsBinds
         if not query.prologue:
-                query.prologue = Prologue(None, [])
-                query.prologue.prefixBindings.update(nsBinds)
+            query.prologue = Prologue(None, [])
+            query.prologue.prefixBindings.update(nsBinds)
         else:
             for prefix, nsInst in list(nsBinds.items()):
                 if prefix not in query.prologue.prefixBindings:
@@ -475,12 +471,9 @@ def main():
         print("query.query", query.query)
         print("query.query.whereClause", query.query.whereClause)
         print("query.query.whereClause.parsedGraphPattern",
-                query.query.whereClause.parsedGraphPattern)
-        goals.extend([(s, p, o)
-            for s, p, o, c in ReduceGraphPattern(
-                                query.query.whereClause.parsedGraphPattern,
-                                query.prologue).patterns
-                        ])
+              query.query.whereClause.parsedGraphPattern)
+        goals.extend([(s, p, o) for s, p, o, c in ReduceGraphPattern(
+            query.query.whereClause.parsedGraphPattern, query.prologue).patterns])
         # dPreds=[]# p for s, p, o in goals ]
         # print("goals", goals)
         magicRuleNo = 0
@@ -501,14 +494,15 @@ def main():
             ddlGraph = Graph().parse(options.ddlGraph, format='n3')
             # @TODO: should also get hybrid predicates from DDL graph
             defaultDerivedPreds = IdentifyDerivedPredicates(
-                                    ddlGraph,
-                                    Graph(),
-                                    ruleSet)
+                ddlGraph,
+                Graph(),
+                ruleSet)
         else:
             for idb in options.idb:
                 pref, uri = idb.split(':')
                 defaultDerivedPreds.add(URIRef(mapping[pref] + uri))
-            defaultDerivedPreds.update(set([p == RDF.type and o or p for s, p, o in goals]))
+            defaultDerivedPreds.update(
+                set([p == RDF.type and o or p for s, p, o in goals]))
             for hybrid in options.hybridPredicate:
                 pref, uri = hybrid.split(':')
                 hybridPredicates.append(URIRef(mapping[pref] + uri))
@@ -516,28 +510,30 @@ def main():
         if options.method == 'gms':
             for goal in goals:
                 goalSeed = AdornLiteral(goal).makeMagicPred()
-                print("Magic seed fact (used in bottom-up evaluation)", goalSeed)
+                print(
+                    "Magic seed fact (used in bottom-up evaluation)", goalSeed)
                 magicSeeds.append(goalSeed.toRDFTuple())
             if noMagic:
                 print("Predicates whose magic sets will not be calculated")
                 for p in noMagic:
                     print("\t", factGraph.qname(p))
             for rule in MagicSetTransformation(
-                                       factGraph,
-                                       ruleSet,
-                                       goals,
-                                       derivedPreds=bottomUpDerivedPreds,
-                                       strictCheck=nameMap[options.strictness],
-                                       defaultPredicates=(defaultBasePreds,
-                                                          defaultDerivedPreds),
-                                       noMagic=noMagic):
+                    factGraph,
+                    ruleSet,
+                    goals,
+                    derivedPreds=bottomUpDerivedPreds,
+                    strictCheck=nameMap[options.strictness],
+                    defaultPredicates=(defaultBasePreds,
+                                       defaultDerivedPreds),
+                    noMagic=noMagic):
                 magicRuleNo += 1
                 network.buildNetworkFromClause(rule)
             if len(list(ruleSet)):
                 print("reduction in size of program: %s (%s -> %s clauses)" % (
-                                           100 - (float(magicRuleNo) / float(len(list(ruleSet)))) * 100,
-                                           len(list(ruleSet)),
-                                           magicRuleNo))
+                    100 -
+                    (float(magicRuleNo) / float(len(list(ruleSet)))) * 100,
+                    len(list(ruleSet)),
+                    magicRuleNo))
             start = time.time()
             network.feedFactsToAdd(generateTokenSet(magicSeeds))
             if not [rule for rule in factGraph.adornedProgram if len(rule.sip)]:
@@ -568,9 +564,9 @@ def main():
             topDownDPreds = defaultDerivedPreds
             if options.builtinTemplates:
                 builtinTemplateGraph = Graph().parse(options.builtinTemplates,
-                                                    format='n3')
+                                                     format='n3')
                 builtinDict = dict([(pred, template)
-                              for pred, _ignore, template in
+                                    for pred, _ignore, template in
                                     builtinTemplateGraph.triples(
                                         (None,
                                          TEMPLATES.filterTemplate,
@@ -578,15 +574,15 @@ def main():
             else:
                 builtinDict = None
             topDownStore = TopDownSPARQLEntailingStore(
-                            factGraph.store,
-                            factGraph,
-                            idb=ruleSet,
-                            DEBUG=options.debug,
-                            derivedPredicates=topDownDPreds,
-                            templateMap=builtinDict,
-                            nsBindings=network.nsMap,
-                            identifyHybridPredicates=options.hybrid if options.method == 'bfp' else False,
-                            hybridPredicates=hybridPredicates)
+                factGraph.store,
+                factGraph,
+                idb=ruleSet,
+                DEBUG=options.debug,
+                derivedPredicates=topDownDPreds,
+                templateMap=builtinDict,
+                nsBindings=network.nsMap,
+                identifyHybridPredicates=options.hybrid if options.method == 'bfp' else False,
+                hybridPredicates=hybridPredicates)
             targetGraph = Graph(topDownStore)
             for pref, nsUri in list(network.nsMap.items()):
                 targetGraph.bind(pref, nsUri)
@@ -605,7 +601,7 @@ def main():
                     sTime = sTime * 1000
                     sTimeStr = "%s milli seconds" % sTime
                 print("Time to reach answer ground goal answer of %s: %s" % (
-                        result.askAnswer[0], sTimeStr))
+                    result.askAnswer[0], sTimeStr))
             else:
                 for rt in result:
                     sTime = time.time() - start
@@ -616,7 +612,8 @@ def main():
                         sTimeStr = "%s milli seconds" % sTime
                     if options.firstAnswer:
                         break
-                    print("Time to reach answer %s via top-down SPARQL sip strategy: %s" % (rt, sTimeStr))
+                    print(
+                        "Time to reach answer %s via top-down SPARQL sip strategy: %s" % (rt, sTimeStr))
             if options.output == 'conflict' and options.method == 'bfp':
                 for _network, _goal in topDownStore.queryNetworks:
                     print(network, _goal)
@@ -647,9 +644,9 @@ def main():
         now = time.time()
         rt = network.calculateStratifiedModel(factGraph)
         print(
-        "Time to calculate stratified, stable model (inferred %s facts): %s" % (
-                                    rt,
-                                    time.time() - now))
+            "Time to calculate stratified, stable model (inferred %s facts): %s" % (
+                rt,
+                time.time() - now))
     if options.filter:
         print("Applying filter to entailed facts")
         network.inferredFacts = network.filteredFacts

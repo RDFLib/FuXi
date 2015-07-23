@@ -1,6 +1,4 @@
-"""
-==============================================================================================
-"""
+# -*- coding: utf-8 -*-
 import rdflib
 
 rdflib.plugin.register(
@@ -12,7 +10,7 @@ rdflib.plugin.register(
     'rdflib.plugins.sparql.processor', 'SPARQLResult')
 
 LIST_MEMBERSHIP_SEMANTICS = \
-"""
+    """
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix list: <http://www.w3.org/2000/10/swap/list#>.
 
@@ -21,7 +19,7 @@ LIST_MEMBERSHIP_SEMANTICS = \
 """
 
 NOMINAL_SEMANTICS = \
-"""
+    """
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix list: <http://www.w3.org/2000/10/swap/list#>.
@@ -31,7 +29,7 @@ NOMINAL_SEMANTICS = \
 """
 
 FUNCTIONAL_SEMANTICS = \
-"""
+    """
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 @prefix log: <http://www.w3.org/2000/10/swap/log#>.
 
@@ -46,7 +44,7 @@ FUNCTIONAL_SEMANTICS = \
 """
 
 DIFFERENT_FROM_SEMANTICS = \
-"""
+    """
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 @prefix log: <http://www.w3.org/2000/10/swap/log#>.
 @prefix list: <http://www.w3.org/2000/10/swap/list#>.
@@ -55,7 +53,7 @@ DIFFERENT_FROM_SEMANTICS = \
 """
 
 FUNCTIONAL_PROPERTIES = \
-"""
+    """
 ASK {
   [] a ?KIND
   FILTER(

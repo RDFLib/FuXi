@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-==================================================================================
-"""
 import sys
 import unittest
 
@@ -21,9 +18,9 @@ DATALOG_SAFETY_STRICT = 1
 DATALOG_SAFETY_LOOSE = 2
 
 safetyNameMap = {
-  'none': DATALOG_SAFETY_NONE,
-  'strict': DATALOG_SAFETY_STRICT,
-  'loose': DATALOG_SAFETY_LOOSE
+    'none': DATALOG_SAFETY_NONE,
+    'strict': DATALOG_SAFETY_STRICT,
+    'loose': DATALOG_SAFETY_LOOSE
 }
 
 
@@ -61,7 +58,8 @@ def ComplementExpansion(owlClass, debug=False):
         for member in owlClass:
             member = Class(member)
             if member.complementOf:
-                # A negative class, expand it and add to bucket of classes to 'remove'
+                # A negative class, expand it and add to bucket of classes to
+                # 'remove'
                 for expandedClass in SubSumptionExpansion(member.complementOf):
                     negativeClasses.add(expandedClass)
             else:
@@ -74,11 +72,12 @@ def ComplementExpansion(owlClass, debug=False):
                     otherClasses.add(member.identifier)
 
         if negativeClasses:
-            #Delete the old list of operands for the boolean class
+            # Delete the old list of operands for the boolean class
             oldList = owlClass._rdfList
             oldList.clear()
 
-            #Recreate the list of operands, exluding the expanded negative classes
+            # Recreate the list of operands, exluding the expanded negative
+            # classes
             for allowedClasses in otherClasses.difference(negativeClasses):
                 oldList.append(classOrIdentifier(allowedClasses))
             owlClass.changeOperator(OWL_NS.unionOf)
@@ -92,6 +91,7 @@ def ComplementExpansion(owlClass, debug=False):
 
 
 class ComplementExpansionTestSuite(unittest.TestCase):
+
     def setUp(self):
         self.testGraph = Graph()
         Individual.factoryGraph = self.testGraph
@@ -128,13 +128,13 @@ class ComplementExpansionTestSuite(unittest.TestCase):
         self.assertEquals(repr(testClass), 'ex:Human THAT ( NOT ex:Female )')
         newtestClass = ComplementExpansion(testClass, debug=True)
         self.assertTrue(repr(newtestClass) in [
-                '( ex:Boy or ex:Man )',
-                '( ex:Man or ex:Boy )'],
-                repr(newtestClass))
+            '( ex:Boy or ex:Man )',
+            '( ex:Man or ex:Boy )'],
+            repr(newtestClass))
 
         testClass2 = animal & ~ (male | female)
         self.assertEquals(repr(testClass2),
-            '( ( ex:Cat or ex:Dog or ex:Human ) and ( not ( ex:Male or ex:Female ) ) )')
+                          '( ( ex:Cat or ex:Dog or ex:Human ) and ( not ( ex:Male or ex:Female ) ) )')
         newtestClass2 = ComplementExpansion(testClass2, debug=True)
         testClass2Repr = repr(newtestClass2)
         self.assertTrue(testClass2Repr in [
@@ -149,9 +149,9 @@ if __name__ == '__main__':
     parser = OptionParser()
 
     parser.add_option('--verbose', action="store_true", default=False,
-        help='Output debug print statements or not')
+                      help='Output debug print statements or not')
     parser.add_option('--format', default="xml",
-        help='The RDF serialization syntax to parse with')
+                      help='The RDF serialization syntax to parse with')
 
     (options, args) = parser.parse_args()
 
@@ -174,13 +174,12 @@ if __name__ == '__main__':
             prevLink = containingList
             containingList = first(owlGraph.subjects(RDF.rest, containingList))
         for s, p, o in owlGraph.triples_choices((None,
-                                            [OWL_NS.intersectionOf,
-                                             OWL_NS.unionOf],
-                                             prevLink)):
+                                                 [OWL_NS.intersectionOf,
+                                                  OWL_NS.unionOf],
+                                                 prevLink)):
             _class = Class(s)
             # print(_class.__repr__(True,True))
             ComplementExpansion(_class, debug=options.verbose)
-
 
 
 # from FuXi.Horn import ComplementExpansion

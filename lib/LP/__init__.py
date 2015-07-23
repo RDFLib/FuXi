@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import doctest
 from rdflib import RDF
 from rdflib import py3compat
@@ -22,10 +23,10 @@ def IdentifyHybridPredicates(graph, derivedPredicates):
     """
     derivedPredicates = \
         derivedPredicates if isinstance(derivedPredicates, set) \
-                            else set(derivedPredicates)
+        else set(derivedPredicates)
     return derivedPredicates.intersection(
-                    [o if p == RDF.type else p
-                        for s, p, o in graph])
+        [o if p == RDF.type else p
+         for s, p, o in graph])
 
 if __name__ == '__main__':
     doctest.testmod()

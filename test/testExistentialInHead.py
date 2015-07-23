@@ -1,8 +1,10 @@
-# import os
-# import sys
-# import time
+# -*- coding: utf-8 -*-
 import unittest
-from cStringIO import StringIO
+try:
+    from io import StringIO
+    assert StringIO
+except ImportError:
+    from StringIO import StringIO
 from rdflib.graph import Graph
 from rdflib.store import Store
 from rdflib import plugin, Namespace, RDF, URIRef
@@ -11,12 +13,11 @@ from FuXi.Rete.RuleStore import N3RuleStore, SetupRuleStore
 from FuXi.Rete.Util import (
     # renderNetwork,
     generateTokenSet
-    )
+)
 # from FuXi.Horn.PositiveConditions import Uniterm, BuildUnitermFromTuple
 from FuXi.Horn.HornRules import HornFromN3
 
-N3_PROGRAM = \
-"""
+N3_PROGRAM = u"""\
 @prefix m: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -28,8 +29,7 @@ N3_PROGRAM = \
 }.
 
 """
-N3_FACTS = \
-"""
+N3_FACTS = u"""\
 @prefix : <#> .
 @prefix m: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -44,6 +44,7 @@ m:Inference a rdfs:Class .
 
 
 class ExistentialInHeadTest(unittest.TestCase):
+
     def testExistentials(self):
         store = plugin.get('IOMemory', Store)()
         store.open('')
@@ -58,17 +59,16 @@ class ExistentialInHeadTest(unittest.TestCase):
                               inferredTarget=deltaGraph)
         inferenceCount = 0
         for inferredFact in network.inferredFacts.subjects(
-                           predicate=RDF.type,
-                           object=URIRef('http://example.com/#Inference')):
+                predicate=RDF.type,
+                object=URIRef('http://example.com/#Inference')):
             inferenceCount = inferenceCount + 1
         print(network.inferredFacts.serialize(format='n3'))
         self.failUnless(inferenceCount > 1,
-            'Each rule firing should introduce a new BNode!')
+                        'Each rule firing should introduce a new BNode!')
         # cg = network.closureGraph(factGraph, store=ruleStore)
         # print(cg.serialize(format="n3"))
 
-SKOLEM_MACHINE_RULES = \
-"""
+SKOLEM_MACHINE_RULES = u"""\
 @prefix ex: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -76,8 +76,7 @@ SKOLEM_MACHINE_RULES = \
 {?X ex:e ?Y} => {_:Z ex:p ?Y}.
 """
 
-SKOLEM_MACHINE_FACTS = \
-"""
+SKOLEM_MACHINE_FACTS = u"""\
 @prefix ex: <http://example.com/#>.
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -85,26 +84,28 @@ ex:a ex:b ex:c.
 ex:d ex:e ex:c.
 """
 
-#{?x ?p ?y} => {[] ?p []} . :a :b :c .
+# {?x ?p ?y} => {[] ?p []} . :a :b :c .
 
 EX_NS = Namespace('http://example.com/#')
 
 
 class SkolemMachine(unittest.TestCase):
+
     def setUp(self):
         ruleStore, ruleGraph, network = SetupRuleStore(makeNetwork=True)
         self.network = network
         self.factGraph = Graph().parse(
-                StringIO(SKOLEM_MACHINE_FACTS), format='n3')
+            StringIO(SKOLEM_MACHINE_FACTS), format='n3')
         for rule in HornFromN3(StringIO(SKOLEM_MACHINE_RULES)):
             self.network.buildNetworkFromClause(rule)
         self.network.feedFactsToAdd(generateTokenSet(self.factGraph))
 
     def testSkolemMachine(self):
-        print("\n**** Why was this expected to produce only one inferred fact?")
+        print(
+            "\n**** Why was this expected to produce only one inferred fact?")
         self.assertEquals(len(list(self.network.inferredFacts.triples(
-                                         (None, EX_NS.p, None)))),
-                         2)
+            (None, EX_NS.p, None)))),
+            2)
 
 if __name__ == "__main__":
     unittest.main()
