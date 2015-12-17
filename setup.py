@@ -70,6 +70,7 @@ config = dict(
         "FuXi.Horn",
         "FuXi.Syntax",
     ],
+    setup_requires=['ez_setup'],
     install_requires=['rdflib>2', 'ez_setup'],
     license="Apache",
     keywords="python logic owl rdf dlp n3 rule reasoner",
