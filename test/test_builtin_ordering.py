@@ -14,6 +14,7 @@ from rdflib.graph import (
     ConjunctiveGraph,
     QuotedGraph
 )
+
 from rdflib import (
     Literal,
     Variable,
@@ -60,7 +61,8 @@ def extractBaseFacts(cg):
 
 
 def build_network(rules):
-    if isinstance(rules, basestring):
+    import sys
+    if isinstance(rules, basestring if sys.version < '3' else str):
         rules = StringIO(rules)
     graph = ConjunctiveGraph()
     graph.load(rules, publicID='test', format='n3')
