@@ -15,5 +15,5 @@ cd build/py3_testing
 
 2to3 -wn --no-diffs test
 2to3 -wn --no-diffs run_tests.py
-
+ln -s FuXi lib
 python3 run_tests.py

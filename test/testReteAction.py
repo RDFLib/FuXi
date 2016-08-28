@@ -30,6 +30,7 @@ N3_FACTS = u"""\
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
 m:chimezie foaf:mbox <mailto:chimezie@example.com> .
+m:zoë foaf:mbox <mailto:zoë@example.com> .
 """
 
 matchingHeadTriple = (Variable('person'),

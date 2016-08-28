@@ -6,6 +6,7 @@ from FuXi.Horn.PositiveConditions import (
     And,
     Or,
     Uniterm,
+    PredicateExtentFactory
 )
 
 
@@ -44,6 +45,7 @@ def FlattenConjunctions(condition, isNested=False):
 
 def ApplyDemorgans(clause):
     """
+    >>> from rdflib import Namespace, Variable
     >>> from FuXi.DLP import Clause
     >>> EX_NS = Namespace('http://example.com/')
     >>> ns = {'ex' : EX_NS}

@@ -20,7 +20,7 @@ from FuXi.SPARQL.BackwardChainingStore import TopDownSPARQLEntailingStore
 from FuXi.Syntax.InfixOWL import nsBinds, AllClasses, Individual
 from rdflib import BNode, Namespace, RDF, RDFS, URIRef, plugin
 from rdflib.graph import Graph
-from rdfextras.sparql.parser import parse
+from rdflib.plugins.sparql.parser import parseQuery
 from rdflib.store import Store
 try:
     from io import StringIO
@@ -34,6 +34,7 @@ warnings.filterwarnings('ignore', '.*', UserWarning)
 warnings.filterwarnings('ignore', '.*', RuntimeWarning)
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 RDFLIB_CONNECTION = ''
 RDFLIB_STORE = 'IOMemory'
@@ -88,7 +89,7 @@ WHERE {
     rtest:conclusionDocument ?conclusion
   ]
 }"""
-PARSED_MANIFEST_QUERY = parse(MANIFEST_QUERY)
+PARSED_MANIFEST_QUERY = parseQuery(MANIFEST_QUERY)
 
 Features2Skip = [
     URIRef('http://www.w3.org/2002/07/owl#sameClassAs'),
@@ -290,6 +291,7 @@ class OwlTestSuite(unittest.TestCase):
             return timing
 
     def testOwl(self):
+        log.debug("Running")
         options = defaultOptions()
         options.debug = True
         global REASONING_STRATEGY, GROUND_QUERY, SINGLE_TEST, DEBUG
@@ -299,6 +301,7 @@ class OwlTestSuite(unittest.TestCase):
         REASONING_STRATEGY = options.strategy
         testData = {}
         here = os.getcwd()
+        log.debug("Here is {}".format(here))
         if not here.endswith('/test'):
             os.chdir(here + '/test')
         for manifest in glob('OWL/*/Manifest*.rdf'):
@@ -324,7 +327,7 @@ class OwlTestSuite(unittest.TestCase):
                 MANIFEST_QUERY,
                 initNs=nsMap,
                 DEBUG=False)
-            # log.debug(list(manifestGraph.namespace_manager.namespaces()))
+            log.debug(list(manifestGraph.namespace_manager.namespaces()))
             for status, premise, conclusion, feature, description in rt:
                 if feature in Features2Skip:
                     continue
@@ -337,7 +340,7 @@ class OwlTestSuite(unittest.TestCase):
                                           [:2] + [conclusion])
                 log.debug("premiseFile", premiseFile)
                 log.debug("conclusionFile", conclusionFile)
-                if status == 'APPROVED':
+                if str(status) == 'APPROVED':
                     if SINGLE_TEST and premiseFile != SINGLE_TEST:
                         continue
                     assert os.path.exists('.'.join([premiseFile, 'rdf']))
@@ -432,6 +435,7 @@ def runTests(options):
     REASONING_STRATEGY = options.strategy
 
     suite = unittest.makeSuite(OwlTestSuite)
+    print("NTests: {}".format(suite.countTestCases()))
     if options.profile:
         # from profile import Profile
         from hotshot import Profile, stats

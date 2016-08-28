@@ -3,7 +3,7 @@ import copy
 from itertools import takewhile
 from rdflib import (
     BNode,
-    # Graph,
+    Graph,
     Literal,
     RDF,
     URIRef,
@@ -14,7 +14,7 @@ from rdflib.namespace import split_uri
 
 from FuXi.Horn.PositiveConditions import (
     And,
-    # BuildUnitermFromTuple,
+    BuildUnitermFromTuple,
     Condition,
     Or,
     QNameManager,

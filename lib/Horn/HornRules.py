@@ -22,6 +22,9 @@ from rdflib.graph import (
 from rdflib import(
     BNode,
     Variable,
+    Namespace,
+    RDFS,
+    RDF
 )
 from rdflib import py3compat
 try:

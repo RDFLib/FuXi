@@ -94,7 +94,7 @@ def moduleIterator(root):
                         traceback.print_exc()
                 finally:
                     file.close()
-            elif entry.find('.') != -1:
+            elif entry.find('__pycache__') != -1 or entry.find('.') != -1 or entry.find('README') != -1:
                 pass
             else:
                 newRoute = packageRoute + os.sep + entry

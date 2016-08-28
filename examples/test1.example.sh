@@ -5,8 +5,8 @@ FuXi \
 --dlp \
 --input-format="n3" \
 --method=bfp \
---rules=./test.formulae.n3 \
+--rules=./test1.formulae.n3 \
 --why="SELECT ?x ?y WHERE { ?x test:has_child ?y  }" \
 --why="SELECT ?x ?y WHERE { ?x test:has_sibling ?y  }" \
-./test.ontology.n3 \
-./test.individuals.n3 
+./test1.ontology.n3 \
+./test1.individuals.n3 

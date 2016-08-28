@@ -35,6 +35,8 @@ from rdflib import (
     Literal,
     Namespace,
     RDF,
+    RDFS,
+    URIRef,
     Variable
 )
 from rdflib.util import first

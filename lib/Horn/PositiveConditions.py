@@ -15,6 +15,7 @@ from rdflib import (
     BNode,
     Literal,
     Namespace,
+    RDFS,
     RDF,
     URIRef
 )

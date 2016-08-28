@@ -42,15 +42,13 @@ See <http://nedbatchelder.com/code/modules/coverage.html> for details.
 
 NOSE_ARGS = [
         '--where=./',
-        '--py3where=build/Fuxi',
+        '--verbosity=2',
         '--with-doctest',
         #'--doctest-extension=.doctest',
         #'--doctest-tests',
         #'--with-coverage',
         #'--enable-cover',
         #'--enable-audit',
-        #'--extra-include=FuXi',
-        #'--source-folder=FuXi',
         #'--trim-errors',
         #'--with-EARL',
         #'--with-xunit',
@@ -65,7 +63,7 @@ COVERAGE_EXTRA_ARGS = [
 
 DEFAULT_ATTRS = ['!known_issue']
 
-DEFAULT_DIRS = ['test', 'lib', 'FuXi']
+DEFAULT_DIRS = ['test', 'FuXi']
 
 
 if __name__ == '__main__':

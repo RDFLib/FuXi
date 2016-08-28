@@ -91,7 +91,8 @@ class TopDownSPARQLEntailingStore(Store):
         it returns it (as a parsed string), otherwise it returns a SPARQL algebra
         instance for top-down evaluation using this store
 
-        >>> graph=Graph()
+        >>> import rdflib
+        >>> graph = rdflib.Graph()
         >>> topDownStore = TopDownSPARQLEntailingStore(graph.store, graph, derivedPredicates=[RDFS.seeAlso], nsBindings={u"rdfs": str(RDFS)})
         >>> rt=topDownStore.isaBaseQuery("SELECT * { [] rdfs:seeAlso [] }")
         >>> isinstance(rt,(BasicGraphPattern, AlgebraExpression))
@@ -103,23 +104,24 @@ class TopDownSPARQLEntailingStore(Store):
         >>> isinstance(rt,(BasicGraphPattern, AlgebraExpression))
         True
         """
-        from rdflib.plugins.sparql.query import Prologue
+        from rdflib.plugins.sparql.sparql import Prologue
         from rdflib.plugins.sparql.parser import parseQuery
+        from rdflib.plugins.sparql.processor import prepareQuery
         from rdflib.plugins.sparql import sparql as sparqlModule
         if queryObj:
             query = queryObj
         else:
-            query = parseQuery(queryString)
-        if not query.prologue:
-            query.prologue = Prologue(None, [])
-            query.prologue.prefixBindings.update(self.nsBindings)
-        else:
-            for prefix, nsInst in list(self.nsBindings.items()):
-                if prefix not in query.prologue.prefixBindings:
-                    query.prologue.prefixBindings[prefix] = nsInst
+            query = prepareQuery(queryString, initNs=self.nsBindings)
+        # if not query.prologue:
+        #     query.prologue = Prologue()
+        #     query.prologue.prefixBindings.update(self.nsBindings)
+        # else:
+        #     for prefix, nsInst in list(self.nsBindings.items()):
+        #         if prefix not in query.prologue.prefixBindings:
+        #             query.prologue.prefixBindings[prefix] = nsInst
 
         sparqlModule.prologue = query.prologue
-        algebra = RenderSPARQLAlgebra(query, nsMappings=self.nsBindings)
+        algebra = RenderSPARQLAlgebra(query, initNs=self.nsBindings)
         return first(self.getDerivedPredicates(algebra, sparqlModule.prologue)) and algebra or query
 
     def __init__(self,

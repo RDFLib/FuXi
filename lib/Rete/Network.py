@@ -34,7 +34,7 @@ from .BetaNode import (
     BetaNode,
     LEFT_MEMORY,
     RIGHT_MEMORY,
-    # PartialInstantiation,
+    PartialInstantiation,
 )
 from .AlphaNode import (
     AlphaNode,
@@ -74,11 +74,11 @@ from rdflib.graph import (
 from rdflib.namespace import NamespaceManager
 from rdflib import (
     BNode,
-    # Literal,
+    Literal,
     Namespace,
     RDF,
-    # RDFS,
-    # URIRef,
+    RDFS,
+    URIRef,
     Variable,
 )
 from rdflib import py3compat

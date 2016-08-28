@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""CommandLine."""
 import sys
 import time
 import warnings
@@ -55,6 +56,7 @@ RDF_SERIALIZATION_FORMATS = [
 
 
 def main():
+    """Execute main function."""
     from optparse import OptionParser
     op = OptionParser(
         'usage: %prog [options] factFile1 factFile2 ... factFileN')
@@ -461,17 +463,21 @@ def main():
         nsBinds.update(network.nsMap)
         network.nsMap = nsBinds
         if not query.prologue:
-            query.prologue = Prologue(None, [])
-            query.prologue.prefixBindings.update(nsBinds)
+            query.prologue = Prologue()
+            for prefix, uri in list(nsBinds.items()):
+                query.prologue.namespace_manager.bind(prefix, uri, replace=True)
         else:
             for prefix, nsInst in list(nsBinds.items()):
-                if prefix not in query.prologue.prefixBindings:
-                    query.prologue.prefixBindings[prefix] = nsInst
-        print("query.prologue", query.prologue)
-        print("query.query", query.query)
-        print("query.query.whereClause", query.query.whereClause)
-        print("query.query.whereClause.parsedGraphPattern",
-              query.query.whereClause.parsedGraphPattern)
+                if prefix not in [n[0] for n in query.prologue.namespace_manager.namespaces()]:
+                    query.prologue.namespace_manager.bind(prefix, nsInst)
+        print("query.prologue: {}({})".format(repr(query.prologue), type(query.prologue)))
+        print("query {}".format(repr(query)))
+        print("query type {}".format(type(query)))
+        print("query keys {}".format(list(query.keys())))
+        print("query.where: {} ({})".format(repr(query.where), type(query.where)))
+        print("query.where", query.where)
+        print("query.where.parsedGraphPattern",
+              query.where.parsedGraphPattern)
         goals.extend([(s, p, o) for s, p, o, c in ReduceGraphPattern(
             query.query.whereClause.parsedGraphPattern, query.prologue).patterns])
         # dPreds=[]# p for s, p, o in goals ]

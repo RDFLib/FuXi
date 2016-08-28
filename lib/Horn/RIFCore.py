@@ -10,7 +10,10 @@ trail.
 """
 
 import os
-import urllib2
+try:
+    import urllib2
+except ImportError:
+    from urllib import request as urllib2
 import logging
 from lxml import etree
 from rdflib.graph import Graph

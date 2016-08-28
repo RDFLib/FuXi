@@ -901,13 +901,13 @@ def IdentifyDerivedPredicates(ddlMetaGraph, tBox, ruleset=None):
     return dPreds
 
 
-def test():
-    unittest.main()
-    # import doctest
-    # doctest.testmod()
+# def test():
+#     unittest.main()
+#     # import doctest
+#     # doctest.testmod()
 
-if __name__ == '__main__':
-    test()
+# if __name__ == '__main__':
+#     test()
 
 # from FuXi.Rete.Magic import EX_ULMAN
 # from FuXi.Rete.Magic import LOG_NS

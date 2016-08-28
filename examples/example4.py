@@ -7,8 +7,7 @@ from FuXi.Syntax.InfixOWL import OWL_NS, Class
 
 # remote source:
 galenGraph = Graph().parse(
-    location="http://python-dlp.googlecode.com/" + \
-             "svn/trunk/InfixOWL/GALEN-CABG-Segment.owl",
+    location="./GALEN-CABG-Segment.owl",
     format="xml")
 
 graph = galenGraph

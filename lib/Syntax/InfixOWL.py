@@ -279,7 +279,7 @@ def manchesterSyntax(thing, store, boolean=None, transientList=False):
         except Exception:
             if isinstance(thing, BNode):
                 return thing.n3()
-            return u"<" + thing + u">"
+            return u"<" + thing.decode('utf-8') if isinstance(thing, bytes) else thing + u">"
             print(list(store.objects(subject=thing, predicate=RDF.type)))
             raise
             return '[]'  # +thing._id.encode('utf-8')+'</em>'

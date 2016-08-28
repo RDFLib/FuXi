@@ -314,9 +314,11 @@ class OwlTestSuite(unittest.TestCase):
             manifestGraph.parse(open(manifest))
             rt = manifestGraph.query(MANIFEST_QUERY,
                                      initNs=nsMap,
-                                     DEBUG=False)
+                                     DEBUG=True)
             # print(list(manifestGraph.namespace_manager.namespaces()))
             for status, premise, conclusion, feature, description in rt:
+                # print("status: {} premise: {} conclusion: {} feature: {} description: {}".format(
+                    # status, premise, conclusion, feature, description))
                 if feature in Features2Skip:
                     continue
                 premise = manifestGraph.namespace_manager.compute_qname(
@@ -326,9 +328,9 @@ class OwlTestSuite(unittest.TestCase):
                 premiseFile = '/'.join(manifest.split('/')[:2] + [premise])
                 conclusionFile = '/'.join(manifest.split('/')
                                           [:2] + [conclusion])
-                print(premiseFile)
-                print(conclusionFile)
-                if status == 'APPROVED':
+                # print("premiseFile {}".format(premiseFile))
+                # print("conclusionFile {}".format(conclusionFile))
+                if str(status) == 'APPROVED':
                     if SINGLE_TEST and premiseFile != SINGLE_TEST:
                         continue
                     assert os.path.exists('.'.join([premiseFile, 'rdf']))
@@ -411,7 +413,6 @@ class OwlTestSuite(unittest.TestCase):
                             # from FuXi.Rete.Util import renderNetwork
                             # dot = renderNetwork(self.network,self.network.nsMap).write_jpeg('test-fail.jpeg')
                             raise  # Exception ("Failed test: "+feature)
-
         print(pformat(testData))
 
 
