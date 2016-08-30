@@ -10,3 +10,4 @@ test/coverage*
 test/OWL/*
 docs/_build*
 /.idea/*
+/nosetests.xml
