@@ -43,7 +43,7 @@ assert pformat(list(a.subClassOf)) == '[Class: ex:MusicalWork ]'
 
 # This can also be used against already populated graphs:
 
-owlGraph = Graph().parse(OWL_NS)
+owlGraph = Graph().parse(str(OWL_NS))
 namespace_manager.bind('owl', OWL_NS, override=False)
 owlGraph.namespace_manager = namespace_manager
 

@@ -470,14 +470,11 @@ def main():
             for prefix, nsInst in list(nsBinds.items()):
                 if prefix not in [n[0] for n in query.prologue.namespace_manager.namespaces()]:
                     query.prologue.namespace_manager.bind(prefix, nsInst)
-        print("query.prologue: {}({})".format(repr(query.prologue), type(query.prologue)))
-        print("query {}".format(repr(query)))
-        print("query type {}".format(type(query)))
-        print("query keys {}".format(list(query.keys())))
-        print("query.where: {} ({})".format(repr(query.where), type(query.where)))
-        print("query.where", query.where)
+        print("query.prologue: {}".format(query.prologue))
+        print("query.query {}".format(query[1]))
+        print("query.where: {}".format(query[1].where))
         print("query.where.parsedGraphPattern",
-              query.where.parsedGraphPattern)
+              query[1].where.parsedGraphPattern)
         goals.extend([(s, p, o) for s, p, o, c in ReduceGraphPattern(
             query.query.whereClause.parsedGraphPattern, query.prologue).patterns])
         # dPreds=[]# p for s, p, o in goals ]

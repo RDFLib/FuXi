@@ -12,7 +12,7 @@ def main():
 
     print("N0", network)
 
-    hornrules = HornFromN3('http://fuxi.googlecode.com/hg/test/sameAsTestRules.n3')
+    hornrules = HornFromN3('https://raw.githubusercontent.com/RDFLib/FuXi/master/test/sameAsTestRules.n3')
 
     for rule in hornrules:
         network.buildNetworkFromClause(rule)
@@ -20,13 +20,21 @@ def main():
     print("N1", network)
 
     factGraph = Graph().parse(
-        'http://fuxi.googlecode.com/hg/test/sameAsTestFacts.n3', format='n3')
+        'https://raw.githubusercontent.com/RDFLib/FuXi/master/test/sameAsTestFacts.n3', format='n3')
     network.feedFactsToAdd(generateTokenSet(factGraph))
     print(closureDeltaGraph.serialize(format='n3'))
 
-import pycallgraph
-import sys
-pycallgraph.start_trace()
-main()
-pycallgraph.make_dot_graph('example1.png')
-sys.exit(1)
+#import pycallgraph
+#import sys
+#pycallgraph.start()
+#main()
+#pycallgraph.make_dot_graph('example1.png')
+#sys.exit(1)
+from pycallgraph import PyCallGraph
+from pycallgraph.output import GraphvizOutput
+
+graphviz = GraphvizOutput()
+graphviz.output_file = 'example1.png'
+
+with PyCallGraph(output=graphviz):
+    main()

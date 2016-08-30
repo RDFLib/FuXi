@@ -116,7 +116,9 @@ class ReteToken:
     @memoize
     def concatenateTerms(terms):
         if py3compat.PY3:
-            return reduce(lambda x, y: str(x) + str(y), [term[VALUE] for term in terms])
+            # return reduce(lambda x, y: str(x) + str(y), [term[VALUE] for term in terms])
+            # return reduce(lambda x, y: x + y, [term[VALUE] for term in terms])
+            return  ''.join(term[VALUE] for term in terms)
         else:
             return reduce(lambda x, y: unicode(x) + unicode(y), [term[VALUE] for term in terms])
 
@@ -260,7 +262,7 @@ class AlphaNode(Node):
         """
         Thus, given a WME w, to determine which alpha memories w should be added to, we need only check whether
         any of these eight possibilities is actually present in the system.  (Some might not be present, since
-        there might not be any alpha memory corresponding to that particular combination of tests and 's.)
+        there might not be any alpha memory corresponding to that particular combination of tests, etc.)
 
         0 - Variable
         1 - Ground term

@@ -198,7 +198,7 @@ class PartialInstantiation(object):
     >>> token = ReteToken((URIRef('urn:uuid:Boo'),RDF.type,URIRef('urn:uuid:Foo')))
     >>> token = token.bindVariables(aNode)
     >>> PartialInstantiation([token])
-    <PartialInstantiation: set([<ReteToken: X->urn:uuid:Boo, C->urn:uuid:Foo>])>
+    <PartialInstantiation: {<ReteToken: X->urn:uuid:Boo, C->urn:uuid:Foo>}>
     >>> for token in PartialInstantiation([token]):
     ...   print(token)
     <ReteToken: X->urn:uuid:Boo, C->urn:uuid:Foo>
@@ -294,8 +294,8 @@ class PartialInstantiation(object):
         >>> token1 = ReteToken((URIRef('urn:uuid:Boo'),RDF.type,URIRef('urn:uuid:Foo')))
         >>> token2 = ReteToken((URIRef('urn:uuid:Foo'),RDF.type,URIRef('urn:uuid:Boo')))
         >>> inst = PartialInstantiation([token1.bindVariables(aNode),token2.bindVariables(aNode)])
-        >>> inst
-        <PartialInstantiation: set([<ReteToken: S->urn:uuid:Boo, P->http://www.w3.org/1999/02/22-rdf-syntax-ns#type, O->urn:uuid:Foo>, <ReteToken: S->urn:uuid:Foo, P->http://www.w3.org/1999/02/22-rdf-syntax-ns#type, O->urn:uuid:Boo>])>
+        >>> inst #doctest: +SKIP
+        <PartialInstantiation: {<ReteToken: S->urn:uuid:Boo, P->http://www.w3.org/1999/02/22-rdf-syntax-ns#type, O->urn:uuid:Foo>, <ReteToken: S->urn:uuid:Foo, P->http://www.w3.org/1999/02/22-rdf-syntax-ns#type, O->urn:uuid:Boo>}>
         """
         self.tokens.add(token)
         if not noPostProcessing:
@@ -354,16 +354,16 @@ class PartialInstantiation(object):
         >>> token4 = ReteToken((RDFS.range,RDFS.domain,RDFS.Class))
         >>> token5 = ReteToken((RDFS.domain,RDF.type,URIRef('urn:uuid:Prop1'))).bindVariables(aNode2)
         >>> inst = PartialInstantiation([token2.bindVariables(aNode1),token3.bindVariables(aNode2),token5])
-        >>> pprint(list(inst.tokens))
+        >>> pprint(list(inst.tokens)) #doctest: +SKIP
         [<ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#range>,
          <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain>,
          <ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#domain>]
         >>> newInst = inst.newJoin(token1.bindVariables(aNode3),[Variable('P2')])
         >>> token1
         <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain, P2->http://www.w3.org/2000/01/rdf-schema#domain>
-        >>> newInst
-        <PartialInstantiation (joined on ?P2): set([<ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain, P2->http://www.w3.org/2000/01/rdf-schema#domain>, <ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#range>, <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain>, <ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#domain>])>
-        >>> pprint(list(newInst.tokens))
+        >>> newInst #doctest: +SKIP
+        <PartialInstantiation (joined on ?P2): {<ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#range>, <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain>, <ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#domain>, <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain, P2->http://www.w3.org/2000/01/rdf-schema#domain>}>
+        >>> pprint(list(newInst.tokens)) #doctest: +SKIP
         [<ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain, P2->http://www.w3.org/2000/01/rdf-schema#domain>,
          <ReteToken: P2->http://www.w3.org/2000/01/rdf-schema#range>,
          <ReteToken: P1->http://www.w3.org/2000/01/rdf-schema#domain>,
@@ -437,9 +437,9 @@ class BetaNode(Node):
     >>> joinNode3.connectIncomingNodes(joinNode2,aNode3)
 
     >>> joinNode1
-    <BetaNode (pass-thru): CommonVariables: [?X] (0 in left, 0 in right memories)>
+    <BetaNode (pass-thru): CommonVariables: [rdflib.term.Variable('X')] (0 in left, 0 in right memories)>
     >>> joinNode2
-    <BetaNode : CommonVariables: [?X] (0 in left, 0 in right memories)>
+    <BetaNode : CommonVariables: [rdflib.term.Variable('X')] (0 in left, 0 in right memories)>
 
     Setup tokens (RDF triples):
 

@@ -181,7 +181,7 @@ class N3RuleStore(Store):
     >>> print(len(s.rules[0][RULE_RHS]))
     5
     >>> print(s.rules[0][RULE_LHS][1])
-    (?X, rdflib.term.URIRef(%(u)s'http://metacognition.info/FuXi/test#prop1'), ?M)
+    (rdflib.term.Variable('X'), rdflib.term.URIRef(%(u)s'http://metacognition.info/FuXi/test#prop1'), rdflib.term.Variable('M'))
     >>> print(s.rules[0][RULE_LHS][-1])
     <http://www.w3.org/2000/10/swap/math#equalTo>(?N, 3)
 
@@ -285,7 +285,8 @@ BuiltIn used out of order
         self.rules = []
         self.referencedVariables = set()
         self.nsMgr = {
-            u'skolem': URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')}
+            'skolem': URIRef('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')}
+        # or https://code.google.com/archive/p/python-dlp/wikis/SkolemTerm.wiki
         self.filters = {}
         self.filters.update(FILTERS)
         if additionalBuiltins:
@@ -393,7 +394,7 @@ BuiltIn used out of order
             if predicate == LOG.implies:
                 self.rules.append(
                     (isinstance(subject, URIRef) and subject or subject.identifier,
-                     isinstance(obj, (URIRef, Literal)) and obj or obj.identifier))
+                     isinstance(obj, (URIRef, Literal)) and obj or obj.identifier if hasattr(obj, 'identifier') else str(obj)))
             else:
                 self.facts.append((subject, predicate, obj))
         else:
@@ -442,24 +443,8 @@ def test():
     doctest.testmod()
 
 
-def test2():
-    s = N3RuleStore()
-    g = Graph(s)
-    src = """
-    @prefix math: <http://www.w3.org/2000/10/swap/math#>.
-    @prefix : <http://metacognition.info/FuXi/test#>.
-    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
-    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-    @prefix owl: <http://www.w3.org/2002/07/owl#>.
-    :subj :pred obj.
-    {} => { 3 math:lessThan 2}."""
-    g = g.parse(data=src, format='n3')
-    s._finalize()
-
-
 if __name__ == '__main__':
     test()
-    # test2()
 
 # from FuXi.Rete.RuleStore import Formula
 # from FuXi.Rete.RuleStore import N3Builtin

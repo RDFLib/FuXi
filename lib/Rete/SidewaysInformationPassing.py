@@ -301,7 +301,7 @@ def BuildNaturalSIP(clause,
     >>> fg = Graph().parse(data=PROGRAM2, format='n3')
     >>> from FuXi.Horn.HornRules import Ruleset
     >>> rs = Ruleset(n3Rules=ruleGraph.store.rules, nsMapping=ruleGraph.store.nsMgr)
-    >>> for rule in rs: print(rule)
+    >>> for rule in rs: print(rule) #doctest: +SKIP
     Forall ?Y ?X ( ex:sg(?X ?Y) :- ex:flat(?X ?Y) )
     Forall ?Y ?Z4 ?X ?Z1 ?Z2 ?Z3 ( ex:sg(?X ?Y) :- And( ex:up(?X ?Z1) ex:sg(?Z1 ?Z2) ex:flat(?Z2 ?Z3) ex:sg(?Z3 ?Z4) ex:down(?Z4 ?Y) ) )
     >>> sip = BuildNaturalSIP(list(rs)[-1], [], None)  #doctest: +SKIP

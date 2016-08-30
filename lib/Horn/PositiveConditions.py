@@ -416,7 +416,7 @@ class Uniterm(QNameManager, Atomic):
         >>> x = Variable('X')
         >>> lit = Uniterm(RDF.type,[RDFS.comment,x])
         >>> lit.terms
-        [rdflib.term.URIRef(%(u)s'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), rdflib.term.URIRef(%(u)s'http://www.w3.org/2000/01/rdf-schema#comment'), ?X]
+        [rdflib.term.URIRef(%(u)s'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), rdflib.term.URIRef(%(u)s'http://www.w3.org/2000/01/rdf-schema#comment'), rdflib.term.Variable('X')]
         """
         return [self.op] + self.arg
 

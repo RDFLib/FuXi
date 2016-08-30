@@ -230,7 +230,7 @@ def manchesterSyntax(thing, store, boolean=None, transientList=False):
                 else:
                     prefix = manchesterSyntax(named[0], store)
                 if childList:
-                    return prefix + u' THAT ' + u' AND '.join(
+                    return prefix.decode('utf-8') + u' THAT ' + u' AND '.join(
                         [manchesterSyntax(x, store) for x in childList])
                 else:
                     return prefix
