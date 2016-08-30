@@ -20,6 +20,10 @@ env:
     - TOX_ENV=py35
     - TOX_ENV=pypy
 
+before_install:
+    - pip install -U setuptools pip  # seems travis comes with a too old setuptools for html5lib
+    - bash .travis.getOWLtestsuite.sh
+
 install:
     - pip install tox
 
