@@ -16,8 +16,6 @@ Query fact: rdfs:subClassOf_derived_query_bf(KneeJoint)
 
 """
 
-__author__ = 'chimezieogbuji'
-
 import sys
 # from pprint import pprint
 # from FuXi.DLP import non_DHL_OWL_Semantics as SUBSUMPTION_SEMANTICS
@@ -56,6 +54,9 @@ except ImportError:
     from StringIO import StringIO
 
 import logging
+
+__author__ = 'chimezieogbuji'
+
 log = logging.getLogger(__name__)
 
 LIST_NS = Namespace('http://www.w3.org/2000/10/swap/list#')

@@ -27,12 +27,12 @@ from FuXi.SPARQL import EDBQuery
 
 # for docstring/test purposes
 from rdflib import Graph
-assert Graph
 from rdflib import RDFS
-assert RDFS
 from rdflib.plugins.sparql.parserutils import Expr as AlgebraExpression
-assert AlgebraExpression
 from rdflib.plugins.sparql.sparql import Query
+assert Graph
+assert RDFS
+assert AlgebraExpression
 assert Query
 
 TOP_DOWN_METHOD = 0
@@ -104,8 +104,8 @@ class TopDownSPARQLEntailingStore(Store):
         >>> isinstance(rt,(BasicGraphPattern, AlgebraExpression))
         True
         """
-        from rdflib.plugins.sparql.sparql import Prologue
-        from rdflib.plugins.sparql.parser import parseQuery
+        # from rdflib.plugins.sparql.sparql import Prologue
+        # from rdflib.plugins.sparql.parser import parseQuery
         from rdflib.plugins.sparql.processor import prepareQuery
         from rdflib.plugins.sparql import sparql as sparqlModule
         if queryObj:

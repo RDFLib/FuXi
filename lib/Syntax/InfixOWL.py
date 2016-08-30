@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 from rdflib import py3compat
+import itertools
+from rdflib import Namespace, RDF, RDFS, URIRef, BNode, Literal, Variable
+from rdflib.util import first
+from rdflib.term import Identifier
+from rdflib.graph import Graph
+from rdflib.collection import Collection
+from rdflib.namespace import NamespaceManager
 
 __doc__ = py3compat.format_doctest_out("""\
 RDFLib Python binding for OWL Abstract Syntax
@@ -110,13 +117,6 @@ Restrictions can also be created using Manchester OWL syntax in
 
 """)
 
-import itertools
-from rdflib import Namespace, RDF, RDFS, URIRef, BNode, Literal, Variable
-from rdflib.util import first
-from rdflib.term import Identifier
-from rdflib.graph import Graph
-from rdflib.collection import Collection
-from rdflib.namespace import NamespaceManager
 _XSD_NS = Namespace('http://www.w3.org/2001/XMLSchema#')
 
 """
@@ -127,6 +127,11 @@ infix operator like this. This recipe shows how (almost) arbitrary infix
 operators can be defined.
 
 """
+
+if py3compat.PY3:
+    def unicode(x):
+        return x if isinstance(x, str) else x.decode('utf-8')
+    basestring = str
 
 # definition of an Infix operator class
 # this recipe also works in jython
@@ -1199,9 +1204,8 @@ class Class(AnnotatibleTerms):
         else:
             klassDescr = full and (
                 descr and "\n    %s" % descr[0] or '') or '' + ' . '.join(exprs)
-        return (isinstance(self.identifier, BNode)
-                and "Some Class "
-                or "Class: %s " % self.qname) + klassDescr
+        return (isinstance(self.identifier, BNode) and
+                "Some Class " or "Class: %s " % self.qname) + klassDescr
 
 
 class OWLRDFListProxy(object):
@@ -1873,8 +1877,8 @@ class Property(AnnotatibleTerms):
         rt = []
         if OWL_NS.ObjectProperty in self.type:
             rt.append(u'ObjectProperty( %s annotation(%s)' % (
-                self.qname, first(self.comment)
-                and first(self.comment) or ''))
+                self.qname, first(self.comment) and
+                first(self.comment) or ''))
             if first(self.inverseOf):
                 twoLinkInverse = first(first(self.inverseOf).inverseOf)
                 if twoLinkInverse and twoLinkInverse.identifier == self.identifier:
@@ -1891,8 +1895,8 @@ class Property(AnnotatibleTerms):
                 rt.append(unicode(roleType.split(OWL_NS)[-1]))
         else:
             rt.append('DatatypeProperty( %s %s' % (
-                self.qname, first(self.comment)
-                and first(self.comment) or ''))
+                self.qname, first(self.comment) and
+                first(self.comment) or ''))
             for s, p, roleType in self.graph.triples((self.identifier,
                                                       RDF.type,
                                                       OWL_NS.FunctionalProperty)):

@@ -24,19 +24,11 @@ thus restricting the search space."
 """
 import copy
 import itertools
-import unittest
 try:
     from functools import reduce
 except ImportError:
     pass
 
-
-NON_LINEAR_MS_QUERY = """\
-PREFIX ex: <http://doi.acm.org/10.1145/28659.28689#>
-
-SELECT * WHERE { ex:john ex:sg ?X }
-
-"""
 
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from FuXi.Horn.HornRules import Clause
@@ -73,6 +65,13 @@ from rdflib.plugins.sparql.algebra import translateQuery as RenderSPARQLAlgebra
 from rdflib.plugins.sparql.parser import parseQuery
 from rdflib.plugins.sparql.sparql import Query as sparqlQuery
 
+
+NON_LINEAR_MS_QUERY = """\
+PREFIX ex: <http://doi.acm.org/10.1145/28659.28689#>
+
+SELECT * WHERE { ex:john ex:sg ?X }
+
+"""
 
 EX_ULMAN = Namespace('http://doi.acm.org/10.1145/6012.15399#')
 LOG_NS = Namespace("http://www.w3.org/2000/10/swap/log#")

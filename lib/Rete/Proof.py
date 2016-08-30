@@ -330,9 +330,9 @@ class ProofBuilder(object):
                     for termVar in termIterator(bodyTerm):
                         assert isinstance(termVar, (N3Builtin, Uniterm))
                         assert all(termVar.toRDFTuple(),
-                                   lambda x: isinstance(x, Variable)
-                                   and x in step.bindings
-                                   or not isinstance(x, Variable))
+                                   lambda x: isinstance(x, Variable) and
+                                   x in step.bindings or
+                                   not isinstance(x, Variable))
                     groundAntecedentAssertion = tuple(
                         fillBindings(bodyTerm.toRDFTuple(), step.bindings))
                     self.trace.append(

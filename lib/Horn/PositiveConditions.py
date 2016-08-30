@@ -32,10 +32,15 @@ try:
 except ImportError:
     pass
 
-_XSD_NS = Namespace("http://www.w3.org/2001/XMLSchema#")
 from rdflib.util import first
 from rdflib import py3compat
+assert RDF is not None
+assert RDFS is not None
+if py3compat.PY3:
+    def unicode(x):
+        return x if isinstance(x, str) else x.decode('utf-8')
 
+_XSD_NS = Namespace("http://www.w3.org/2001/XMLSchema#")
 OWL = Namespace("http://www.w3.org/2002/07/owl#")
 
 
@@ -575,7 +580,7 @@ class PredicateExtentFactory(object):
     a Uniterm with the 'registered' symbol and
     two-tuple argument
 
-    >>> from rdflib import Namespace, URIRef
+    >>> from rdflib import Namespace
     >>> EX_NS = Namespace('http://example.com/')
     >>> ns = {'ex':EX_NS}
     >>> somePredFactory = PredicateExtentFactory(EX_NS.somePredicate,newNss=ns)

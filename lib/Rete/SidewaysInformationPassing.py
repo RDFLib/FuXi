@@ -31,14 +31,18 @@ try:
 except ImportError:
     pass
 
+if py3compat.PY3:
+    def unicode(x):
+        return x if isinstance(x, str) else x.decode('utf-8')
 
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
 
 
 def makeMD5Digest(value):
     return md5(
-        isinstance(value, unicode) and value.encode('utf-8')
-        or value).hexdigest()
+        isinstance(value, unicode) and
+        value.encode('utf-8') or
+        value).hexdigest()
 
 
 def iterCondition(condition):
@@ -151,9 +155,10 @@ def CollectSIPArcVars(left, right, phBoundVars):
     """docstring for CollectSIPArcVars"""
     if isinstance(left, list):
         return set(reduce(lambda x, y: x + y,
-                          [hasattr(t, 'isHead') and phBoundVars
-                           or GetArgs(t, secondOrder=True)
-                           for t in left])).intersection(
+                          [hasattr(t, 'isHead') and
+                           phBoundVars or
+                           GetArgs(t, secondOrder=True)
+                              for t in left])).intersection(
             GetArgs(right, secondOrder=True))
     else:
         incomingVarsToInclude = phBoundVars and phBoundVars or \
@@ -292,7 +297,6 @@ def BuildNaturalSIP(clause,
     decision about the order in which the predicates of the rule will be evaluated, and how values
     for variables are passed from predicates to other predicates during evaluation
 
-    >>> from functools import reduce
     >>> from io import StringIO
     >>> from FuXi.Rete.RuleStore import SetupRuleStore
     >>> from FuXi.Rete import PROGRAM2
@@ -310,7 +314,7 @@ def BuildNaturalSIP(clause,
     ( <http://doi.acm.org/10.1145/28659.28689#up> <http://doi.acm.org/10.1145/28659.28689#sg> ) ( ?Z1 )
 
     >>> sip = BuildNaturalSIP(list(rs)[-1], [MAGIC.sg], None)  #doctest: +SKIP
-    >>> list(sip.query('SELECT ?q {  ?prop a magic:SipArc . [] ?prop ?q . }', initNs={%(u)s'magic':MAGIC}))  #doctest: +SKIP
+    >>> list(sip.query('SELECT ?q {  ?prop a magic:SipArc . [] ?prop ?q . }', initNs={u'magic':MAGIC}))  #doctest: +SKIP
     [rdflib.term.URIRef(%(u)s'http://doi.acm.org/10.1145/28659.28689#sg'), rdflib.term.URIRef(%(u)s'http://doi.acm.org/10.1145/28659.28689#sg')]
     """
     from FuXi.Rete.Magic import AdornedUniTerm

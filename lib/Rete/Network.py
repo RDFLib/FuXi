@@ -33,8 +33,7 @@ except ImportError:
 from .BetaNode import (
     BetaNode,
     LEFT_MEMORY,
-    RIGHT_MEMORY,
-    PartialInstantiation,
+    RIGHT_MEMORY
 )
 from .AlphaNode import (
     AlphaNode,
@@ -74,11 +73,9 @@ from rdflib.graph import (
 from rdflib.namespace import NamespaceManager
 from rdflib import (
     BNode,
-    Literal,
     Namespace,
     RDF,
     RDFS,
-    URIRef,
     Variable,
 )
 from rdflib import py3compat
@@ -91,6 +88,8 @@ from .RuleStore import (
     N3RuleStore,
 )
 
+assert RDF is not None
+assert RDFS is not None
 
 OWL_NS = Namespace("http://www.w3.org/2002/07/owl#")
 Any = None
@@ -118,6 +117,7 @@ class HashablePatternList(object):
     This value is also used for the hash.  In this way, patterns with the same terms
     but in different order are considered equivalent and share the same Rete nodes
 
+    >>> from rdflib import Literal
     >>> nodes = {}
     >>> a = HashablePatternList([(Variable('X'), Literal(1), Literal(2))])
     >>> nodes[a] = 1
@@ -192,6 +192,8 @@ def _mulPatternWithSubstitutions(tokens, consequent, termNode):
     Takes a set of tokens and a pattern and returns an iterator over consequent
     triples, created by applying all the variable substitutions in the given tokens against the pattern
 
+    >>> from rdflib import URIRef
+    >>> from FuXi.Rete.BetaNode import PartialInstantiation
     >>> aNode = AlphaNode((Variable('S'), Variable('P'), Variable('O')))
     >>> token1 = ReteToken((URIRef('urn:uuid:alpha'), OWL_NS.differentFrom, URIRef('urn:uuid:beta')))
     >>> token2 = ReteToken((URIRef('urn:uuid:beta'), OWL_NS.differentFrom, URIRef('urn:uuid:alpha')))

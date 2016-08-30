@@ -34,9 +34,9 @@ from rdflib import (
     BNode,
     Literal,
     Namespace,
+    URIRef,
     RDF,
     RDFS,
-    URIRef,
     Variable
 )
 from rdflib.util import first
@@ -44,6 +44,10 @@ try:
     from functools import reduce
 except ImportError:
     pass
+
+assert RDF is not None
+assert RDFS is not None
+assert URIRef is not None
 
 
 _XSD_NS = Namespace('http://www.w3.org/2001/XMLSchema#')

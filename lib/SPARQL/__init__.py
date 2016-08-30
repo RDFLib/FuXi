@@ -3,7 +3,6 @@ import copy
 from itertools import takewhile
 from rdflib import (
     BNode,
-    Graph,
     Literal,
     RDF,
     URIRef,
@@ -14,7 +13,6 @@ from rdflib.namespace import split_uri
 
 from FuXi.Horn.PositiveConditions import (
     And,
-    BuildUnitermFromTuple,
     Condition,
     Or,
     QNameManager,
@@ -423,6 +421,8 @@ class EDBQuery(QNameManager, SetOperator, Condition):
 
     def __hash__(self):
         """
+        >>> from rdflib import Graph
+        >>> from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
         >>> g = Graph()
         >>> lit1 = (Variable('X'), RDF.type, Variable('Y'))
         >>> q1 = EDBQuery([BuildUnitermFromTuple(lit1)], g)

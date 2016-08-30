@@ -5,9 +5,7 @@ from rdflib import (
     Namespace,
     Variable,
     RDF,
-    RDFS,
-    URIRef
-)
+    RDFS)
 from rdflib import py3compat
 
 from .Node import Node
@@ -15,7 +13,14 @@ try:
     from functools import reduce
 except ImportError:
     pass
+from pickle import dumps, PicklingError  # for memoize
+# sop to flake
+assert RDF is not None
+assert RDFS is not None
 
+if py3compat.PY3:
+    def unicode(x):
+        return x if isinstance(x, str) else x.decode('utf-8')
 
 OWL_NS = Namespace("http://www.w3.org/2002/07/owl#")
 
@@ -37,8 +42,6 @@ def normalizeTerm(term):
         return term.identifier
     else:
         return term
-
-from pickle import dumps, PicklingError  # for memoize
 
 
 class memoize(object):
@@ -118,7 +121,7 @@ class ReteToken:
         if py3compat.PY3:
             # return reduce(lambda x, y: str(x) + str(y), [term[VALUE] for term in terms])
             # return reduce(lambda x, y: x + y, [term[VALUE] for term in terms])
-            return  ''.join(term[VALUE] for term in terms)
+            return ''.join(term[VALUE] for term in terms)
         else:
             return reduce(lambda x, y: unicode(x) + unicode(y), [term[VALUE] for term in terms])
 
@@ -132,6 +135,7 @@ class ReteToken:
         according to the particular values being tested. Executing the alpha network then becomes a
         simple matter of doing eight hash table lookups:
 
+        >>> from rdflib import URIRef
         >>> aNode1 = AlphaNode((Variable('Z'), RDF.type, Variable('A')))
         >>> aNode2 = AlphaNode((Variable('X'), RDF.type, Variable('C')))
         >>> token = ReteToken((URIRef('urn:uuid:Boo'), RDF.type, URIRef('urn:uuid:Foo')))
@@ -429,4 +433,3 @@ if __name__ == '__main__':
 # from FuXi.Rete.AlphaNode import BuiltInAlphaNode
 # from FuXi.Rete.AlphaNode import normalizeTerm
 # from FuXi.Rete.AlphaNode import memoize
-

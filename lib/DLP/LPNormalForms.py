@@ -5,8 +5,7 @@ import copy
 from FuXi.Horn.PositiveConditions import (
     And,
     Or,
-    Uniterm,
-    PredicateExtentFactory
+    Uniterm
 )
 
 
@@ -47,6 +46,7 @@ def ApplyDemorgans(clause):
     """
     >>> from rdflib import Namespace, Variable
     >>> from FuXi.DLP import Clause
+    >>> from FuXi.Horn.PositiveConditions import PredicateExtentFactory
     >>> EX_NS = Namespace('http://example.com/')
     >>> ns = {'ex' : EX_NS}
     >>> pred1 = PredicateExtentFactory(EX_NS.somePredicate,newNss=ns)

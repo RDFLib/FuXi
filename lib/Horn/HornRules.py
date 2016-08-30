@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
+"""Horn Rules.
+
 This section defines Horn rules for RIF Phase 1. The syntax and semantics
 incorporates RIF Positive Conditions defined in Section Positive Conditions
 """
@@ -19,10 +20,9 @@ from FuXi.Horn import (
 from rdflib.graph import (
     ConjunctiveGraph,
 )
-from rdflib import(
+from rdflib import (
     BNode,
     Variable,
-    Namespace,
     RDFS,
     RDF
 )
@@ -33,12 +33,14 @@ except ImportError:
     pass
 
 import itertools
+assert RDF is not None
+assert RDFS is not None
 
 
 def NetworkFromN3(n3Source, additionalBuiltins=None):
-    """
-    Takes an N3 / RDF conjunctive graph and returns a ReteNetwork built from
-    the rules in the N3 graph
+    """Take an N3 / RDF conjunctive graph and return a ReteNetwork.
+
+    Network is built from the rules in the N3 graph
     """
     from FuXi.Rete.RuleStore import SetupRuleStore
     rule_store, rule_graph, network = SetupRuleStore(
@@ -58,7 +60,8 @@ def NetworkFromN3(n3Source, additionalBuiltins=None):
 
 
 def HornFromDL(owlGraph, safety=DATALOG_SAFETY_NONE, derivedPreds=[], complSkip=[]):
-    """
+    """Extract Horn rules via OWL 2 RLfrom OWL RDF graph.
+
     Takes an OWL RDF graph, an indication of what level of ruleset safety
     (see: http://code.google.com/p/fuxi/wiki/FuXiUserManual#Rule_Safety) to apply,
     and a list of derived predicates and returns a Ruleset instance comprised of
@@ -76,7 +79,8 @@ def HornFromDL(owlGraph, safety=DATALOG_SAFETY_NONE, derivedPreds=[], complSkip=
 
 
 def HornFromN3(n3Source, additionalBuiltins=None):
-    """
+    """Extract Horn rules from an N3 document.
+
     Takes the path or URL of a N3 document, and a mapping from predicates
     to functions that implement any builtins found in the N3 document
     """
@@ -183,6 +187,7 @@ class Rule(object):
 
     Example: {?C rdfs:subClassOf ?SC. ?M a ?C} => {?M a ?SC}.
 
+    >>> from rdflib import RDF, RDFS
     >>> clause = Clause(And([Uniterm(RDFS.subClassOf, [Variable('C'), Variable('SC')]),
     ...                      Uniterm(RDF.type, [Variable('M'), Variable('C')])]),
     ...                 Uniterm(RDF.type, [Variable('M'), Variable('SC')]))
@@ -249,7 +254,9 @@ class Rule(object):
     @py3compat.format_doctest_out
     def n3(self):
         """
-        Render a rule as N3 (careful to use e:tuple (_: ?X) skolem functions for existentials in the head)
+        Render a rule as N3.
+
+        Takes care to use e:tuple (_: ?X) skolem functions for existentials in the head.
 
         >>> clause = Clause(And([Uniterm(RDFS.subClassOf, [Variable('C'), Variable('SC')]),
         ...                      Uniterm(RDF.type, [Variable('M'), Variable('C')])]),
@@ -268,6 +275,7 @@ class Rule(object):
 
     def __hash__(self):
         """
+        >>> from rdflib import Namespace
         >>> a=Clause(And([Uniterm(RDFS.subClassOf, [Variable('C'), Variable('SC')]),
         ...             Uniterm(RDF.type, [Variable('M'), Variable('C')])]),
         ...        Uniterm(RDF.type, [Variable('M'), Variable('SC')]))
@@ -359,7 +367,7 @@ class Clause(object):
         >>> hash(a) == hash(b)
         True
 
-        >>> d={a:True}
+        >>> d={a: True}
         >>> b in d
         True
         """

@@ -157,9 +157,10 @@ def renderTerm(graph, term):
         return ' a '
     elif isinstance(term, URIRef):
         qname = normalizeUri(term,
-                             hasattr(graph, 'revNsMap')
-                             and graph.revNsMap or
-                             dict([(u, p) for p, u in graph.namespaces()]))
+                             hasattr(graph, 'revNsMap') and
+                             graph.revNsMap or
+                             dict([(u, p)
+                                   for p, u in graph.namespaces()]))
         return qname[0] == '_' and u"<%s>" % term or qname
     else:
         try:

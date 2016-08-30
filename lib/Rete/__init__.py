@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 from FuXi.Rete.Network import ReteNetwork, InferredGoal
+from FuXi.Rete.BetaNode import BetaNode
+from FuXi.Rete.AlphaNode import AlphaNode, ReteToken, BuiltInAlphaNode
+from FuXi.Rete.ReteVocabulary import RETE_NS
 assert ReteNetwork
 assert InferredGoal
-from FuXi.Rete.BetaNode import BetaNode
 assert BetaNode
-from FuXi.Rete.AlphaNode import AlphaNode, ReteToken, BuiltInAlphaNode
 assert AlphaNode
 assert ReteToken
 assert BuiltInAlphaNode
-from FuXi.Rete.ReteVocabulary import RETE_NS
 assert RETE_NS
 
 
