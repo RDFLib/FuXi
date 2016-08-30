@@ -25,6 +25,7 @@ before_install:
     - bash .travis.getOWLtestsuite.sh
 
 install:
+    - pip install nose
     - pip install tox
 
 script:
