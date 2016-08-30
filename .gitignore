@@ -11,3 +11,5 @@ test/OWL/*
 docs/_build*
 /.idea/*
 /nosetests.xml
+/notes.md
+/examples/rdflib/*

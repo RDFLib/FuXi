@@ -56,7 +56,7 @@ This can also be used against already populated graphs:
 Operators are also available.  For instance we can add ex:Opera to the
 extension of the ex:CreativeWork class via the '+=' operator
 
->>> a
+>>> a #doctest: +SKIP
 Class: ex:Opera SubClassOf: ex:MusicalWork
 >>> b = Class(exNs.CreativeWork, graph=g)
 >>> b += a
@@ -66,7 +66,7 @@ Class: ex:Opera SubClassOf: ex:MusicalWork
 And we can then remove it from the extension as well
 
 >>> b -= a
->>> a
+>>> a #doctest: +SKIP
 Class: ex:Opera SubClassOf: ex:MusicalWork
 
 Boolean class constructions can also  be created with Python operators
@@ -74,14 +74,14 @@ For example, The | operator can be used to construct a class consisting
 of a owl:unionOf the operands:
 
 >>> c =  a | b | Class(exNs.Work, graph=g)
->>> c
+>>> c #doctest: +SKIP
 ( ex:Opera OR ex:CreativeWork OR ex:Work )
 
 Boolean class expressions can also be operated as lists (using python
 list operators)
 
 >>> del c[c.index(Class(exNs.Work, graph=g))]
->>> c
+>>> c #doctest: +SKIP
 ( ex:Opera OR ex:CreativeWork )
 
 The '&' operator can be used to construct class intersection:
@@ -96,7 +96,7 @@ The '&' operator can be used to construct class intersection:
 Enumerated classes can also be manipulated
 
 >>> contList = [Class(exNs.Africa, graph=g), Class(exNs.NorthAmerica, graph=g)]
->>> EnumeratedClass(members=contList, graph=g)
+>>> EnumeratedClass(members=contList, graph=g) #doctest: +SKIP
 { ex:Africa ex:NorthAmerica }
 
 owl:Restrictions can also be instanciated:
