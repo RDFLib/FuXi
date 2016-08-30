@@ -492,8 +492,7 @@ class ReteNetwork:
             print("\t", termNode.clauseRepresentation())
             print("\t\t%s instantiations" % self.instantiations[termNode])
         if closureSummary:
-            print(self.inferredFacts.serialize(
-                destination=stream, format='turtle'))
+            print(self.inferredFacts.serialize(format='turtle'))
 
     def parseN3Logic(self, src):
         store = N3RuleStore(additionalBuiltins=self.ruleStore.filters)

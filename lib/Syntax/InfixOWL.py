@@ -130,7 +130,7 @@ operators can be defined.
 
 if py3compat.PY3:
     def unicode(x):
-        return x if isinstance(x, str) else x.decode('utf-8')
+        return x.decode('utf-8') if isinstance(x, bytes) else x
     basestring = str
 
 # definition of an Infix operator class

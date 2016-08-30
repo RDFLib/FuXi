@@ -57,7 +57,7 @@ config = dict(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Operating System :: OS Independent",
         "Natural Language :: English",
-       ],
+    ],
     package_dir={
         'FuXi': 'lib',
     },
@@ -73,11 +73,12 @@ config = dict(
     install_requires=['rdflib>2'],
     license="Apache",
     keywords="python logic owl rdf dlp n3 rule reasoner",
+    tests_require=['nose'],
     test_suite='nose.collector',
     url="https://github.com/RDFLib/FuXi",
     entry_points={
         'console_scripts': [
-           'FuXi = FuXi.Rete.CommandLine:main',
+             'FuXi = FuXi.Rete.CommandLine:main',
         ],
     },
     zip_safe=False

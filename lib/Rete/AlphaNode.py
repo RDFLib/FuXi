@@ -20,7 +20,7 @@ assert RDFS is not None
 
 if py3compat.PY3:
     def unicode(x):
-        return x if isinstance(x, str) else x.decode('utf-8')
+        return x.decode('utf-8') if isinstance(x, bytes) else x
 
 OWL_NS = Namespace("http://www.w3.org/2002/07/owl#")
 

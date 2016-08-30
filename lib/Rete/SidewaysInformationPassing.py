@@ -33,7 +33,7 @@ except ImportError:
 
 if py3compat.PY3:
     def unicode(x):
-        return x if isinstance(x, str) else x.decode('utf-8')
+        return x.decode('utf-8') if isinstance(x, bytes) else x
 
 MAGIC = Namespace('http://doi.acm.org/10.1145/28659.28689#')
 
