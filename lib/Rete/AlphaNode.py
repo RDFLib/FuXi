@@ -203,14 +203,8 @@ class ReteToken:
                     bindHashItems.append(var + val)
                 else:
                     bindHashItems.append(val)
-<<<<<<< HEAD
-            #self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
-
-            self.hash = hash(reduce(lambda x, y: str(x) + str(y), bindHashItems))
-=======
             # self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
             self.hash = hash(reduce(lambda x, y: x + y, bindHashItems))
->>>>>>> 29b6d7bff057aed20dd8d8880c839a484a3acd7f
             return self
         elif isinstance(thing, dict):
             revDict = dict([(v, k) for k, v in list(thing.items())])
