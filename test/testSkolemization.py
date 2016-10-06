@@ -1,4 +1,5 @@
 #!/bin/env python
+# -*- coding: utf-8 -*-
 import unittest
 from FuXi.Syntax.InfixOWL import BooleanClass
 from FuXi.Syntax.InfixOWL import Class
@@ -14,6 +15,7 @@ EX = Namespace('http://example.com#')
 
 
 class UnionSkolemizedTest(unittest.TestCase):
+
     def setUp(self):
         self.tBoxGraph = Graph()
         self.tBoxGraph.namespace_manager.bind('ex', EX)
@@ -37,7 +39,7 @@ class UnionSkolemizedTest(unittest.TestCase):
             if hasattr(p.formula.body, 'arg'):
                 self.failIf(
                     p.formula.body.arg[-1].find(SKOLEMIZED_CLASS_NS) > -1,
-                        "Rule has a skolem term when it shouldn't!: %s" % p)
+                    "Rule has a skolem term when it shouldn't!: %s" % p)
             else:
                 print("%s - find(SKOLEMIZED_CLASS_NS)" % p.formula.body)
 

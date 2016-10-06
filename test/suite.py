@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 '''
 Created on Sep 16, 2010
 
@@ -59,7 +60,7 @@ def moduleIterator(root):
             name = root
             file, packageRoute, description = imp.find_module(name)
             package = imp.load_module(root, file, packageRoute, description)
-        except ImportError, err:
+        except ImportError as err:
             print('ImportError:', err)
             return
     if file:
@@ -80,10 +81,10 @@ def moduleIterator(root):
                 modName = entry[:-3]
                 try:
                     file, pathName, description = imp.find_module(
-                                                    modName, packagePath)
+                        modName, packagePath)
                     qualName = name + '.' + modName
                     mod = imp.load_module(
-                            qualName, file, pathName, description)
+                        qualName, file, pathName, description)
                     yield (entry, mod)
                 except:
                     fullPath = packageRoute + os.sep + modName
@@ -98,8 +99,8 @@ def moduleIterator(root):
             else:
                 newRoute = packageRoute + os.sep + entry
                 file, newPath, description = imp.find_module(
-                                                entry, packagePath)
-                #mod = imp.load_module("__main__", file, pathName, description)
+                    entry, packagePath)
+                # mod = imp.load_module("__main__", file, pathName, description)
                 qualName = name + "." + entry
                 mod = imp.load_module(qualName, file, newPath, description)
                 stack.append((qualName, newRoute, mod))
@@ -152,7 +153,7 @@ def extractEmbeddedSuite(root):
     top_level_dir = os.path.abspath(packageRoute + "/..")
     loader = unittest2.TestLoader()
     suite = loader.discover(
-            packageRoute, top_level_dir=top_level_dir, pattern="*.py")
+        packageRoute, top_level_dir=top_level_dir, pattern="*.py")
     return suite
 
 
@@ -171,13 +172,17 @@ def runEmbeddedTests(root, summary, usingUnittest2):
         file, packageRoute, description = imp.find_module(packageName)
     if not usingUnittest2:
         if options.verbose:
-            print("Running test functions rather than directly running unit tests.")
-            print("For better test results, install unittest2 and execute with flag --unittest2.")
-            print("Please disregard warnings of the form 'running xx test function ... \\n*** DocTestRunner.merge: yy in both testers; summing outcomes.)")
+            print(
+                "Running test functions rather than directly running unit tests.")
+            print(
+                "For better test results, install unittest2 and execute with flag --unittest2.")
+            print(
+                "Please disregard warnings of the form 'running xx test function ... \\n*** DocTestRunner.merge: yy in both testers; summing outcomes.)")
             print("Refer instead to the testmod results for these tests.")
     else:
         if options.verbose:
-            print("Running unit tests directly rather than invoking test functions.")
+            print(
+                "Running unit tests directly rather than invoking test functions.")
         embeddedSuite = extractEmbeddedSuite(root)
         title = "Embedded " + packageName + " Unit Tests "
         runSuite(title, embeddedSuite, summary)
@@ -191,7 +196,7 @@ def runEmbeddedTests(root, summary, usingUnittest2):
     totalDoctestFailures = 0
     totalTestFunctionsRun = 0
     for entry, mod in moduleIterator(packageName):
-        if not entry in FILES_TO_IGNORE:
+        if entry not in FILES_TO_IGNORE:
             if not usingUnittest2 and "test" in mod.__dict__:
                 try:
                     totalTestFunctionsRun += 1
@@ -227,14 +232,18 @@ def runEmbeddedTests(root, summary, usingUnittest2):
     summary.append(title + VISUAL_SEPARATOR)
 #    summary.append("* %i mods with load errors:" % (modsWithLoadErrors.__len__()))
 #    summary.append(modsWithLoadErrors)
-    summary.append("* %i mods with doctest failures:" % (modsWithDoctestFailures.__len__()) )
+    summary.append("* %i mods with doctest failures:" %
+                   (modsWithDoctestFailures.__len__()))
     summary.append(modsWithDoctestFailures)
-    summary.append("* %i mods with doctest errors: " % (modsWithDoctestErrors.__len__()))
+    summary.append("* %i mods with doctest errors: " %
+                   (modsWithDoctestErrors.__len__()))
     summary.append(modsWithDoctestErrors)
     summary.append("* Total doctests run %i: " % (totalDoctests))
     if not usingUnittest2:
-        summary.append("* Total attempted test functions: %i" % (totalTestFunctionsRun))
-        summary.append("* %i mods with test function failures: " % (modsWithTestFunctionFailures.__len__()))
+        summary.append("* Total attempted test functions: %i" %
+                       (totalTestFunctionsRun))
+        summary.append("* %i mods with test function failures: " %
+                       (modsWithTestFunctionFailures.__len__()))
         summary.append(modsWithTestFunctionFailures)
     return summary
 
@@ -244,13 +253,18 @@ def suite():
     Return a TestSuite containing all tests from the test directory.
     '''
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(additionalDLPTests.AdditionalDescriptionLogicTests,'test'))
-    suite.addTest(unittest.makeSuite(test_builtin_ordering.URIRefStringStartsWith,'test'))
-    suite.addTest(unittest.makeSuite(test_network_reset.NetworkReset,'test'))
-    suite.addTest(unittest.makeSuite(test_superproperty_entailment.test_superproperty_entailment,'test'))
-    suite.addTest(unittest.makeSuite(testExistentialInHead.ExistentialInHeadTest,'test'))
-    suite.addTest(unittest.makeSuite(testReteAction.ReteActionTest,'test'))
-    suite.addTest(unittest.makeSuite(testSkolemization.UnionSkolemizedTest,'test'))
+    suite.addTest(
+        unittest.makeSuite(additionalDLPTests.AdditionalDescriptionLogicTests, 'test'))
+    suite.addTest(
+        unittest.makeSuite(test_builtin_ordering.URIRefStringStartsWith, 'test'))
+    suite.addTest(unittest.makeSuite(test_network_reset.NetworkReset, 'test'))
+    suite.addTest(unittest.makeSuite(
+        test_superproperty_entailment.test_superproperty_entailment, 'test'))
+    suite.addTest(
+        unittest.makeSuite(testExistentialInHead.ExistentialInHeadTest, 'test'))
+    suite.addTest(unittest.makeSuite(testReteAction.ReteActionTest, 'test'))
+    suite.addTest(
+        unittest.makeSuite(testSkolemization.UnionSkolemizedTest, 'test'))
     return suite
 
 
@@ -294,7 +308,7 @@ if __name__ == "__main__":
         try:
             import unittest2
             usingUnittest2 = True
-            flagCount+=1
+            flagCount += 1
             flags = flags + " --unittest2"
         except:
             print("Unittest2 libraries not found, --unittest2 flag ignored.")
@@ -304,15 +318,18 @@ if __name__ == "__main__":
         rdfpath = rdflib.__path__[0]
         if os.path.isdir(rdfpath):
             rdftests = True
-            flagCount+=1
+            flagCount += 1
             flags = flags + " --rdftests"
         else:
-            print("--rdftests flag is ignored since", rdfpath, "is not a directory.",)
+            print("--rdftests flag is ignored since",
+                  rdfpath, "is not a directory.",)
     if options.verbose:
         print("Running suite.py with %i flags set: %s" % (flagCount, flags))
     if usingUnittest2 and options.verbose:
-        print("Using unittest2 libraries.  CAUTION: these may not be compatible with your debugger.  See")
-        print("\thttp://pydev.blogspot.com/2007/06/why-cant-pydev-debugger-work-with.html")
+        print(
+            "Using unittest2 libraries.  CAUTION: these may not be compatible with your debugger.  See")
+        print(
+            "\thttp://pydev.blogspot.com/2007/06/why-cant-pydev-debugger-work-with.html")
     testOWLoptions = testOWL.defaultOptions()
     splash("testOWL with " + testOWLoptions.strategy)
     testOWL.runTests(testOWLoptions)
@@ -321,16 +338,16 @@ if __name__ == "__main__":
         splash("testOWL with " + testOWLoptions.strategy)
         testOWL.runTests(testOWLoptions)
         testOWLoptions.strategy = "bfp"
-        splash("testOWL with "  + testOWLoptions.strategy)
+        splash("testOWL with " + testOWLoptions.strategy)
         testOWL.runTests(testOWLoptions)
     sys.__stderr__.flush()
 
     # Caution: for some reason external unit tests run properly only if run before embedded tests.
-    #runStandaloneUnitTests()
+    # runStandaloneUnitTests()
     runSuite("FuXi External Unit Tests (other than testOWL)", suite(), summary)
-    runEmbeddedTests("FuXi",summary,usingUnittest2)
+    runEmbeddedTests("FuXi", summary, usingUnittest2)
     if rdftests:
-        runEmbeddedTests(rdflib,summary,usingUnittest2)
+        runEmbeddedTests(rdflib, summary, usingUnittest2)
     for line in summary:
         print(line)
     print("\nNote summary statistics are not available for the testOWL runs.")

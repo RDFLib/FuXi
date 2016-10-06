@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 import logging
+
 
 def debug(*args, **kw):
     logging.basicConfig(level=logging.ERROR, format="%(message)s")

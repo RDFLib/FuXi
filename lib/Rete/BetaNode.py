@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Implements the behavior associated with the 'join' (Beta) node in a RETE
 network:
@@ -29,15 +30,13 @@ from .Node import Node
 # from rdflib.graph import QuotedGraph, Graph
 # from rdflib.collection import Collection
 
-from rdflib import RDFS, URIRef  # doctests
-
 from rdflib import (
     BNode,
     Literal,
     Namespace,
     RDF,
     Variable
-    )
+)
 from rdflib.util import first
 try:
     from functools import reduce
@@ -52,7 +51,7 @@ Any = None
 LEFT_MEMORY = 1
 RIGHT_MEMORY = 2
 
-#Implementn left unlinking?
+# Implementn left unlinking?
 LEFT_UNLINKING = False
 
 memoryPosition = {
@@ -78,7 +77,7 @@ def collectVariables(node):
         return set()
 
 
-#From itertools recipes
+# From itertools recipes
 def iteritems(mapping):
     return list(zip(iter(mapping.keys()), iter(mapping.values())))
 
@@ -91,6 +90,7 @@ def any(seq, pred=None):
 
 
 class ReteMemory(set):
+
     def __init__(self, betaNode, position, filter=None):
         super(ReteMemory, self).__init__(())
         self.filter = filter
@@ -118,11 +118,13 @@ class ReteMemory(set):
                 commonVarKey = []
                 for var in self.successor.commonVariables:
                     commonVarKey.append(binding.get(var))
-                self.substitutionDict.setdefault(tuple(commonVarKey), set()).add(token)
+                self.substitutionDict.setdefault(
+                    tuple(commonVarKey), set()).add(token)
         else:
             for var in self.successor.commonVariables:
                 commonVarKey.append(token.bindingDict.get(var))
-            self.substitutionDict.setdefault(tuple(commonVarKey), set()).add(token)
+            self.substitutionDict.setdefault(
+                tuple(commonVarKey), set()).add(token)
         self.add(token)
 
     def reset(self):
@@ -143,11 +145,11 @@ class ReteMemory(set):
             wrap_method_closure(name)
 
 ReteMemory._wrap_methods(['__ror__', 'difference_update', '__isub__',
-    'symmetric_difference', '__rsub__', '__and__', '__rand__', 'intersection',
-    'difference', '__iand__', '__ixor__',
-    'symmetric_difference_update', '__or__', 'copy', '__rxor__',
-    'intersection_update', '__xor__', '__ior__', '__sub__',
-])
+                          'symmetric_difference', '__rsub__', '__and__', '__rand__', 'intersection',
+                          'difference', '__iand__', '__ixor__',
+                          'symmetric_difference_update', '__or__', 'copy', '__rxor__',
+                          'intersection_update', '__xor__', '__ior__', '__sub__',
+                          ])
 
 
 def project(orig_dict, attributes, inverse=False):
@@ -169,6 +171,7 @@ def project(orig_dict, attributes, inverse=False):
 
 
 class PartialInstantiation(object):
+
     """
     Represents a set of WMEs 'joined' along one or more
     common variables from an ancestral join node 'up' the network
@@ -198,6 +201,7 @@ class PartialInstantiation(object):
     ...   print(token)
     <ReteToken: X->urn:uuid:Boo, C->urn:uuid:Foo>
     """
+
     def __init__(self, tokens=None, debug=False, consistentBindings=None):
         """
         Note a hash is calculated by
@@ -231,7 +235,8 @@ class PartialInstantiation(object):
         Takes two dictionary and collapses it if there are no overlapping 'bindings' or
         'rounds out' both dictionaries so they each have each other's non-overlapping binding
         """
-        bothKeys = [key for key in list(left.keys()) + list(right.keys()) if key not in self.joinedBindings]
+        bothKeys = [key for key in list(
+            left.keys()) + list(right.keys()) if key not in self.joinedBindings]
         if len(bothKeys) == len(set(bothKeys)):
             joinDict = left.copy()
             joinDict.update(right)
@@ -242,7 +247,7 @@ class PartialInstantiation(object):
                 key for key in list(right.keys()) if key not in left]))
             lCopy = left.copy()
             right.update(project(lCopy, [
-                    key for key in list(left.keys()) if key not in right]))
+                key for key in list(left.keys()) if key not in right]))
             return [left, right]
 
     def _generateBindings(self):
@@ -270,8 +275,8 @@ class PartialInstantiation(object):
                 disjunctiveDict.setdefault(key, set()).add(val)
         keys = list(disjunctiveDict)
         bindings = [dict([(keys[idx], val) for idx, val in enumerate(entry)])
-            for entry in product(*tuple([disjunctiveDict[var]
-                                         for var in disjunctiveDict]))]
+                    for entry in product(*tuple([disjunctiveDict[var]
+                                                 for var in disjunctiveDict]))]
         self.bindings = bindings
 
     def __hash__(self):
@@ -302,7 +307,7 @@ class PartialInstantiation(object):
         else:
             joinMsg = ''
         return "<PartialInstantiation%s: %s>" % (
-                joinMsg, self.tokens)
+            joinMsg, self.tokens)
 
     def __iter__(self):
         for i in self.tokens:
@@ -312,12 +317,12 @@ class PartialInstantiation(object):
         return len(self.tokens)
 
     def addConsistentBinding(self, newJoinVariables):
-        #newJoinDict = self.joinedBindings.copy()
-        #only a subset of the tokens in this partial instantiation will be 'merged' with
-        #the new token - joined on the new join variables
+        # newJoinDict = self.joinedBindings.copy()
+        # only a subset of the tokens in this partial instantiation will be 'merged' with
+        # the new token - joined on the new join variables
         newJoinDict = dict([(v, None) for v in newJoinVariables])
         unmappedJoinVars = set(newJoinDict)
-        #newJoinDict.update(dict([(v,None) for v in newJoinVariables]))
+        # newJoinDict.update(dict([(v,None) for v in newJoinVariables]))
         for binding in self.bindings:
             for key, val in newJoinDict.items():
                 boundVal = binding.get(key)
@@ -330,7 +335,8 @@ class PartialInstantiation(object):
                 for token in self.tokens:
                     unmappedVarVal = token.getVarBindings().get(unmappedVar)
                     if unmappedVarVal is not None:
-                        assert newJoinDict[unmappedVar] is None or unmappedVarVal == newJoinDict[unmappedVar]
+                        assert newJoinDict[
+                            unmappedVar] is None or unmappedVarVal == newJoinDict[unmappedVar]
                         newJoinDict[unmappedVar] = unmappedVarVal
         self.joinedBindings.update(newJoinDict)
         self._generateBindings()
@@ -363,22 +369,22 @@ class PartialInstantiation(object):
         """
         newJoinDict = self.joinedBindings.copy()
         if newJoinVariables:
-            #only a subset of the tokens in this partial instantiation will be 'merged' with
-            #the new token - joined on the new join variables
+            # only a subset of the tokens in this partial instantiation will be 'merged' with
+            # the new token - joined on the new join variables
             newJoinDict.update(project(rightWME.bindingDict, newJoinVariables))
             newPInst = PartialInstantiation([], consistentBindings=newJoinDict)
             for token in self.tokens:
                 commonVars = False
                 for newVar in [x for x in newJoinVariables if x in token.bindingDict and rightWME.bindingDict[x] == token.bindingDict[x]]:
-                    #consistent token
+                    # consistent token
                     commonVars = True
                     newPInst.add(token, noPostProcessing=True)
                 if not commonVars:
-                    #there are no common variables, no need to check
+                    # there are no common variables, no need to check
                     newPInst.add(token, noPostProcessing=True)
         else:
-            #all of the tokens in this partial instantiation are already bound consistently with
-            #respect to the new token
+            # all of the tokens in this partial instantiation are already bound consistently with
+            # respect to the new token
             newPInst = PartialInstantiation([], consistentBindings=newJoinDict)
             for token in self.tokens:
                 newPInst.add(token, noPostProcessing=True)
@@ -387,6 +393,7 @@ class PartialInstantiation(object):
 
 
 class BetaNode(Node):
+
     """
     Performs a rete network join between partial instantiations in its left memory and tokens in its memories
 
@@ -507,6 +514,7 @@ class BetaNode(Node):
     # >>> pprint(testHelper.conflictSet)
     # [<PartialInstantiation (joined on ?X): set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>, <PartialInstantiation (joined on ?X): set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Bundle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>]
     """
+
     def __init__(self,
                  leftNode,
                  rightNode,
@@ -521,13 +529,14 @@ class BetaNode(Node):
         self.name = BNode()
         self.network = None
 
-        #used by terminal nodes only
+        # used by terminal nodes only
         self.consequent = set()  # List of tuples in RHS
         self.rules = set()
         self.antecedent = None
         self.headAtoms = set()
         self.leftNode = leftNode
-        self.rightNode = rightNode  # The incoming right input of a BetaNode is always an AlphaNode
+        # The incoming right input of a BetaNode is always an AlphaNode
+        self.rightNode = rightNode
         self.memories = {}
         self.descendentMemory = []
         self.descendentBetaNodes = set()
@@ -536,30 +545,41 @@ class BetaNode(Node):
         self.fedByBuiltin = None
         if isinstance(leftNode, BuiltInAlphaNode):
             self.fedByBuiltin = LEFT_MEMORY
-            assert not isinstance(rightNode, BuiltInAlphaNode), "Both %s and %s are builtins feeding a beta node." % (leftNode, rightNode)
-            self.memories[RIGHT_MEMORY] = self.ReteMemoryKind((self, RIGHT_MEMORY, leftNode.n3builtin))
+            assert not isinstance(
+                rightNode, BuiltInAlphaNode), "Both %s and %s are builtins feeding a beta node." % (leftNode, rightNode)
+            self.memories[RIGHT_MEMORY] = self.ReteMemoryKind(
+                (self, RIGHT_MEMORY, leftNode.n3builtin))
         else:
-            self.memories[RIGHT_MEMORY] = self.ReteMemoryKind(self, RIGHT_MEMORY)
+            self.memories[RIGHT_MEMORY] = self.ReteMemoryKind(
+                self, RIGHT_MEMORY)
 
-        assert not(self.fedByBuiltin), "No support for 'built-ins', function symbols, or non-equality tests."
+        assert not(
+            self.fedByBuiltin), "No support for 'built-ins', function symbols, or non-equality tests."
         if isinstance(rightNode, BuiltInAlphaNode):
             self.fedByBuiltin = RIGHT_MEMORY
-            assert not isinstance(leftNode, BuiltInAlphaNode), "Both %s and %s are builtins feeding a beta node." % (leftNode, rightNode)
-            self.memories[LEFT_MEMORY] = self.ReteMemoryKind(self, LEFT_MEMORY, rightNode.n3builtin)
+            assert not isinstance(
+                leftNode, BuiltInAlphaNode), "Both %s and %s are builtins feeding a beta node." % (leftNode, rightNode)
+            self.memories[LEFT_MEMORY] = self.ReteMemoryKind(
+                self, LEFT_MEMORY, rightNode.n3builtin)
         else:
             self.memories[LEFT_MEMORY] = self.ReteMemoryKind(self, LEFT_MEMORY)
         if aPassThru:
             if rightNode:
-                self.leftVariables = set() if leftVariables is None else leftVariables
-                self.rightVariables = collectVariables(self.rightNode) if rightVariables is None else rightVariables
+                self.leftVariables = set(
+                ) if leftVariables is None else leftVariables
+                self.rightVariables = collectVariables(
+                    self.rightNode) if rightVariables is None else rightVariables
                 self.commonVariables = list(self.rightVariables)
             else:
                 self.leftVariables = self.rightVariables = set()
                 self.commonVariables = []
         else:
-            self.leftVariables = collectVariables(self.leftNode) if leftVariables is None else leftVariables
-            self.rightVariables = collectVariables(self.rightNode) if rightVariables is None else rightVariables
-            self.commonVariables = [leftVar for leftVar in self.leftVariables if leftVar in self.rightVariables]
+            self.leftVariables = collectVariables(
+                self.leftNode) if leftVariables is None else leftVariables
+            self.rightVariables = collectVariables(
+                self.rightNode) if rightVariables is None else rightVariables
+            self.commonVariables = [
+                leftVar for leftVar in self.leftVariables if leftVar in self.rightVariables]
         self.leftIndex = {}
         self.rightIndex = {}
         self.executeActions = executeActions if executeActions is not None else {}
@@ -569,7 +589,8 @@ class BetaNode(Node):
             if self.leftNode and LEFT_UNLINKING:
                 # candidate for left unlinking
                 self.leftUnlinkedNodes.add(leftNode)
-                leftNode.unlinkedMemory = self.ReteMemoryKind(self, LEFT_MEMORY)
+                leftNode.unlinkedMemory = self.ReteMemoryKind(
+                    self, LEFT_MEMORY)
                 # print("unlinked %s from %s"%(leftNode,self))
             elif self.leftNode:
                 leftNode.updateDescendentMemory(self.memories[LEFT_MEMORY])
@@ -590,55 +611,61 @@ class BetaNode(Node):
 
     def actionsForTerminalNode(self):
         for rhsTriple in self.consequent:
-            override, executeFn = self.executeActions.get(rhsTriple, (None, None))
+            override, executeFn = self.executeActions.get(
+                rhsTriple, (None, None))
             if executeFn is not None:
                 yield override, executeFn
 
     def __repr__(self):
         if self.executeActions:
-            actionStr = ' with %s actions' % (len(list(self.actionsForTerminalNode())))
+            actionStr = ' with %s actions' % (
+                len(list(self.actionsForTerminalNode())))
         else:
             actionStr = ''
         if self.consequent and self.fedByBuiltin:
             nodeType = 'TerminalBuiltin(%s)%s' % (
                 self.memories[self._oppositeMemory(self.fedByBuiltin)].filter, actionStr)
         elif self.consequent:
-            nodeType = 'TerminalNode%s (%s)' % (actionStr, self.clauseRepresentation())
+            nodeType = 'TerminalNode%s (%s)' % (
+                actionStr, self.clauseRepresentation())
         elif self.fedByBuiltin:
-            nodeType = 'Builtin(%s)' % (self.memories[self._oppositeMemory(self.fedByBuiltin)].filter)
+            nodeType = 'Builtin(%s)' % (
+                self.memories[self._oppositeMemory(self.fedByBuiltin)].filter)
         else:
             nodeType = 'BetaNode'
         if self.unlinkedMemory is not None:
             nodeType = 'LeftUnlinked-' + nodeType
-        leftLen = self.memories[LEFT_MEMORY] and len(self.memories[LEFT_MEMORY]) or 0
+        leftLen = self.memories[LEFT_MEMORY] and len(
+            self.memories[LEFT_MEMORY]) or 0
         return "<%s %s: CommonVariables: %s (%s in left, %s in right memories)>" % (
             nodeType, self.aPassThru and "(pass-thru)" or '',
             self.commonVariables, leftLen, len(self.memories[RIGHT_MEMORY]))
 
     def _activate(self, partInstOrList, debug=False):
+        if debug:
+            print("activating with %s" % (partInstOrList))
+        if self.unlinkedMemory is not None:
             if debug:
-                print("activating with %s" % (partInstOrList))
-            if self.unlinkedMemory is not None:
-                if debug:
-                    print("adding %s into unlinked memory" % (partInstOrList))
-                self.unlinkedMemory.addToken(partInstOrList, debug)
-            for memory in self.descendentMemory:
-                if debug:
-                    print("\t## %s memory ##" % memoryPosition[memory.position])
-                    print("\t", memory.successor)
-                    if memory.successor.consequent:
-                        print("\t", memory.successor.clauseRepresentation())
-                #print(self,partInstOrList)
-                memory.addToken(partInstOrList, debug)
-                if memory.successor.aPassThru or not memory.successor.checkNullActivation(memory.position):
-                    if memory.position == LEFT_MEMORY:
-                        memory.successor.propagate(memory.position, debug, partInstOrList)
-                    else:
-                        #print(partInstOrList)
-                        memory.successor.propagate(None, debug, partInstOrList)
+                print("adding %s into unlinked memory" % (partInstOrList))
+            self.unlinkedMemory.addToken(partInstOrList, debug)
+        for memory in self.descendentMemory:
+            if debug:
+                print("\t## %s memory ##" % memoryPosition[memory.position])
+                print("\t", memory.successor)
+                if memory.successor.consequent:
+                    print("\t", memory.successor.clauseRepresentation())
+            # print(self,partInstOrList)
+            memory.addToken(partInstOrList, debug)
+            if memory.successor.aPassThru or not memory.successor.checkNullActivation(memory.position):
+                if memory.position == LEFT_MEMORY:
+                    memory.successor.propagate(
+                        memory.position, debug, partInstOrList)
+                else:
+                    # print(partInstOrList)
+                    memory.successor.propagate(None, debug, partInstOrList)
 
-            if self.consequent:
-                self.network.fireConsequent(partInstOrList, self, debug)
+        if self.consequent:
+            self.network.fireConsequent(partInstOrList, self, debug)
 
     def _unrollTokens(self, iterable):
         for token in iterable:
@@ -677,7 +704,7 @@ class BetaNode(Node):
         """
         if debug and propagationSource:
             print("%s.propagate(%s, %s, %s)" % (
-                            self, memoryPosition[propagationSource], partialInst, wme))
+                self, memoryPosition[propagationSource], partialInst, wme))
             print("### Left Memory ###")
             pprint(list(self.memories[LEFT_MEMORY]))
             print("###################")
@@ -696,57 +723,67 @@ class BetaNode(Node):
                         [wme], consistentBindings=wme.bindingDict.copy()), debug)
 
             elif self.memories[RIGHT_MEMORY]:
-                #pass on wme as an unjoined partInst
-                #print(self)
+                # pass on wme as an unjoined partInst
+                # print(self)
                 if wme:
                     self._activate(PartialInstantiation([wme],
-                        consistentBindings=wme.bindingDict.copy()), debug)
+                                                        consistentBindings=wme.bindingDict.copy()), debug)
                 elif partialInst:
-                    #print("## Problem ###")
-                    #print("%s.propagate(%s,%s,%s)"%(self,memoryPosition[propagationSource],partialInst,wme))
+                    # print("## Problem ###")
+                    # print("%s.propagate(%s,%s,%s)"%(self,memoryPosition[propagationSource],partialInst,wme))
                     self._activate(partialInst, debug)
         elif not propagationSource:
-            #Beta node right activated by another beta node
-            #Need to unify on common variable hash, using the bindings
-            #provided by the partial instantiation that triggered the activation
+            # Beta node right activated by another beta node
+            # Need to unify on common variable hash, using the bindings
+            # provided by the partial instantiation that triggered the
+            # activation
             if partialInst:
                 for binding in partialInst.bindings:
                     # for var in self.commonVariables:
-                        # if var not in binding:
-                        #     import pdb;pdb.set_trace()
+                    # if var not in binding:
+                    #     import pdb;pdb.set_trace()
                     try:
-                        commonVals = tuple([binding[var] for var in self.commonVariables])
-                        lTokens = self.memories[RIGHT_MEMORY].substitutionDict.get(commonVals, set())
-                        rTokens = self.memories[LEFT_MEMORY].substitutionDict.get(commonVals, set())
-                        joinedTokens = set(self._unrollTokens(rTokens | lTokens))
+                        commonVals = tuple([binding[var]
+                                            for var in self.commonVariables])
+                        lTokens = self.memories[
+                            RIGHT_MEMORY].substitutionDict.get(commonVals, set())
+                        rTokens = self.memories[
+                            LEFT_MEMORY].substitutionDict.get(commonVals, set())
+                        joinedTokens = set(
+                            self._unrollTokens(rTokens | lTokens))
                         if joinedTokens:
-                            commonDict = dict([(var, list(commonVals)[self.commonVariables.index(var)]) for var in self.commonVariables])
-                            newP = PartialInstantiation(joinedTokens, consistentBindings=commonDict)
+                            commonDict = dict(
+                                [(var, list(commonVals)[self.commonVariables.index(var)]) for var in self.commonVariables])
+                            newP = PartialInstantiation(
+                                joinedTokens, consistentBindings=commonDict)
                             self._activate(newP, debug)
                     except KeyError:
                         print("\tProblem with ", partialInst)
 
         elif propagationSource == LEFT_MEMORY:
-            #Doesn't check for null left activation! - cost is mitigated by
-            #left activation, partialInst passed down
-            #procedure join-node-left-activation (node: join-node, t: token)
+            # Doesn't check for null left activation! - cost is mitigated by
+            # left activation, partialInst passed down
+            # procedure join-node-left-activation (node: join-node, t: token)
             #     for each w in node.amem.items do
             #         if perform-join-tests (node.tests, t, w) then
             #             for each child in node.children do left-activation (child, t, w)
             # end
             matches = set()
             if self.fedByBuiltin:
-                builtin = self.memories[self._oppositeMemory(self.fedByBuiltin)].filter
+                builtin = self.memories[
+                    self._oppositeMemory(self.fedByBuiltin)].filter
                 newConsistentBindings = [term
-                    for term in [builtin.argument, builtin.result]
-                        if isinstance(term, Variable) and \
-                        term not in partialInst.joinedBindings]
+                                         for term in [builtin.argument, builtin.result]
+                                         if isinstance(term, Variable) and
+                                         term not in partialInst.joinedBindings]
                 partialInst.addConsistentBinding(newConsistentBindings)
                 for binding in partialInst.bindings:
                     lhs = builtin.argument
                     rhs = builtin.result
-                    lhs = binding.get(lhs) if isinstance(lhs, Variable) else lhs
-                    rhs = binding.get(rhs) if isinstance(rhs, Variable) else rhs
+                    lhs = binding.get(lhs) if isinstance(
+                        lhs, Variable) else lhs
+                    rhs = binding.get(rhs) if isinstance(
+                        rhs, Variable) else rhs
                     assert lhs is not None and rhs is not None
                     if builtin.func(lhs, rhs):
                         if debug:
@@ -757,8 +794,9 @@ class BetaNode(Node):
                             print("\t%s + %s => False" % (binding, builtin))
             else:
                 for binding in partialInst.bindings:
-                    #iterate over the binding combinations
-                    #and use the substitutionDict in the right memory to find matching WME'a
+                    # iterate over the binding combinations
+                    # and use the substitutionDict in the right memory to find
+                    # matching WME'a
                     if debug:
                         print("\t", binding)
 
@@ -771,10 +809,11 @@ class BetaNode(Node):
                             commonDictKV.append((var, binding[var]))
                             substitutedTerm.append(binding[var])
                     rWMEs = self.memories[RIGHT_MEMORY].substitutionDict.get(
-                                        tuple(substitutedTerm), set())
+                        tuple(substitutedTerm), set())
                     commonDict = dict(commonDictKV)
                     if debug:
-                        print(commonDict, rWMEs, list(self.memories[RIGHT_MEMORY].substitutionDict.keys()))
+                        print(commonDict, rWMEs, list(
+                            self.memories[RIGHT_MEMORY].substitutionDict.keys()))
                     for rightWME in rWMEs:
                         if isinstance(rightWME, ReteToken):
                             matches.add(partialInst.newJoin(
@@ -782,56 +821,62 @@ class BetaNode(Node):
                                 [x for x in self.commonVariables if x not in partialInst.joinedBindings]))
                             # [var for var in self.commonVariables if var not in partialInst.joinedBindings]))
                         else:
-                            #Joining two Beta/Join nodes!
-                            joinedTokens = list(partialInst.tokens | rightWME.tokens)
-                            #print("### joining two tokens ###")
-                            #pprint(joinedTokens)
+                            # Joining two Beta/Join nodes!
+                            joinedTokens = list(
+                                partialInst.tokens | rightWME.tokens)
+                            # print("### joining two tokens ###")
+                            # pprint(joinedTokens)
                             if self.consequent:
                                 for consequent in self.consequent:
-                                    consVars = [x for x in consequent if isinstance(x, Variable)]
+                                    consVars = [
+                                        x for x in consequent if isinstance(x, Variable)]
                                     # [i for i in consequent if isinstance(i,Variable)]
                                 failed = True
                                 for binding in PartialInstantiation(
                                         joinedTokens, consistentBindings=commonDict).bindings:
-                                    if any(consVars, lambda x: x not in binding):  # [key for key in consVars if key not in binding]:
+                                    # [key for key in consVars if key not in binding]:
+                                    if any(consVars, lambda x: x not in binding):
                                         continue
                                     else:
                                         failed = False
                                 if not failed:
-                                    newP = PartialInstantiation(joinedTokens, consistentBindings=commonDict)
+                                    newP = PartialInstantiation(
+                                        joinedTokens, consistentBindings=commonDict)
                                     matches.add(newP)
                             else:
-                                newP = PartialInstantiation(joinedTokens, consistentBindings=commonDict)
+                                newP = PartialInstantiation(
+                                    joinedTokens, consistentBindings=commonDict)
                                 matches.add(newP)
 
             for pInst in matches:
                 self._activate(pInst, debug)
         else:
-            #right activation, partialInst & wme passed down
-            #procedure join-node-right-activation (node: join-node, w: WME)
+            # right activation, partialInst & wme passed down
+            # procedure join-node-right-activation (node: join-node, w: WME)
             #    for each t in node.parent.items do {"parent" is the beta memory node}
             #        if perform-join-tests (node.tests, t, w) then
             #            for each child in node.children do left-activation (child, t, w)
-            #end
-            #pprint(self.memories[self._oppositeMemory(propagationSource)])
+            # end
+            # pprint(self.memories[self._oppositeMemory(propagationSource)])
             matches = set()
             try:
                 lPartInsts = self.memories[LEFT_MEMORY].substitutionDict.get(
-                        tuple([wme.bindingDict[var] for var in self.commonVariables]))
+                    tuple([wme.bindingDict[var] for var in self.commonVariables]))
             except:
-                raise Exception("%s and %s" % (repr(self), repr(wme.bindingDict)))
+                raise Exception("%s and %s" %
+                                (repr(self), repr(wme.bindingDict)))
             if lPartInsts:
                 for partialInst in lPartInsts:
                     if not isinstance(partialInst, PartialInstantiation):
                         singleToken = PartialInstantiation(
-                                [partialInst], consistentBindings=partialInst.bindingDict.copy())
+                            [partialInst], consistentBindings=partialInst.bindingDict.copy())
                         matches.add(singleToken)
                     else:
-                        assert isinstance(partialInst, PartialInstantiation), repr(partialInst)
+                        assert isinstance(
+                            partialInst, PartialInstantiation), repr(partialInst)
                         matches.add(partialInst.newJoin(
-                                        wme,
-                                        [x for x in self.commonVariables if x not in partialInst.joinedBindings]))
-                                    # [var for var in self.commonVariables if var not in partialInst.joinedBindings]))
+                            wme,
+                            [x for x in self.commonVariables if x not in partialInst.joinedBindings]))
             for pInst in matches:
                 self._activate(pInst, debug)
 
@@ -840,15 +885,16 @@ TEST_NS = Namespace('http://example.com/text1/')
 
 
 def PopulateTokenFromANode(aNode, bindings):
-    #print(aNode, bindings)
+    # print(aNode, bindings)
     termList = [isinstance(term, Variable) and bindings[term] or term
-                    for term in aNode.triplePattern]
+                for term in aNode.triplePattern]
     token = ReteToken(tuple(termList))
     token.bindVariables(aNode)
     return token
 
 
 class PartialInstantiationTests(unittest.TestCase):
+
     def testConsistentBinding(self):
         allBindings = {}
         allBindings.update(self.joinedBindings)
@@ -863,16 +909,17 @@ class PartialInstantiationTests(unittest.TestCase):
                   self.aNode10,
                   self.aNode11]
         pToken = PartialInstantiation(
-                      tokens=[PopulateTokenFromANode(aNode,
-                                                       allBindings)
-                                  for aNode in aNodes],
-                      consistentBindings=self.joinedBindings)
-        #print(pToken)
+            tokens=[PopulateTokenFromANode(aNode,
+                                           allBindings)
+                    for aNode in aNodes],
+            consistentBindings=self.joinedBindings)
+        # print(pToken)
         pToken.addConsistentBinding(list(self.unJoinedBindings.keys()))
-        #print(pToken.joinedBindings)
+        # print(pToken.joinedBindings)
         for binding in pToken.bindings:
             for key in self.unJoinedBindings:
-                self.failUnless(key in binding, "Missing key %s from %s" % (key, binding))
+                self.failUnless(
+                    key in binding, "Missing key %s from %s" % (key, binding))
 
     def setUp(self):
         self.aNode1 = AlphaNode((Variable('HOSP'),
@@ -897,11 +944,11 @@ class PartialInstantiationTests(unittest.TestCase):
                                  TEST_NS.dateTimeMin,
                                  Variable('EVT_START_MIN')))
         self.aNode10 = AlphaNode((Variable('EVT'),
-                                 TEST_NS.contains,
-                                 Variable('EVT_DATE')))
+                                  TEST_NS.contains,
+                                  Variable('EVT_DATE')))
         self.aNode11 = AlphaNode((Variable('EVT'),
-                                 RDF.type,
-                                 Variable('EVT_KIND')))
+                                  RDF.type,
+                                  Variable('EVT_KIND')))
 
         self.joinedBindings = {Variable('HOSP_START_DATE'):
                                BNode(),
@@ -919,12 +966,12 @@ class PartialInstantiationTests(unittest.TestCase):
                            Variable('ENCOUNTER_STOP'),
                            Variable('EVT_START_MIN')]:
             self.unJoinedBindings[dtVariable] = Literal("2007-02-14T10:00:00",
-                                                      datatype=_XSD_NS.dateTime)
+                                                        datatype=_XSD_NS.dateTime)
 
 
 def test():
-#    import doctest
-#    doctest.testmod()
+    # import doctest
+    # doctest.testmod()
     suite = unittest.makeSuite(PartialInstantiationTests)
     unittest.TextTestRunner(verbosity=5).run(suite)
 

@@ -1,8 +1,8 @@
-"""
-"""
+# -*- coding: utf-8 -*-
 
 
 class Node(object):
+
     """
     A node in a Rete network.  Behavior between Alpha and Beta (Join) nodes
     """

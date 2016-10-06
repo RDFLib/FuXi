@@ -2,5 +2,9 @@
 /build/
 /FuXi.egg-info/
 FuXi.sublime-*
-__pycache__
-/.idea
+*.pyc
+*.egg
+.coverage
+*__pycache__
+test/coverage*
+docs/_build*

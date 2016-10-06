@@ -1,5 +1,5 @@
+# -*- coding: utf-8 -*-
 """
-=======================================================================================
 Utility functions for a Boost Graph Library (BGL) DiGraph via the BGL Python Bindings
 """
 import itertools
@@ -7,7 +7,7 @@ import pickle
 from rdflib import (
     BNode,
     Namespace,
-    )
+)
 from rdflib.graph import Graph
 from rdflib.collection import Collection
 from rdflib.namespace import NamespaceManager
@@ -35,7 +35,8 @@ def xcombine(*seqin):
         '''recursive looping function'''
         if seqin:                   # any more sequences to process?
             for item in seqin[0]:
-                newcomb = comb + [item]     # add next item to current combination
+                # add next item to current combination
+                newcomb = comb + [item]
                 # call rloop w/ remaining seqs, newcomb
                 for item in rloop(seqin[1:], newcomb):
                     yield item          # seqs and newcomb
@@ -106,6 +107,7 @@ def CollapseDictionary(mapping):
 
 
 class selective_memoize(object):
+
     """Decorator that caches a function's return value each time it is called.
     If called later with the same arguments, the cached value is returned, and
     not re-evaluated. Slow for mutable types.
@@ -141,7 +143,8 @@ class selective_memoize(object):
     3
     """
     # Ideas from MemoizeMutable class of Recipe 52201 by Paul Moore and
-    # from memoized decorator of http://wiki.python.org/moin/PythonDecoratorLibrary
+    # from memoized decorator of
+    # http://wiki.python.org/moin/PythonDecoratorLibrary
 
     def __init__(self, cacheableArgPos=[], cacheableArgKey=[]):
         self.cacheableArgPos = cacheableArgPos
@@ -161,7 +164,7 @@ class selective_memoize(object):
             if kwds:
                 if self.cacheableArgKey:
                     items = [(k, v) for k, v in list(kwds.items())
-                                if k in self.cacheableArgKey]
+                             if k in self.cacheableArgKey]
                 else:
                     items = []
                 items.sort()
@@ -185,6 +188,7 @@ class selective_memoize(object):
 
 
 class InformedLazyGenerator(object):
+
     def __init__(self, generator, successful):
         self.generator = generator
         self.successful = successful
@@ -235,12 +239,14 @@ def lazyGeneratorPeek(iterable, firstN=1):
 
 
 class setdict(dict):
+
     '''
     Add set operations to dicts.
 
     Credit thom neale
     See: http://code.activestate.com/recipes/577471-setdict/
     '''
+
     def __sub__(self, other):
         res = {}
         for k in set(self) - set(other):
@@ -333,9 +339,11 @@ def generateBGLNode(dot, node, namespace_manager, identifier):
         else:
             label = "Beta node"
         if not node.fedByBuiltin:
-            leftLen = node.memories[LEFT_MEMORY] and len(node.memories[LEFT_MEMORY]) or 0
+            leftLen = node.memories[LEFT_MEMORY] and len(
+                node.memories[LEFT_MEMORY]) or 0
             rightLen = len(node.memories[RIGHT_MEMORY])
-            label += '\\n %s in left, %s in right memories' % (leftLen, rightLen)
+            label += '\\n %s in left, %s in right memories' % (
+                leftLen, rightLen)
 
     elif isinstance(node, BetaNode) and node.consequent:
         # rootMap[vertex] = 'true'
@@ -343,8 +351,8 @@ def generateBGLNode(dot, node, namespace_manager, identifier):
         stmts = []
         for s, p, o in node.consequent:
             stmts.append(' '.join([str(namespace_manager.normalizeUri(s)),
-              str(namespace_manager.normalizeUri(p)),
-              str(namespace_manager.normalizeUri(o))]))
+                                   str(namespace_manager.normalizeUri(p)),
+                                   str(namespace_manager.normalizeUri(o))]))
 
         rhsVertex = Node(BNode(),
                          label='"' + '\\n'.join(stmts) + '"',
@@ -359,7 +367,8 @@ def generateBGLNode(dot, node, namespace_manager, identifier):
                 ','.join(["?%s" % i for i in node.commonVariables]), inst))
         else:
             label = "Terminal node"
-        leftLen = node.memories[LEFT_MEMORY] and len(node.memories[LEFT_MEMORY]) or 0
+        leftLen = node.memories[LEFT_MEMORY] and len(
+            node.memories[LEFT_MEMORY]) or 0
         rightLen = len(node.memories[RIGHT_MEMORY])
         label += '\\n %s in left, %s in right memories' % (leftLen, rightLen)
         inst = node.network.instantiations[node]
@@ -381,7 +390,7 @@ def generateBGLNode(dot, node, namespace_manager, identifier):
         shape = 'plaintext'
         # widthMap[vertex] = '50em'
         label = ' '.join([isinstance(i, BNode) and i.n3() or str(namespace_manager.normalizeUri(i))
-                           for i in node.triplePattern])
+                          for i in node.triplePattern])
 
     vertex.set_shape(shape)
     vertex.set_label('"%s"' % label)
@@ -408,9 +417,10 @@ def renderNetwork(network, nsMap={}):
     edges = []
     idx = 0
     for node in list(network.nodes.values()):
-        if not node in visitedNodes:
+        if node not in visitedNodes:
             idx += 1
-            visitedNodes[node] = generateBGLNode(dot, node, namespace_manager, str(idx))
+            visitedNodes[node] = generateBGLNode(
+                dot, node, namespace_manager, str(idx))
             dot.add_node(visitedNodes[node])
     nodeIdxs = {}
     for node in list(network.nodes.values()):
@@ -425,7 +435,8 @@ def renderNetwork(network, nsMap={}):
                         if i not in visitedNodes:
                             idx += 1
                             nodeIdxs[i] = idx
-                            visitedNodes[i] = generateBGLNode(dot, i, namespace_manager, str(idx))
+                            visitedNodes[i] = generateBGLNode(
+                                dot, i, namespace_manager, str(idx))
                             dot.add_node(visitedNodes[i])
                     edge = Edge(visitedNodes[node],
                                 visitedNodes[bNode],

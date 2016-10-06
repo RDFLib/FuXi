@@ -1,5 +1,5 @@
+# -*- coding: utf-8 -*-
 """
-====================================================================================
 A Rete Network Building and 'Evaluation' Implementation for RDFLib Graphs of
 Notation 3 rules.
 
@@ -22,10 +22,6 @@ import sys
 import time
 from pprint import pprint
 try:
-    from functools import reduce
-except ImportError:
-    pass
-try:
     from io import StringIO
 except ImportError:
     from StringIO import StringIO
@@ -34,62 +30,62 @@ from .BetaNode import (
     BetaNode,
     LEFT_MEMORY,
     RIGHT_MEMORY,
-    PartialInstantiation,
-    )
+    # PartialInstantiation,
+)
 from .AlphaNode import (
     AlphaNode,
     BuiltInAlphaNode,
     ReteToken,
-    )
+)
 from FuXi.Horn import (
     ComplementExpansion,
     DATALOG_SAFETY_NONE,
-    DATALOG_SAFETY_STRICT,
-    DATALOG_SAFETY_LOOSE,
-    )
+    # DATALOG_SAFETY_STRICT,
+    # DATALOG_SAFETY_LOOSE,
+)
 from FuXi.Syntax.InfixOWL import Class
 from FuXi.Horn.PositiveConditions import (
     Exists,
     GetUterm,
-    Or,
+    # Or,
     SetOperator,
     Uniterm,
-    )
+)
 from FuXi.DLP import (
     MapDLPtoNetwork,
     non_DHL_OWL_Semantics,
-    )
+)
 from FuXi.DLP.ConditionalAxioms import AdditionalRules
 from .Util import (
     generateTokenSet,
     renderNetwork,
     xcombine,
-    )
+)
 
 from rdflib.graph import (
     ConjunctiveGraph,
     Graph,
     ReadOnlyGraphAggregate,
-    )
+)
 from rdflib.namespace import NamespaceManager
 from rdflib import (
     BNode,
-    Literal,
+    # Literal,
     Namespace,
     RDF,
-    RDFS,
-    URIRef,
+    # RDFS,
+    # URIRef,
     Variable,
-    )
+)
 from rdflib import py3compat
 from rdflib.util import first
 
-from .ReteVocabulary import RETE_NS
+# from .ReteVocabulary import RETE_NS
 from .RuleStore import (
     Formula,
     N3Builtin,
     N3RuleStore,
-    )
+)
 
 
 OWL_NS = Namespace("http://www.w3.org/2002/07/owl#")
@@ -97,7 +93,7 @@ Any = None
 LOG = Namespace("http://www.w3.org/2000/10/swap/log#")
 
 
-#From itertools recipes
+# From itertools recipes
 def iteritems(mapping):
     return list(zip(iter(mapping.keys()), iter(mapping.values())))
 
@@ -110,6 +106,7 @@ def any(seq, pred=None):
 
 
 class HashablePatternList(object):
+
     """
     A hashable list of N3 statements which are patterns of a rule.  Order is disregarded
     by sorting based on unicode value of the concatenation of the term strings
@@ -128,6 +125,7 @@ class HashablePatternList(object):
     True
 
     """
+
     def __init__(self, items=None, skipBNodes=False):
         self.skipBNodes = skipBNodes
         if items:
@@ -153,11 +151,11 @@ class HashablePatternList(object):
                 out.extend([item.argument, item.result])
             else:
                 raise NotImplementedError("don't know how to hash %r" % item)
-                
-        #nulify the impact of order in patterns
+
+        # nullify the impact of order in patterns
         out.sort()
         return hash(tuple(out))
-        
+
     def __add__(self, other):
         assert isinstance(other, HashablePatternList), other
         return HashablePatternList(self._l + other._l)
@@ -195,14 +193,14 @@ def _mulPatternWithSubstitutions(tokens, consequent, termNode):
     for binding in tokens.bindings:
         tripleVals = []
         # if any(consequent,
-        #        lambda term:isinstance(term, Variable) and term not in binding):#  not mismatchedTerms:
+        # lambda term:isinstance(term, Variable) and term not in binding):#  not mismatchedTerms:
         #     return
         # else:
         for term in consequent:
             if isinstance(term, (Variable, BNode)) and term in binding:
-                #try:
+                # try:
                 tripleVals.append(binding[term])
-                #except:
+                # except:
                 #    pass
             else:
                 tripleVals.append(term)
@@ -210,6 +208,7 @@ def _mulPatternWithSubstitutions(tokens, consequent, termNode):
 
 
 class InferredGoal(Exception):
+
     def __init__(self, msg):
         self.msg = msg
 
@@ -218,11 +217,13 @@ class InferredGoal(Exception):
 
 
 class ReteNetwork:
+
     """
     The Rete network.  The constructor takes an N3 rule graph, an identifier (a BNode by default), an
     initial Set of Rete tokens that serve as the 'working memory', and an rdflib Graph to
     add inferred triples to - by forward-chaining via Rete evaluation algorithm),
     """
+
     def __init__(self, ruleStore, name=None,
                  initialWorkingMemory=None,
                  inferredTarget=None,
@@ -259,9 +260,10 @@ class ReteNetwork:
             self.ruleStore._finalize()
         self.filteredFacts = Graph()
 
-        #'Universal truths' for a rule set are rules where the LHS is empty.
+        # 'Universal truths' for a rule set are rules where the LHS is empty.
         # Rather than automatically adding them to the working set, alpha nodes are 'notified'
-        # of them, so they can be checked for while performing inter element tests.
+        # of them, so they can be checked for while performing inter element
+        # tests.
         self.universalTruths = []
         from FuXi.Horn.HornRules import Ruleset
         self.rules = set()
@@ -269,12 +271,14 @@ class ReteNetwork:
         for rule in Ruleset(n3Rules=self.ruleStore.rules, nsMapping=self.nsMap):
             import warnings
             warnings.warn(
-          "Rules in a network should be built *after* construction via " +
-          " self.buildNetworkClause(HornFromN3(n3graph)) for instance",
-                          DeprecationWarning, 2)
+                "Rules in a network should be built *after* construction via " +
+                " self.buildNetworkClause(HornFromN3(n3graph)) for instance",
+                DeprecationWarning, 2)
             self.buildNetworkFromClause(rule)
-        self.alphaNodes = [node for node in list(self.nodes.values()) if isinstance(node, AlphaNode)]
-        self.alphaBuiltInNodes = [node for node in list(self.nodes.values()) if isinstance(node, BuiltInAlphaNode)]
+        self.alphaNodes = [
+            node for node in list(self.nodes.values()) if isinstance(node, AlphaNode)]
+        self.alphaBuiltInNodes = [node for node in list(
+            self.nodes.values()) if isinstance(node, BuiltInAlphaNode)]
         self._setupDefaultRules()
         if initialWorkingMemory:
             start = time.time()
@@ -295,27 +299,32 @@ class ReteNetwork:
         builtins = []
         for term in rule.formula.body:
             if isinstance(term, N3Builtin):
-                #We want to move builtins to the 'end' of the body
-                #so they only apply to the terminal nodes of
-                #the corresponding network
+                # We want to move builtins to the 'end' of the body
+                # so they only apply to the terminal nodes of
+                # the corresponding network
                 builtins.append(term)
             else:
-                self.ruleStore.formulae.setdefault(lhs, Formula(lhs)).append(term.toRDFTuple())
+                self.ruleStore.formulae.setdefault(
+                    lhs, Formula(lhs)).append(term.toRDFTuple())
         for builtin in builtins:
-            self.ruleStore.formulae.setdefault(lhs, Formula(lhs)).append(builtin.toRDFTuple())
+            self.ruleStore.formulae.setdefault(
+                lhs, Formula(lhs)).append(builtin.toRDFTuple())
         nonEmptyHead = False
         for term in rule.formula.head:
             nonEmptyHead = True
             assert not hasattr(term, 'next')
             assert isinstance(term, Uniterm)
-            self.ruleStore.formulae.setdefault(rhs, Formula(rhs)).append(term.toRDFTuple())
+            self.ruleStore.formulae.setdefault(
+                rhs, Formula(rhs)).append(term.toRDFTuple())
         assert nonEmptyHead, "Filters must conclude something."
-        self.ruleStore.rules.append((self.ruleStore.formulae[lhs], self.ruleStore.formulae[rhs]))
+        self.ruleStore.rules.append(
+            (self.ruleStore.formulae[lhs], self.ruleStore.formulae[rhs]))
         tNode = self.buildNetwork(iter(self.ruleStore.formulae[lhs]),
-                             iter(self.ruleStore.formulae[rhs]),
-                             rule,
-                             aFilter=True)
-        self.alphaNodes = [node for node in list(self.nodes.values()) if isinstance(node, AlphaNode)]
+                                  iter(self.ruleStore.formulae[rhs]),
+                                  rule,
+                                  aFilter=True)
+        self.alphaNodes = [
+            node for node in list(self.nodes.values()) if isinstance(node, AlphaNode)]
         self.rules.add(rule)
         return tNode
 
@@ -325,31 +334,36 @@ class ReteNetwork:
         builtins = []
         for term in rule.formula.body:
             if isinstance(term, N3Builtin):
-                #We want to move builtins to the 'end' of the body
-                #so they only apply to the terminal nodes of
-                #the corresponding network
+                # We want to move builtins to the 'end' of the body
+                # so they only apply to the terminal nodes of
+                # the corresponding network
                 builtins.append(term)
             else:
-                self.ruleStore.formulae.setdefault(lhs, Formula(lhs)).append(term.toRDFTuple())
+                self.ruleStore.formulae.setdefault(
+                    lhs, Formula(lhs)).append(term.toRDFTuple())
         for builtin in builtins:
-            self.ruleStore.formulae.setdefault(lhs, Formula(lhs)).append(builtin.toRDFTuple())
+            self.ruleStore.formulae.setdefault(
+                lhs, Formula(lhs)).append(builtin.toRDFTuple())
         nonEmptyHead = False
         for term in rule.formula.head:
             nonEmptyHead = True
             assert not hasattr(term, 'next')
             assert isinstance(term, Uniterm)
-            self.ruleStore.formulae.setdefault(rhs, Formula(rhs)).append(term.toRDFTuple())
+            self.ruleStore.formulae.setdefault(
+                rhs, Formula(rhs)).append(term.toRDFTuple())
         if not nonEmptyHead:
             import warnings
             warnings.warn(
-          "Integrity constraints (rules with empty heads) are not supported: %s" % rule,
-                          SyntaxWarning, 2)
+                "Integrity constraints (rules with empty heads) are not supported: %s" % rule,
+                SyntaxWarning, 2)
             return
-        self.ruleStore.rules.append((self.ruleStore.formulae[lhs], self.ruleStore.formulae[rhs]))
+        self.ruleStore.rules.append(
+            (self.ruleStore.formulae[lhs], self.ruleStore.formulae[rhs]))
         tNode = self.buildNetwork(iter(self.ruleStore.formulae[lhs]),
-                             iter(self.ruleStore.formulae[rhs]),
-                             rule)
-        self.alphaNodes = [node for node in list(self.nodes.values()) if isinstance(node, AlphaNode)]
+                                  iter(self.ruleStore.formulae[rhs]),
+                                  rule)
+        self.alphaNodes = [
+            node for node in list(self.nodes.values()) if isinstance(node, AlphaNode)]
         self.rules.add(rule)
         return tNode
 
@@ -364,8 +378,8 @@ class ReteNetwork:
         import copy
         noNegFacts = 0
         for i in self.negRules:
-            #Evaluate the Graph pattern, and instanciate the head of the rule with
-            #the solutions returned
+            # Evaluate the Graph pattern, and instanciate the head of the rule with
+            # the solutions returned
             nsMapping = dict([(v, k) for k, v in list(self.nsMap.items())])
             sel, compiler = StratifiedSPARQL(i, nsMapping)
             query = compiler.compile(sel)
@@ -375,7 +389,8 @@ class ReteNetwork:
             for rt in unionClosureG.query(query):
                 solutions = {}
                 if isinstance(rt, tuple):
-                    solutions.update(dict([(vars[idx], i) for idx, i in enumerate(rt)]))
+                    solutions.update(
+                        dict([(vars[idx], i) for idx, i in enumerate(rt)]))
                 else:
                     solutions[vars[0]] = rt
                 i.solutions = solutions
@@ -385,12 +400,12 @@ class ReteNetwork:
                 self.inferredFacts.add(fact)
                 self.feedFactsToAdd(generateTokenSet([fact]))
                 noNegFacts += 1
-        #Now we need to clear assertions that cross the individual, concept, relation divide
+        # Now we need to clear assertions that cross the individual, concept, relation divide
         # toRemove = []
         for s, p, o in self.inferredFacts.triples((None, RDF.type, None)):
             if s in unionClosureG.predicates() or\
                s in [_s for _s, _p, _o in
-                        unionClosureG.triples_choices(
+                     unionClosureG.triples_choices(
                                             (None,
                                              RDF.type,
                                              [OWL_NS.Class,
@@ -408,13 +423,13 @@ class ReteNetwork:
                                          ignoreNegativeStratus=False,
                                          safety=DATALOG_SAFETY_NONE):
         rt = [rule
-                    for rule in MapDLPtoNetwork(self,
-                                                owlN3Graph,
-                                                complementExpansions=expanded,
-                                                constructNetwork=constructNetwork,
-                                                derivedPreds=derivedPreds,
-                                                ignoreNegativeStratus=ignoreNegativeStratus,
-                                                safety=safety)]
+              for rule in MapDLPtoNetwork(self,
+                                          owlN3Graph,
+                                          complementExpansions=expanded,
+                                          constructNetwork=constructNetwork,
+                                          derivedPreds=derivedPreds,
+                                          ignoreNegativeStratus=ignoreNegativeStratus,
+                                          safety=safety)]
         if ignoreNegativeStratus:
             rules, negRules = rt
             rules = set(rules)
@@ -457,8 +472,8 @@ class ReteNetwork:
 
     def reportConflictSet(self, closureSummary=False, stream=sys.stdout):
         tNodeOrder = [tNode
-                        for tNode in self.terminalNodes
-                            if self.instantiations.get(tNode, 0)]
+                      for tNode in self.terminalNodes
+                      if self.instantiations.get(tNode, 0)]
         tNodeOrder.sort(key=lambda x: self.instantiations[x], reverse=True)
         for termNode in tNodeOrder:
             print(termNode)
@@ -466,7 +481,7 @@ class ReteNetwork:
             print("\t\t%s instantiations" % self.instantiations[termNode])
         if closureSummary:
             print(self.inferredFacts.serialize(
-                    destination=stream, format='turtle'))
+                destination=stream, format='turtle'))
 
     def parseN3Logic(self, src):
         store = N3RuleStore(additionalBuiltins=self.ruleStore.filters)
@@ -480,8 +495,10 @@ class ReteNetwork:
                               iter(rule.formula.head),
                               rule)
             self.rules.add(rule)
-        self.alphaNodes = [node for node in list(self.nodes.values()) if isinstance(node, AlphaNode)]
-        self.alphaBuiltInNodes = [node for node in list(self.nodes.values()) if isinstance(node, BuiltInAlphaNode)]
+        self.alphaNodes = [
+            node for node in list(self.nodes.values()) if isinstance(node, AlphaNode)]
+        self.alphaBuiltInNodes = [node for node in list(
+            self.nodes.values()) if isinstance(node, BuiltInAlphaNode)]
 
     def __repr__(self):
         total = 0
@@ -499,7 +516,7 @@ class ReteNetwork:
                 store = Graph().store
             store = store is None and sourceGraph.store or store
             roGraph = ReadOnlyGraphAggregate([sourceGraph, self.inferredFacts],
-                                           store=store)
+                                             store=store)
             roGraph.namespace_manager = NamespaceManager(roGraph)
             for srcGraph in [sourceGraph, self.inferredFacts]:
                 for prefix, uri in srcGraph.namespaces():
@@ -579,50 +596,57 @@ class ReteNetwork:
                     if isinstance(t, existential and BNode or Variable):
                         yield t
 
-        #replace existentials in the head with new BNodes!
+        # replace existentials in the head with new BNodes!
         BNodeReplacement = {}
         for rule in termNode.rules:
             if isinstance(rule.formula.head, Exists):
                 for bN in rule.formula.head.declare:
                     if not isinstance(rule.formula.body, Exists) or \
-                        bN not in rule.formula.body.declare:
+                            bN not in rule.formula.body.declare:
                         BNodeReplacement[bN] = BNode()
         for rhsTriple in termNode.consequent:
             if BNodeReplacement:
-                rhsTriple = tuple([BNodeReplacement.get(term, term) for term in rhsTriple])
+                rhsTriple = tuple(
+                    [BNodeReplacement.get(term, term) for term in rhsTriple])
             if debug:
                 if not tokens.bindings:
                     tokens._generateBindings()
-            key = tuple([None if isinstance(item, BNode) else item for item in rhsTriple])
-            override, executeFn = termNode.executeActions.get(key, (None, None))
+            key = tuple(
+                [None if isinstance(item, BNode) else item for item in rhsTriple])
+            override, executeFn = termNode.executeActions.get(
+                key, (None, None))
 
             if override:
-                #There is an execute action associated with this production
-                #that is attaced to the given consequent triple and
-                #is meant to perform all of the production duties
-                #(bypassing the inference of triples, etc.)
+                # There is an execute action associated with this production
+                # that is attaced to the given consequent triple and
+                # is meant to perform all of the production duties
+                # (bypassing the inference of triples, etc.)
                 executeFn(termNode, None, tokens, None, debug)
             else:
                 for inferredTriple, binding in _mulPatternWithSubstitutions(tokens, rhsTriple, termNode):
                     if [term for term in inferredTriple if isinstance(term, Variable)]:
-                        #Unfullfilled bindings (skip non-ground head literals)
+                        # Unfullfilled bindings (skip non-ground head literals)
                         if executeFn:
-                            #The indicated execute action is supposed to be triggered
-                            #when the indicates RHS triple is inferred for the
-                            #(even if it is not ground)
-                            executeFn(termNode, inferredTriple, tokens, binding, debug)
+                            # The indicated execute action is supposed to be triggered
+                            # when the indicates RHS triple is inferred for the
+                            # (even if it is not ground)
+                            executeFn(
+                                termNode, inferredTriple, tokens, binding, debug)
                         continue
                     # if rhsTriple[1].find('subClassOf_derived')+1:import pdb;pdb.set_trace()
                     inferredToken = ReteToken(inferredTriple)
-                    self.proofTracers.setdefault(inferredTriple, []).append(binding)
-                    self.justifications.setdefault(inferredTriple, set()).add(termNode)
+                    self.proofTracers.setdefault(
+                        inferredTriple, []).append(binding)
+                    self.justifications.setdefault(
+                        inferredTriple, set()).add(termNode)
                     if termNode.filter and inferredTriple not in self.filteredFacts:
                         self.filteredFacts.add(inferredTriple)
                     if inferredTriple not in self.inferredFacts and inferredToken not in self.workingMemory:
                         # if (rhsTriple == (Variable('A'), RDFS.RDFSNS['subClassOf_derived'], Variable('B'))):
                         #     import pdb;pdb.set_trace()
                         if debug:
-                            print("Inferred triple: ", inferredTriple, " from ", termNode.clauseRepresentation())
+                            print("Inferred triple: ", inferredTriple,
+                                  " from ", termNode.clauseRepresentation())
                             inferredToken.debug = True
                         self.inferredFacts.add(inferredTriple)
                         self.addWME(inferredToken)
@@ -630,20 +654,23 @@ class ReteNetwork:
                         currIdx += 1
                         self.instantiations[termNode] = currIdx
                         if executeFn:
-                            #The indicated execute action is supposed to be triggered
-                            #when the indicates RHS triple is inferred for the
-                            #first time
-                            executeFn(termNode, inferredTriple, tokens, binding, debug)
+                            # The indicated execute action is supposed to be triggered
+                            # when the indicates RHS triple is inferred for the
+                            # first time
+                            executeFn(
+                                termNode, inferredTriple, tokens, binding, debug)
                         if self.goal is not None and self.goal in self.inferredFacts:
-                            raise InferredGoal("Proved goal " + repr(self.goal))
+                            raise InferredGoal(
+                                "Proved goal " + repr(self.goal))
                     else:
                         if debug:
                             print("Inferred triple skipped: ", inferredTriple)
                         if executeFn:
-                            #The indicated execute action is supposed to be triggered
-                            #when the indicates RHS triple is inferred for the
-                            #first time
-                            executeFn(termNode, inferredTriple, tokens, binding, debug)
+                            # The indicated execute action is supposed to be triggered
+                            # when the indicates RHS triple is inferred for the
+                            # first time
+                            executeFn(
+                                termNode, inferredTriple, tokens, binding, debug)
 
     def addWME(self, wme):
         """
@@ -681,13 +708,14 @@ class ReteNetwork:
     def _findPatterns(self, patternList):
         rt = []
         for betaNodePattern, alphaNodePatterns in \
-            [(patternList.__getslice__(0, -i), patternList.__getslice__(-i, len(patternList))) for i in range(1, len(patternList))]:
+                [(patternList.__getslice__(0, -i), patternList.__getslice__(-i, len(patternList))) for i in range(1, len(patternList))]:
             # [(patternList[:-i], patternList[-i:]) for i in xrange(1, len(patternList))]:
             assert isinstance(betaNodePattern, HashablePatternList)
             assert isinstance(alphaNodePatterns, HashablePatternList)
             if betaNodePattern in self.nodes:
                 rt.append(betaNodePattern)
-                rt.extend([HashablePatternList([aPattern]) for aPattern in alphaNodePatterns])
+                rt.extend([HashablePatternList([aPattern])
+                           for aPattern in alphaNodePatterns])
                 return rt
         for alphaNodePattern in patternList:
             rt.append(HashablePatternList([alphaNodePattern]))
@@ -700,14 +728,17 @@ class ReteNetwork:
             node = BuiltInAlphaNode(currentPattern)
         else:
             node = AlphaNode(currentPattern, self.ruleStore.filters)
-        self.alphaPatternHash[node.alphaNetworkHash()].setdefault(node.alphaNetworkHash(groundTermHash=True), []).append(node)
+        self.alphaPatternHash[node.alphaNetworkHash()].setdefault(
+            node.alphaNetworkHash(groundTermHash=True), []).append(node)
         if not isinstance(node, BuiltInAlphaNode) and node.builtin:
             s, p, o = currentPattern
-            node = BuiltInAlphaNode(N3Builtin(p, self.ruleStore.filters[p](s, o), s, o))
+            node = BuiltInAlphaNode(
+                N3Builtin(p, self.ruleStore.filters[p](s, o), s, o))
         return node
 
     def _resetinstantiationStats(self):
-        self.instantiations = dict([(tNode, 0) for tNode in self.terminalNodes])
+        self.instantiations = dict([(tNode, 0)
+                                    for tNode in self.terminalNodes])
 
     def checkDuplicateRules(self):
         checkedClauses = {}
@@ -715,7 +746,7 @@ class ReteNetwork:
             for rule in tNode.rules:
                 collision = checkedClauses.get(rule.formula)
                 assert collision is None, "%s collides with %s" % (
-                        tNode, checkedClauses[rule.formula])
+                    tNode, checkedClauses[rule.formula])
                 checkedClauses.setdefault(tNode.rule.formula, []).append(tNode)
 
     def registerReteAction(self, headTriple, override, executeFn):
@@ -750,19 +781,21 @@ class ReteNetwork:
         LHS = []
         while True:
             try:
-                currentPattern = next(lhsIterator) if py3compat.PY3 else lhsIterator.next()
+                currentPattern = next(
+                    lhsIterator) if py3compat.PY3 else lhsIterator.next()
 
-                #The LHS isn't done yet, stow away the current pattern
-                #We need to convert the Uniterm into a triple
+                # The LHS isn't done yet, stow away the current pattern
+                # We need to convert the Uniterm into a triple
                 if isinstance(currentPattern, Uniterm):
                     currentPattern = currentPattern.toRDFTuple()
                 LHS.append(currentPattern)
             except StopIteration:
-                #The LHS is done, need to initiate second pass to recursively build join / beta
-                #nodes towards a terminal node
+                # The LHS is done, need to initiate second pass to recursively build join / beta
+                # nodes towards a terminal node
 
-                #We need to convert the Uniterm into a triple
-                consequents = [isinstance(fact, Uniterm) and fact.toRDFTuple() or fact for fact in rhsIterator]
+                # We need to convert the Uniterm into a triple
+                consequents = [
+                    isinstance(fact, Uniterm) and fact.toRDFTuple() or fact for fact in rhsIterator]
                 if matchedPatterns and matchedPatterns in self.nodes:
                     attachedPatterns.append(matchedPatterns)
                 elif matchedPatterns:
@@ -773,10 +806,11 @@ class ReteNetwork:
                     if isinstance(node, BetaNode):
                         terminalNode = node
                     else:
-                        paddedLHSPattern = HashablePatternList([None]) + attachedPatterns[0]
+                        paddedLHSPattern = HashablePatternList(
+                            [None]) + attachedPatterns[0]
                         terminalNode = self.nodes.get(paddedLHSPattern)
                         if terminalNode is None:
-                            #New terminal node
+                            # New terminal node
                             terminalNode = BetaNode(None, node, aPassThru=True)
                             self.nodes[paddedLHSPattern] = terminalNode
                             node.connectToBetaNode(terminalNode, RIGHT_MEMORY)
@@ -792,14 +826,16 @@ class ReteNetwork:
                     # endIdx = len(attachedPatterns) - 1
                     finalPatternList = []
                     for idx, pattern in enumerate(attachedPatterns):
-                        assert isinstance(pattern, HashablePatternList), repr(pattern)
+                        assert isinstance(
+                            pattern, HashablePatternList), repr(pattern)
                         currNode = self.nodes[pattern]
                         if (isinstance(currNode, BuiltInAlphaNode) or
-                            isinstance(currNode, BetaNode) and currNode.fedByBuiltin):
+                                isinstance(currNode, BetaNode) and currNode.fedByBuiltin):
                             moveToEnd.append(pattern)
                         else:
                             finalPatternList.append(pattern)
-                    terminalNode = self.attachBetaNodes(chain(finalPatternList, moveToEnd))
+                    terminalNode = self.attachBetaNodes(
+                        chain(finalPatternList, moveToEnd))
                     terminalNode.consequent.update(consequents)
                     terminalNode.rules.add(rule)
                     terminalNode.antecedent = rule.formula.body
@@ -808,43 +844,44 @@ class ReteNetwork:
                     terminalNode.filter = aFilter
                     self.terminalNodes.add(terminalNode)
                     self._resetinstantiationStats()
-                #self.checkDuplicateRules()
+                # self.checkDuplicateRules()
                 return terminalNode
             if HashablePatternList([currentPattern]) in self.nodes:
-                #Current pattern matches an existing alpha node
+                # Current pattern matches an existing alpha node
                 matchedPatterns.append(currentPattern)
             elif matchedPatterns in self.nodes:
-                #preceding patterns match an existing join/beta node
+                # preceding patterns match an existing join/beta node
                 newNode = self.createAlphaNode(currentPattern)
                 if len(matchedPatterns) == 1 \
-                      and HashablePatternList([None]) + matchedPatterns in self.nodes:
-                    existingNode = self.nodes[HashablePatternList([None]) + matchedPatterns]
+                        and HashablePatternList([None]) + matchedPatterns in self.nodes:
+                    existingNode = self.nodes[
+                        HashablePatternList([None]) + matchedPatterns]
                     newBetaNode = BetaNode(existingNode, newNode)
-                    self.nodes[HashablePatternList([None]) + \
-                            matchedPatterns + \
-                            HashablePatternList([currentPattern])] = newBetaNode
+                    self.nodes[HashablePatternList([None]) +
+                               matchedPatterns +
+                               HashablePatternList([currentPattern])] = newBetaNode
                     matchedPatterns = HashablePatternList([None]) + \
-                            matchedPatterns + \
-                            HashablePatternList([currentPattern])
+                        matchedPatterns + \
+                        HashablePatternList([currentPattern])
                 else:
                     existingNode = self.nodes[matchedPatterns]
                     newBetaNode = BetaNode(existingNode, newNode)
-                    self.nodes[matchedPatterns + \
-                                HashablePatternList([currentPattern])] = newBetaNode
+                    self.nodes[matchedPatterns +
+                               HashablePatternList([currentPattern])] = newBetaNode
                     matchedPatterns.append(currentPattern)
 
                 self.nodes[HashablePatternList([currentPattern])] = newNode
                 newBetaNode.connectIncomingNodes(existingNode, newNode)
-                #Extend the match list with the current pattern and add it
-                #to the list of attached patterns for the second pass
+                # Extend the match list with the current pattern and add it
+                # to the list of attached patterns for the second pass
                 attachedPatterns.append(matchedPatterns)
                 matchedPatterns = HashablePatternList()
             else:
-                #The current pattern is not in the network and the match list isn't
-                #either.  Add an alpha node
+                # The current pattern is not in the network and the match list isn't
+                # either.  Add an alpha node
                 newNode = self.createAlphaNode(currentPattern)
                 self.nodes[HashablePatternList([currentPattern])] = newNode
-                #Add to list of attached patterns for the second pass
+                # Add to list of attached patterns for the second pass
                 attachedPatterns.append(HashablePatternList([currentPattern]))
 
     def attachBetaNodes(self, patternIterator, lastBetaNodePattern=None):
@@ -855,7 +892,8 @@ class ReteNetwork:
         for the rule.  This root / terminal node is returned
         """
         try:
-            nextPattern = next(patternIterator) if py3compat.PY3 else patternIterator.next()
+            nextPattern = next(
+                patternIterator) if py3compat.PY3 else patternIterator.next()
         except StopIteration:
             assert lastBetaNodePattern
             if lastBetaNodePattern:
@@ -873,21 +911,25 @@ class ReteNetwork:
             self.nodes[newBNodePattern] = newBetaNode
         else:
             firstNode = self.nodes[nextPattern]
-            oldAnchor = self.nodes.get(HashablePatternList([None]) + nextPattern)
+            oldAnchor = self.nodes.get(
+                HashablePatternList([None]) + nextPattern)
             if not oldAnchor:
                 if isinstance(firstNode, AlphaNode):
                     newfirstNode = BetaNode(None, firstNode, aPassThru=True)
                     newfirstNode.connectIncomingNodes(None, firstNode)
-                    self.nodes[HashablePatternList([None]) + nextPattern] = newfirstNode
+                    self.nodes[
+                        HashablePatternList([None]) + nextPattern] = newfirstNode
                 else:
                     newfirstNode = firstNode
             else:
                 newfirstNode = oldAnchor
             firstNode = newfirstNode
-            secondPattern = next(patternIterator) if py3compat.PY3 else patternIterator.next()
+            secondPattern = next(
+                patternIterator) if py3compat.PY3 else patternIterator.next()
             secondNode = self.nodes[secondPattern]
             newBetaNode = BetaNode(firstNode, secondNode)
-            newBNodePattern = HashablePatternList([None]) + nextPattern + secondPattern
+            newBNodePattern = HashablePatternList(
+                [None]) + nextPattern + secondPattern
             self.nodes[newBNodePattern] = newBetaNode
 
         newBetaNode.connectIncomingNodes(firstNode, secondNode)
@@ -901,12 +943,13 @@ def ComplementExpand(tBoxGraph, complementAnnotation):
         prevLink = None
         while containingList:
             prevLink = containingList
-            containingList = first(tBoxGraph.subjects(RDF.rest, containingList))
+            containingList = first(
+                tBoxGraph.subjects(RDF.rest, containingList))
         if prevLink:
             for s, p, o in tBoxGraph.triples_choices((None,
-                                                [OWL_NS.intersectionOf,
-                                                 OWL_NS.unionOf],
-                                                 prevLink)):
+                                                      [OWL_NS.intersectionOf,
+                                                       OWL_NS.unionOf],
+                                                      prevLink)):
                 if (s, complementAnnotation, None) in tBoxGraph:
                     continue
                 _class = Class(s)

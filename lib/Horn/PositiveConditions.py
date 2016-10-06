@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-==================================================================================
-
 The language of positive RIF conditions determines what can appear as a body (the
- if-part) of a rule supported by the basic RIF logic. As explained in Section
- Overview, RIF's Basic Logic Dialect corresponds to definite Horn rules, and the
-  bodies of such rules are conjunctions of atomic formulas without negation.
+if-part) of a rule supported by the basic RIF logic. As explained in Section
+Overview, RIF's Basic Logic Dialect corresponds to definite Horn rules, and the
+bodies of such rules are conjunctions of atomic formulas without negation.
 """
+
 import itertools
 from rdflib import (
-    RDFS,
     Variable,
-    )  # for doctests
+)  # for doctests
 
 from rdflib import (
     BNode,
@@ -19,14 +17,14 @@ from rdflib import (
     Namespace,
     RDF,
     URIRef
-    )
+)
 # from rdflib.collection import Collection
 from rdflib.graph import (
     # ConjunctiveGraph,
     # QuotedGraph,
     # ReadOnlyGraphAggregate,
     Graph
-    )
+)
 from rdflib.namespace import NamespaceManager
 try:
     from functools import reduce
@@ -58,6 +56,7 @@ def GetUterm(term):
 
 
 class QNameManager(object):
+
     def __init__(self, nsDict=None):
         self.nsDict = nsDict and nsDict or {}
         self.nsMgr = NamespaceManager(Graph())
@@ -69,6 +68,7 @@ class QNameManager(object):
 
 
 class SetOperator(object):
+
     def repr(self, operator):
         nafPrefix = self.naf and 'not ' or ''
         if len(self.formulae) == 1:
@@ -85,9 +85,11 @@ class SetOperator(object):
 
 
 class Condition(object):
+
     """
     CONDITION   ::= CONJUNCTION | DISJUNCTION | EXISTENTIAL | ATOMIC
     """
+
     def isSafeForVariable(self, var):
         """
         A variable, v is safe in a condition formula if and only if ..
@@ -100,6 +102,7 @@ class Condition(object):
 
 
 class And(QNameManager, SetOperator, Condition):
+
     """
     CONJUNCTION ::= 'And' '(' CONDITION* ')'
 
@@ -107,6 +110,7 @@ class And(QNameManager, SetOperator, Condition):
     ...      Uniterm(RDF.type,[OWL.Class,RDFS.Class])])
     And( rdf:Property(rdfs:comment) rdfs:Class(owl:Class) )
     """
+
     def __init__(self, formulae=None, naf=False):
         self.naf = naf
         self.formulae = formulae and formulae or []
@@ -133,7 +137,7 @@ class And(QNameManager, SetOperator, Condition):
         False
         """
         return first(filter(lambda conj: conj.binds(var),
-                                       self.formulae)) is not None
+                            self.formulae)) is not None
 
     def isSafeForVariable(self, var):
         """
@@ -155,7 +159,7 @@ class And(QNameManager, SetOperator, Condition):
 
         """
         return first(filter(lambda conj: conj.isSafeForVariable(var),
-                                       self.formulae)) is not None
+                            self.formulae)) is not None
 
     @py3compat.format_doctest_out
     def n3(self):
@@ -179,6 +183,7 @@ class And(QNameManager, SetOperator, Condition):
 
 
 class Or(QNameManager, SetOperator, Condition):
+
     """
     DISJUNCTION ::= 'Or' '(' CONDITION* ')'
 
@@ -186,6 +191,7 @@ class Or(QNameManager, SetOperator, Condition):
     ...      Uniterm(RDF.type,[OWL.Class,RDFS.Class])])
     Or( rdf:Property(rdfs:comment) rdfs:Class(owl:Class) )
     """
+
     def __init__(self, formulae=None, naf=False):
         self.naf = naf
         self.formulae = formulae and formulae or []
@@ -222,8 +228,8 @@ class Or(QNameManager, SetOperator, Condition):
         f is a disjunction, and v is safe in every disjunct;
         """
         unboundConjs = list(itertools.takewhile(
-                                    lambda conj: conj.isSafeForVariable(var),
-                                    self.formulae))
+            lambda conj: conj.isSafeForVariable(var),
+            self.formulae))
         return len(unboundConjs) == len(self.formulae)
 
     def __repr__(self):
@@ -231,6 +237,7 @@ class Or(QNameManager, SetOperator, Condition):
 
 
 class Exists(Condition):
+
     """
     EXISTENTIAL ::= 'Exists' Var+ '(' CONDITION ')'
     >>> Exists(formula=Or([Uniterm(RDF.type,[RDFS.comment,RDF.Property]),
@@ -238,6 +245,7 @@ class Exists(Condition):
     ...        declare=[Variable('X'),Variable('Y')])
     Exists ?X ?Y ( Or( rdf:Property(rdfs:comment) rdfs:Class(owl:Class) ) )
     """
+
     def __init__(self, formula=None, declare=None):
         self.formula = formula
         self.declare = declare and declare or []
@@ -272,19 +280,21 @@ class Exists(Condition):
         """
         """
         return self.formula.n3()
-        #return u"@forSome %s %s"%(','.join(self.declare),self.formula.n3())
+        # return u"@forSome %s %s"%(','.join(self.declare),self.formula.n3())
 
     def __repr__(self):
         return "Exists %s ( %r )" % (
-                ' '.join([var.n3()
-                        for var in self.declare]),
-                self.formula)
+            ' '.join([var.n3()
+                      for var in self.declare]),
+            self.formula)
 
 
 class Atomic(Condition):
+
     """
     ATOMIC ::= Uniterm | Equal | Member | Subclass (| Frame)
     """
+
     def binds(self, var):
         """
         A variable, v, is bound in an atomic formula, a, if and only if
@@ -303,6 +313,7 @@ class Atomic(Condition):
 
 
 class Equal(QNameManager, Atomic):
+
     """
     Equal ::= TERM '=' TERM
     TERM ::= Const | Var | Uniterm | 'External' '(' Expr ')'
@@ -310,6 +321,7 @@ class Equal(QNameManager, Atomic):
     >>> Equal(RDFS.Resource,OWL.Thing)
     rdfs:Resource =  owl:Thing
     """
+
     def __init__(self, lhs=None, rhs=None):
         self.lhs = lhs
         self.rhs = rhs
@@ -327,6 +339,7 @@ def BuildUnitermFromTuple(triple, newNss=None):
 
 
 class Uniterm(QNameManager, Atomic):
+
     """
     Uniterm ::= Const '(' TERM* ')'
     TERM ::= Const | Var | Uniterm
@@ -336,17 +349,19 @@ class Uniterm(QNameManager, Atomic):
     >>> Uniterm(RDF.type,[RDFS.comment,RDF.Property])
     rdf:Property(rdfs:comment)
     """
+
     def __init__(self, op, arg=None, newNss=None, naf=False):
         self.naf = naf
         self.op = op
         self.arg = arg and arg or []
         QNameManager.__init__(self)
         if newNss is not None:
-            newNss = list(newNss.items()) if isinstance(newNss, dict) else newNss
+            newNss = list(newNss.items()) if isinstance(
+                newNss, dict) else newNss
             for k, v in newNss:
                 self.nsMgr.bind(k, v)
         self._hash = hash(reduce(lambda x, y: str(x) + str(y),
-            len(self.arg) == 2 and self.toRDFTuple() or [self.op] + self.arg))
+                                 len(self.arg) == 2 and self.toRDFTuple() or [self.op] + self.arg))
 
     def binds(self, var):
         """
@@ -389,9 +404,9 @@ class Uniterm(QNameManager, Atomic):
         else:
             self.arg[0] = varMapping.get(self.arg[0], self.arg[0])
             self.arg[1] = varMapping.get(self.arg[1], self.arg[1])
-        #Recalculate the hash after modification
+        # Recalculate the hash after modification
         self._hash = hash(reduce(lambda x, y: str(x) + str(y),
-            len(self.arg) == 2 and self.toRDFTuple() or [self.op] + self.arg))
+                                 len(self.arg) == 2 and self.toRDFTuple() or [self.op] + self.arg))
 
     @py3compat.format_doctest_out
     def _get_terms(self):
@@ -425,19 +440,19 @@ class Uniterm(QNameManager, Atomic):
         """
         map = {}
         if isinstance(self.op, Variable) and isinstance(otherLit.op, Variable) and \
-            self.op != otherLit.op:
+                self.op != otherLit.op:
             if reverse:
                 map[otherLit.op] = self.op
             else:
                 map[self.op] = otherLit.op
         if isinstance(self.arg[0], Variable) and isinstance(otherLit.arg[0], Variable) \
-            and self.arg[0] != otherLit.arg[0]:
+                and self.arg[0] != otherLit.arg[0]:
             if reverse:
                 map[otherLit.arg[0]] = self.arg[0]
             else:
                 map[self.arg[0]] = otherLit.arg[0]
         if isinstance(self.arg[1], Variable) and isinstance(otherLit.arg[1], Variable) and \
-            self.arg[1] != otherLit.arg[1]:
+                self.arg[1] != otherLit.arg[1]:
             if reverse:
                 map[otherLit.arg[1]] = self.arg[1]
             else:
@@ -451,13 +466,14 @@ class Uniterm(QNameManager, Atomic):
         return bool(set(mapping).intersection([self.op] + self.arg))
 
     def ground(self, varMapping):
-        appliedKeys = set([self.op] + self.arg).intersection(list(varMapping.keys()))
+        appliedKeys = set(
+            [self.op] + self.arg).intersection(list(varMapping.keys()))
         self.op = varMapping.get(self.op, self.op)
         self.arg[0] = varMapping.get(self.arg[0], self.arg[0])
         self.arg[1] = varMapping.get(self.arg[1], self.arg[1])
-        #Recalculate the hash after modification
+        # Recalculate the hash after modification
         self._hash = hash(reduce(lambda x, y: str(x) + str(y),
-            len(self.arg) == 2 and self.toRDFTuple() or [self.op] + self.arg))
+                                 len(self.arg) == 2 and self.toRDFTuple() or [self.op] + self.arg))
         return appliedKeys
 
     def isGround(self):
@@ -518,7 +534,7 @@ class Uniterm(QNameManager, Atomic):
                 return term.n3()
         else:
             return isinstance(term, Variable) and term.n3() or \
-                   self.collapseName(term)
+                self.collapseName(term)
 
     def getArity(self):
         return 1 if self.op == RDF.type else 2
@@ -548,10 +564,11 @@ class Uniterm(QNameManager, Atomic):
             return "%s%s(%s)" % (
                 negPrefix, self.normalizeTerm(self.op),
                 ' '.join([self.normalizeTerm(i)
-                    for i in self.arg]))
+                          for i in self.arg]))
 
 
 class PredicateExtentFactory(object):
+
     """
     Creates an object which when indexed returns
     a Uniterm with the 'registered' symbol and
@@ -568,6 +585,7 @@ class PredicateExtentFactory(object):
     ex:somePredicate(ex:individual1)
 
     """
+
     def __init__(self, predicateSymbol, binary=True, newNss=None):
         self.predicateSymbol = predicateSymbol
         self.binary = binary
@@ -586,6 +604,7 @@ class PredicateExtentFactory(object):
 
 
 class ExternalFunction(Uniterm):
+
     """
     An External(ATOMIC) is a call to an externally defined predicate, equality,
     membership, subclassing, or frame. Likewise, External(Expr) is a call to an
@@ -593,16 +612,19 @@ class ExternalFunction(Uniterm):
     >>> ExternalFunction(Uniterm(URIRef('http://www.w3.org/2000/10/swap/math#greaterThan'),[Variable('VAL'),Literal(2)]))
     math:greaterThan(?VAL 2)
     """
+
     def __init__(self, builtin, newNss=None):
         from FuXi.Rete.RuleStore import N3Builtin
         self.builtin = builtin
         if isinstance(builtin, N3Builtin):
-            Uniterm.__init__(self, builtin.uri, [builtin.argument, builtin.result])
+            Uniterm.__init__(
+                self, builtin.uri, [builtin.argument, builtin.result])
         else:
             Uniterm.__init__(self, builtin.op, builtin.arg)
         QNameManager.__init__(self)
         if newNss is not None:
-            newNss = isinstance(newNss, dict) and list(newNss.items()) or newNss
+            newNss = isinstance(newNss, dict) and list(
+                newNss.items()) or newNss
             for k, v in newNss:
                 self.nsMgr.bind(k, v)
 

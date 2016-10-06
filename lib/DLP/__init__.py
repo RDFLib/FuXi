@@ -1,7 +1,5 @@
-#!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 """
-=======================================================================================
 This module implements a Description Horn Logic implementation as defined
 by Grosof, B. et.al. ("Description Logic Programs: Combining Logic Programs with
 Description Logic" [1]) in section 4.4.  As such, it implements recursive mapping
@@ -49,15 +47,16 @@ from rdflib.namespace import (
     Namespace,
     RDF,
     RDFS
-    )
+)
 from rdflib import (
     BNode,
     Variable,
     URIRef,
-    )
+)
 from rdflib.util import first
 
 import copy
+import warnings
 from FuXi.Horn.PositiveConditions import And, Or, Uniterm, Condition, Atomic, SetOperator, Exists
 from FuXi.Horn import DATALOG_SAFETY_NONE, DATALOG_SAFETY_STRICT, DATALOG_SAFETY_LOOSE
 from .LPNormalForms import NormalizeDisjunctions
@@ -68,10 +67,11 @@ except ImportError:
     pass
 
 
-SKOLEMIZED_CLASS_NS = Namespace('http://code.google.com/p/python-dlp/wiki/SkolemTerm#')
+SKOLEMIZED_CLASS_NS = Namespace(
+    'http://code.google.com/p/python-dlp/wiki/SkolemTerm#')
 
 non_DHL_OWL_Semantics = \
-u"""
+    u"""
 @prefix log: <http://www.w3.org/2000/10/swap/log#>.
 @prefix math: <http://www.w3.org/2000/10/swap/math#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
@@ -134,9 +134,11 @@ def NormalizeClause(clause):
         rt = first(gen)
         assert rt is not None
         return rt
-    if hasattr(clause.head, 'next'):  # and not isinstance(clause.head, Condition):
+    # and not isinstance(clause.head, Condition):
+    if hasattr(clause.head, 'next'):
         clause.head = fetchFirst(clause.head)
-    if hasattr(clause.body, 'next'):  # and not isinstance(clause.body, Condition):
+    # and not isinstance(clause.body, Condition):
+    if hasattr(clause.body, 'next'):
         clause.body = fetchFirst(clause.body)
     # assert isinstance(clause.head, (Atomic, And, Clause)), repr(clause.head)
     # assert isinstance(clause.body, Condition), repr(clause.body)
@@ -150,11 +152,13 @@ def NormalizeClause(clause):
 
 
 class UnsupportedNegation(Exception):
+
     def __init__(self, msg):
         super(UnsupportedNegation, self).__init__(msg)
 
 
 class Clause(OriginalClause):
+
     """
     The RETE-UL algorithm supports conjunctions of facts in the head of a rule
     i.e.:   H1 ^ H2 ^ ... ^ H3 :- B1 ^  ^ Bm
@@ -164,6 +168,7 @@ class Clause(OriginalClause):
     In addition, since we allow (in definite Horn) entailments beyond simple facts
     we ease restrictions on the form of the head to include Clauses
         """
+
     def __init__(self, body, head):
         self.body = body
         self.head = head
@@ -171,9 +176,9 @@ class Clause(OriginalClause):
             from FuXi.Rete.Network import HashablePatternList
             try:
                 antHash = HashablePatternList([term.toRDFTuple()
-                                    for term in body], skipBNodes=True)
+                                               for term in body], skipBNodes=True)
                 consHash = HashablePatternList([term.toRDFTuple()
-                                    for term in head], skipBNodes=True)
+                                                for term in head], skipBNodes=True)
                 self._bodyHash = hash(antHash)
                 self._headHash = hash(consHash)
                 self._hash = hash((self._headHash, self._bodyHash))
@@ -186,9 +191,9 @@ class Clause(OriginalClause):
         if self._hash is None:
             from FuXi.Rete.Network import HashablePatternList
             antHash = HashablePatternList([term.toRDFTuple()
-                                for term in self.body], skipBNodes=True)
+                                           for term in self.body], skipBNodes=True)
             consHash = HashablePatternList([term.toRDFTuple()
-                                for term in self.head], skipBNodes=True)
+                                            for term in self.head], skipBNodes=True)
             self._bodyHash = hash(antHash)
             self._headHash = hash(consHash)
             self._hash = hash((self._headHash, self._bodyHash))
@@ -205,20 +210,22 @@ def makeRule(clause, nsMap):
     vars = set()
     for child in clause.head:
         if isinstance(child, Or):
-            #Disjunction in the head, skip this rule:
-            #When a disjunction occurs on the r.h.s. of a subclass axiom it
-            #becomes a disjunction in the head of the corresponding rule, and
-            #this cannot be handled within the def-Horn framework.
+            # Disjunction in the head, skip this rule:
+            # When a disjunction occurs on the r.h.s. of a subclass axiom it
+            # becomes a disjunction in the head of the corresponding rule, and
+            # this cannot be handled within the def-Horn framework.
             return None
         assert isinstance(child, Uniterm), repr(child)
-        vars.update([term for term in child.toRDFTuple() if isinstance(term, Variable)])
+        vars.update(
+            [term for term in child.toRDFTuple() if isinstance(term, Variable)])
     negativeStratus = False
     for child in clause.body:
         if hasattr(child, 'naf') and child.naf:
             negativeStratus = True
         elif not hasattr(child, 'naf'):
             child.naf = False
-        vars.update([term for term in child.toRDFTuple() if isinstance(term, Variable)])
+        vars.update(
+            [term for term in child.toRDFTuple() if isinstance(term, Variable)])
     return Rule(clause, declare=vars, nsMapping=nsMap, negativeStratus=negativeStratus)
 
 
@@ -227,23 +234,24 @@ def DisjunctiveNormalForm(program, safety=DATALOG_SAFETY_NONE, network=None):
         tx_horn_clause = NormalizeClause(rule.formula)
         for tx_horn_clause in LloydToporTransformation(tx_horn_clause, True):
             if safety in [DATALOG_SAFETY_LOOSE, DATALOG_SAFETY_STRICT]:
-                rule = Rule(tx_horn_clause, nsMapping=network and network.nsMap or {})
+                rule = Rule(
+                    tx_horn_clause, nsMapping=network and network.nsMap or {})
                 if not rule.isSafe():
                     if safety == DATALOG_SAFETY_LOOSE:
-                        import warnings
                         warnings.warn("Ignoring unsafe rule (%s)" % rule,
                                       SyntaxWarning,
                                       3)
                         continue
                     elif safety == DATALOG_SAFETY_STRICT:
                         raise SyntaxError("Unsafe RIF Core rule: %s" % rule)
-            disj = [i for i in breadth_first(tx_horn_clause.body) if isinstance(i, Or)]
+            disj = [i for i in breadth_first(
+                tx_horn_clause.body) if isinstance(i, Or)]
             if len(disj) > 0:
                 NormalizeDisjunctions(disj, tx_horn_clause, program, network)
             elif isinstance(tx_horn_clause.head, (And, Uniterm)):
                     # print("No Disjunction in the body")
-                    for hc in ExtendN3Rules(network, NormalizeClause(tx_horn_clause)):
-                        yield makeRule(hc, network and network.nsMap or {})
+                for hc in ExtendN3Rules(network, NormalizeClause(tx_horn_clause)):
+                    yield makeRule(hc, network and network.nsMap or {})
 
 
 def MapDLPtoNetwork(network,
@@ -261,8 +269,8 @@ def MapDLPtoNetwork(network,
         fullReduce = True
         for tx_horn_clause in LloydToporTransformation(horn_clause, fullReduce):
             tx_horn_clause = NormalizeClause(tx_horn_clause)
-            disj = [i for i in breadth_first(tx_horn_clause.body) if isinstance(i, Or)]
-            import warnings
+            disj = [i for i in breadth_first(
+                tx_horn_clause.body) if isinstance(i, Or)]
             if len(disj) > 0:
                 NormalizeDisjunctions(disj,
                                       tx_horn_clause,
@@ -272,24 +280,24 @@ def MapDLPtoNetwork(network,
                                       negativeStratus,
                                       ignoreNegativeStratus)
             elif isinstance(tx_horn_clause.head, (And, Uniterm)):
-                    # print("No Disjunction in the body")
-                    for hc in ExtendN3Rules(network, NormalizeClause(tx_horn_clause), constructNetwork):
-                        if safety in [DATALOG_SAFETY_LOOSE, DATALOG_SAFETY_STRICT]:
-                            rule = Rule(hc, nsMapping=network.nsMap)
-                            if not rule.isSafe():
-                                if safety == DATALOG_SAFETY_LOOSE:
-                                    import warnings
-                                    warnings.warn("Ignoring unsafe rule (%s)" % rule,
-                                                  SyntaxWarning,
-                                                  3)
-                                    continue
-                                elif safety == DATALOG_SAFETY_STRICT:
-                                    raise SyntaxError("Unsafe RIF Core rule: %s" % rule)
-                        _rule = makeRule(hc, network.nsMap)
-                        if _rule.negativeStratus:
-                            negativeStratus.append(_rule)
-                        if _rule is not None and (not _rule.negativeStratus or not ignoreNegativeStratus):
-                            ruleset.add(_rule)
+                # print("No Disjunction in the body")
+                for hc in ExtendN3Rules(network, NormalizeClause(tx_horn_clause), constructNetwork):
+                    if safety in [DATALOG_SAFETY_LOOSE, DATALOG_SAFETY_STRICT]:
+                        rule = Rule(hc, nsMapping=network.nsMap)
+                        if not rule.isSafe():
+                            if safety == DATALOG_SAFETY_LOOSE:
+                                warnings.warn("Ignoring unsafe rule (%s)" % rule,
+                                              SyntaxWarning,
+                                              3)
+                                continue
+                            elif safety == DATALOG_SAFETY_STRICT:
+                                raise SyntaxError(
+                                    "Unsafe RIF Core rule: %s" % rule)
+                    _rule = makeRule(hc, network.nsMap)
+                    if _rule.negativeStratus:
+                        negativeStratus.append(_rule)
+                    if _rule is not None and (not _rule.negativeStratus or not ignoreNegativeStratus):
+                        ruleset.add(_rule)
             # Extract free variables anre add rule to ruleset
         # print("#######################")
     # print("########## Finished Building decision network from DLP ##########")
@@ -374,7 +382,7 @@ def breadth_first_replace(condition,
         for child in children(node):
             yield child
             if candidate and child is candidate:
-                #replace candidate with replacement
+                # replace candidate with replacement
                 i = node.formulae.index(child)
                 node.formulae[i] = replacement
                 return
@@ -399,7 +407,8 @@ def ExtendN3Rules(network, horn_clause, constructNetwork=False):
     # print(horn_clause)
     if constructNetwork:
         for term in horn_clause.body:
-            ruleStore.formulae.setdefault(lhs, Formula(lhs)).append(term.toRDFTuple())
+            ruleStore.formulae.setdefault(
+                lhs, Formula(lhs)).append(term.toRDFTuple())
     assert isinstance(horn_clause.head, (And, Uniterm)), repr(horn_clause.head)
 
     if IsaFactFormingConclusion(horn_clause.head):
@@ -408,19 +417,23 @@ def ExtendN3Rules(network, horn_clause, constructNetwork=False):
             for term in horn_clause.head:
                 assert not hasattr(term, 'next')
                 if isinstance(term, Or):
-                    ruleStore.formulae.setdefault(rhs, Formula(rhs)).append(term)
+                    ruleStore.formulae.setdefault(
+                        rhs, Formula(rhs)).append(term)
                 else:
-                    ruleStore.formulae.setdefault(rhs, Formula(rhs)).append(term.toRDFTuple())
-            ruleStore.rules.append((ruleStore.formulae[lhs], ruleStore.formulae[rhs]))
+                    ruleStore.formulae.setdefault(
+                        rhs, Formula(rhs)).append(term.toRDFTuple())
+            ruleStore.rules.append(
+                (ruleStore.formulae[lhs], ruleStore.formulae[rhs]))
             network.buildNetwork(iter(ruleStore.formulae[lhs]),
                                  iter(ruleStore.formulae[rhs]),
                                  Rule(horn_clause))
-            network.alphaNodes = [node for node in list(network.nodes.values()) if isinstance(node, AlphaNode)]
+            network.alphaNodes = [
+                node for node in list(network.nodes.values()) if isinstance(node, AlphaNode)]
         rt.append(horn_clause)
     else:
         for hC in LloydToporTransformation(horn_clause, fullReduction=True):
             rt.append(hC)
-            #print("normalized clause: ", hC)
+            # print("normalized clause: ", hC)
             for i in ExtendN3Rules(network, hC, constructNetwork):
                 rt.append(hC)
     return rt
@@ -429,11 +442,11 @@ def ExtendN3Rules(network, horn_clause, constructNetwork=False):
 def PrepareHeadExistential(clause):
     from FuXi.Rete.SidewaysInformationPassing import GetArgs
     skolemsInHead = [
-                   list(filter(
-                             lambda term:isinstance(term,
-                                                    BNode),
-                                 GetArgs(lit)))
-                                 for lit in iterCondition(clause.head)]
+        list(filter(
+            lambda term:isinstance(term,
+                                   BNode),
+            GetArgs(lit)))
+        for lit in iterCondition(clause.head)]
     skolemsInHead = reduce(lambda x, y: x + y, skolemsInHead, [])
     if skolemsInHead:
         newHead = copy.deepcopy(clause.head)
@@ -455,21 +468,23 @@ def PrepareHornClauseForRETE(horn_clause):
                     yield t
     from FuXi.Rete.SidewaysInformationPassing import iterCondition, GetArgs
 
-    #first we identify body variables
+    # first we identify body variables
     bodyVars = set(reduce(lambda x, y: x + y,
                           [list(extractVariables(i, existential=False))
-                            for i in iterCondition(horn_clause.body)]))
+                           for i in iterCondition(horn_clause.body)]))
 
-    #then we identify head variables
+    # then we identify head variables
     headVars = set(reduce(lambda x, y: x + y,
                           [list(extractVariables(i, existential=False))
-                                for i in iterCondition(horn_clause.head)]))
+                           for i in iterCondition(horn_clause.head)]))
 
-    #then we identify those variables that should (or should not) be converted to skolem terms
-    updateDict = dict([(var, BNode()) for var in headVars if var not in bodyVars])
+    # then we identify those variables that should (or should not) be
+    # converted to skolem terms
+    updateDict = dict([(var, BNode())
+                       for var in headVars if var not in bodyVars])
 
     if set(updateDict.keys()).intersection(GetArgs(horn_clause.head)):
-        #There are skolem terms in the head
+        # There are skolem terms in the head
         newHead = copy.deepcopy(horn_clause.head)
         for uniTerm in iterCondition(newHead):
             newArg = [updateDict.get(i, i) for i in uniTerm.arg]
@@ -477,11 +492,11 @@ def PrepareHornClauseForRETE(horn_clause):
         horn_clause.head = newHead
 
     skolemsInBody = [
-                   list(filter(
-                             lambda term:isinstance(term,
-                                                    BNode),
-                                 GetArgs(lit)))
-                                 for lit in iterCondition(horn_clause.body)]
+        list(filter(
+            lambda term:isinstance(term,
+                                   BNode),
+            GetArgs(lit)))
+        for lit in iterCondition(horn_clause.body)]
     skolemsInBody = reduce(lambda x, y: x + y, skolemsInBody,
                            [])
     if skolemsInBody:
@@ -495,14 +510,17 @@ def PrepareHornClauseForRETE(horn_clause):
 def generatorFlattener(gen):
     assert hasattr(gen, 'next')
     i = list(gen)
-    i = len(i) > 1 and [hasattr(i2, 'next') and generatorFlattener(i2) or i2 for i2 in i] or i[0]
+    i = len(i) > 1 and [
+        hasattr(i2, 'next') and generatorFlattener(i2) or i2 for i2 in i] or i[0]
     if hasattr(i, 'next'):
+        # FIXME: listOrThingGenerator undefined
         i = listOrThingGenerator(i)
         # print(i)
         return i
     elif isinstance(i, SetOperator):
-        i.formulae = [hasattr(i2, 'next') and generatorFlattener(i2) or i2 for i2 in i.formulae]
-        #print(i)
+        i.formulae = [
+            hasattr(i2, 'next') and generatorFlattener(i2) or i2 for i2 in i.formulae]
+        # print(i)
         return i
     else:
         return i
@@ -515,14 +533,14 @@ def SkolemizeExistentialClasses(term, check=True):
 
 
 def NormalizeBooleanClassOperand(term, owlGraph):
-    return ((isinstance(term, BNode) and IsaBooleanClassDescription(term, owlGraph)) or \
-             IsaRestriction(term, owlGraph))\
-          and SkolemizeExistentialClasses(term) or term
+    return ((isinstance(term, BNode) and IsaBooleanClassDescription(term, owlGraph)) or
+            IsaRestriction(term, owlGraph))\
+        and SkolemizeExistentialClasses(term) or term
 
 
 def IsaBooleanClassDescription(term, owlGraph):
     for s, p, o in owlGraph.triples_choices((term, [OWL_NS.unionOf,
-                                                OWL_NS.intersectionOf], None)):
+                                                    OWL_NS.intersectionOf], None)):
         return True
 
 
@@ -541,7 +559,7 @@ def Tc(owlGraph, negatedFormula):
     is in the minimal model
     """
     if (negatedFormula, OWL_NS.hasValue, None) in owlGraph:
-        #not ( R value i )
+        # not ( R value i )
         bodyUniTerm = Uniterm(RDF.type,
                               [Variable("X"),
                                NormalizeBooleanClassOperand(negatedFormula, owlGraph)],
@@ -553,7 +571,7 @@ def Tc(owlGraph, negatedFormula):
         condition.naf = True
         return condition
     elif (negatedFormula, OWL_NS.someValuesFrom, None) in owlGraph:
-        #not ( R some C )
+        # not ( R some C )
         binaryRel, unaryRel = Tb(owlGraph, negatedFormula)
         negatedBinaryRel = copy.deepcopy(binaryRel)
         negatedBinaryRel.naf = True
@@ -567,10 +585,12 @@ def Tc(owlGraph, negatedFormula):
                        newNss=owlGraph.namespaces(),
                        naf=True)
     else:
-        raise UnsupportedNegation("Unsupported negated concept: %s" % negatedFormula)
+        raise UnsupportedNegation(
+            "Unsupported negated concept: %s" % negatedFormula)
 
 
 class MalformedDLPFormulaError(NotImplementedError):
+
     def __init__(self, message):
         self.message = message
 
@@ -583,14 +603,16 @@ def handleConjunct(conjunction, owlGraph, o, conjunctVar=Variable('X')):
                                                predicate=OWL_NS.complementOf):
             addToConjunct = Tc(owlGraph, negatedFormula)
         if negatedFormula:
-            #addToConjunct will be the term we need to add to the conjunct
+            # addToConjunct will be the term we need to add to the conjunct
             conjunction.append(addToConjunct)
         else:
-            normalizedBodyTerm = NormalizeBooleanClassOperand(bodyTerm, owlGraph)
+            normalizedBodyTerm = NormalizeBooleanClassOperand(
+                bodyTerm, owlGraph)
             bodyUniTerm = Uniterm(RDF.type, [conjunctVar, normalizedBodyTerm],
                                   newNss=owlGraph.namespaces())
             processedBodyTerm = Tb(owlGraph, bodyTerm, conjunctVar)
-            classifyingClause = NormalizeClause(Clause(processedBodyTerm, bodyUniTerm))
+            classifyingClause = NormalizeClause(
+                Clause(processedBodyTerm, bodyUniTerm))
             # redundantClassifierClause = processedBodyTerm == bodyUniTerm
             if isinstance(normalizedBodyTerm, URIRef) and normalizedBodyTerm.find(SKOLEMIZED_CLASS_NS) == -1:
                 conjunction.append(bodyUniTerm)
@@ -598,7 +620,8 @@ def handleConjunct(conjunction, owlGraph, o, conjunctVar=Variable('X')):
                  (bodyTerm, OWL_NS.hasValue, None) in owlGraph:
                 conjunction.extend(classifyingClause.body)
             elif (bodyTerm, OWL_NS.allValuesFrom, None) in owlGraph:
-                raise MalformedDLPFormulaError("Universal restrictions can only be used as the second argument to rdfs:subClassOf (GCIs)")
+                raise MalformedDLPFormulaError(
+                    "Universal restrictions can only be used as the second argument to rdfs:subClassOf (GCIs)")
             elif (bodyTerm, OWL_NS.unionOf, None) in owlGraph:
                 conjunction.append(classifyingClause.body)
             elif (bodyTerm, OWL_NS.intersectionOf, None) in owlGraph:
@@ -623,18 +646,17 @@ def T(owlGraph, complementExpansions=[], derivedPreds=[]):
     for s, p, o in owlGraph.triples((None, OWL_NS.complementOf, None)):
         if isinstance(o, URIRef) and isinstance(s, URIRef):
             headLiteral = Uniterm(RDF.type, [Variable("X"),
-                                            SkolemizeExistentialClasses(s)],
+                                             SkolemizeExistentialClasses(s)],
                                   newNss=owlGraph.namespaces())
             yield NormalizeClause(Clause(Tc(owlGraph, o), headLiteral))
     for c, p, d in owlGraph.triples((None, RDFS.subClassOf, None)):
         try:
             yield NormalizeClause(Clause(Tb(owlGraph, c), Th(owlGraph, d)))
         except UnsupportedNegation:
-            import warnings
             warnings.warn("Unable to handle negation in DL axiom (%s), skipping" % c,  # e.msg,
                           SyntaxWarning,
                           3)
-        #assert isinstance(c, URIRef), "%s is a kind of %s"%(c, d)
+        # assert isinstance(c, URIRef), "%s is a kind of %s"%(c, d)
     for c, p, d in owlGraph.triples((None, OWL_NS.equivalentClass, None)):
         if c not in derivedPreds:
             yield NormalizeClause(Clause(Tb(owlGraph, c), Th(owlGraph, d)))
@@ -643,44 +665,44 @@ def T(owlGraph, complementExpansions=[], derivedPreds=[]):
         try:
             if s not in complementExpansions:
                 if s in derivedPreds:
-                    import warnings
                     warnings.warn("Derived predicate (%s) is defined via a conjunction (consider using a complex GCI) " % owlGraph.qname(s),
                                   SyntaxWarning,
                                   3)
                 elif isinstance(s, BNode):  # and (None, None, s) not in owlGraph:# and \
-                     #(s, RDFS.subClassOf, None) in owlGraph:
-                        #complex GCI, pass over (handled) by Tb
-                        continue
+                    # (s, RDFS.subClassOf, None) in owlGraph:
+                    # complex GCI, pass over (handled) by Tb
+                    continue
                 conjunction = []
                 handleConjunct(conjunction, owlGraph, o)
                 body = And(conjunction)
                 head = Uniterm(RDF.type, [Variable("X"),
-                                         SkolemizeExistentialClasses(s)],
-                                         newNss=owlGraph.namespaces())
+                                          SkolemizeExistentialClasses(s)],
+                               newNss=owlGraph.namespaces())
                 # O1 ^ O2 ^ ... ^ On => S(?X)
                 yield Clause(body, head)
                 if isinstance(s, URIRef):
                     # S(?X) => O1 ^ O2 ^ ... ^ On
                     # special case, owl:intersectionOf is a neccessary and sufficient
                     # criteria and should thus work in *both* directions
-                    # This rule is not added for anonymous classes or derived predicates
+                    # This rule is not added for anonymous classes or derived
+                    # predicates
                     if s not in derivedPreds:
                         yield Clause(head, body)
         except UnsupportedNegation:
-            import warnings
             warnings.warn("Unable to handle negation in DL axiom (%s), skipping" % s,  # e.msg,
                           SyntaxWarning,
                           3)
 
     for s, p, o in owlGraph.triples((None, OWL_NS.unionOf, None)):
         if isinstance(s, URIRef):
-            #special case, owl:unionOf is a neccessary and sufficient
-            #criteria and should thus work in *both* directions
+            # special case, owl:unionOf is a neccessary and sufficient
+            # criteria and should thus work in *both* directions
             body = Or([Uniterm(RDF.type, [Variable("X"),
-                                         NormalizeBooleanClassOperand(i, owlGraph)],
-                                         newNss=owlGraph.namespaces()) \
-                           for i in Collection(owlGraph, o)])
-            head = Uniterm(RDF.type, [Variable("X"), s], newNss=owlGraph.namespaces())
+                                          NormalizeBooleanClassOperand(i, owlGraph)],
+                               newNss=owlGraph.namespaces())
+                       for i in Collection(owlGraph, o)])
+            head = Uniterm(
+                RDF.type, [Variable("X"), s], newNss=owlGraph.namespaces())
             yield Clause(body, head)
     for s, p, o in owlGraph.triples((None, OWL_NS.inverseOf, None)):
         #    T(owl:inverseOf(P, Q))          -> { Q(x, y) :- P(y, x)
@@ -690,22 +712,26 @@ def T(owlGraph, complementExpansions=[], derivedPreds=[]):
         s = SkolemizeExistentialClasses(s) if isinstance(s, BNode) else s
         o = SkolemizeExistentialClasses(o) if isinstance(o, BNode) else o
 
-        body1 = Uniterm(s, [newVar, Variable("X")], newNss=owlGraph.namespaces())
-        head1 = Uniterm(o, [Variable("X"), newVar], newNss=owlGraph.namespaces())
+        body1 = Uniterm(
+            s, [newVar, Variable("X")], newNss=owlGraph.namespaces())
+        head1 = Uniterm(
+            o, [Variable("X"), newVar], newNss=owlGraph.namespaces())
         yield Clause(body1, head1)
         newVar = Variable(BNode())
-        body2 = Uniterm(o, [Variable("X"), newVar], newNss=owlGraph.namespaces())
-        head2 = Uniterm(s, [newVar, Variable("X")], newNss=owlGraph.namespaces())
+        body2 = Uniterm(
+            o, [Variable("X"), newVar], newNss=owlGraph.namespaces())
+        head2 = Uniterm(
+            s, [newVar, Variable("X")], newNss=owlGraph.namespaces())
         yield Clause(body2, head2)
     for s, p, o in owlGraph.triples((None, RDF.type, OWL_NS.TransitiveProperty)):
-        #T(owl:TransitiveProperty(P))   -> P(x, z) :- P(x, y) ^ P(y, z)
+        # T(owl:TransitiveProperty(P))   -> P(x, z) :- P(x, y) ^ P(y, z)
         y = Variable(BNode())
         z = Variable(BNode())
         x = Variable("X")
 
         s = SkolemizeExistentialClasses(s) if isinstance(s, BNode) else s
 
-        body = And([Uniterm(s, [x, y], newNss=owlGraph.namespaces()), \
+        body = And([Uniterm(s, [x, y], newNss=owlGraph.namespaces()),
                     Uniterm(s, [y, z], newNss=owlGraph.namespaces())])
         head = Uniterm(s, [x, z], newNss=owlGraph.namespaces())
         yield Clause(body, head)
@@ -735,9 +761,9 @@ def T(owlGraph, complementExpansions=[], derivedPreds=[]):
         yield Clause(body, head)
         yield Clause(head, body)
 
-    #Contribution (Symmetric DL roles)
+    # Contribution (Symmetric DL roles)
     for s, p, o in owlGraph.triples((None, RDF.type, OWL_NS.SymmetricProperty)):
-        #T(owl:SymmetricProperty(P))   -> P(y, x) :- P(x, y)
+        # T(owl:SymmetricProperty(P))   -> P(y, x) :- P(x, y)
         y = Variable("Y")
         x = Variable("X")
 
@@ -748,20 +774,20 @@ def T(owlGraph, complementExpansions=[], derivedPreds=[]):
         yield Clause(body, head)
 
     for s, p, o in owlGraph.triples_choices((None,
-                                           [RDFS.range, RDFS.domain],
-                                           None)):
+                                             [RDFS.range, RDFS.domain],
+                                             None)):
 
         s = SkolemizeExistentialClasses(s) if isinstance(s, BNode) else s
 
         if p == RDFS.range:
-            #T(rdfs:range(P, D))  -> D(y) := P(x, y)
+            # T(rdfs:range(P, D))  -> D(y) := P(x, y)
             x = Variable("X")
             y = Variable(BNode())
             body = Uniterm(s, [x, y], newNss=owlGraph.namespaces())
             head = Uniterm(RDF.type, [y, o], newNss=owlGraph.namespaces())
             yield Clause(body, head)
         else:
-            #T(rdfs:domain(P, D)) -> D(x) := P(x, y)
+            # T(rdfs:domain(P, D)) -> D(x) := P(x, y)
             x = Variable("X")
             y = Variable(BNode())
             body = Uniterm(s, [x, y], newNss=owlGraph.namespaces())
@@ -788,11 +814,11 @@ def LloydToporTransformation(clause, fullReduction=True):
             if hasattr(atom, 'next'):
                 atom = first(atom)
             for clz in LloydToporTransformation(
-                            NormalizeClause(
-                                    Clause(atom,
-                                           clause.head)
-                            ),
-                            fullReduction=fullReduction):
+                    NormalizeClause(
+                        Clause(atom,
+                               clause.head)
+                    ),
+                    fullReduction=fullReduction):
                 yield clz
     elif isinstance(clause.head, OriginalClause):
         yield NormalizeClause(Clause(And([clause.body, clause.head.body]), clause.head.head))
@@ -807,7 +833,7 @@ def LloydToporTransformation(clause, fullReduction=True):
             for j in LloydToporTransformation(Clause(clause.body, i),
                                               fullReduction=fullReduction):
                 if [i for i in breadth_first(j.head) if isinstance(i, And)]:
-                    #Ands in the head need to be further flattened
+                    # Ands in the head need to be further flattened
                     yield PrepareHeadExistential(NormalizeClause(j))
                 else:
                     yield PrepareHeadExistential(j)
@@ -822,32 +848,36 @@ def Th(owlGraph, _class, variable=Variable('X'), position=LHS):
     """
     props = list(set(owlGraph.predicates(subject=_class)))
     if OWL_NS.allValuesFrom in props:
-        #http://www.w3.org/TR/owl-semantics/#owl_allValuesFrom
+        # http://www.w3.org/TR/owl-semantics/#owl_allValuesFrom
         for s, p, o in owlGraph.triples((_class, OWL_NS.allValuesFrom, None)):
-            prop = list(owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
+            prop = list(
+                owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
             newVar = Variable(BNode())
-            body = Uniterm(prop, [variable, newVar], newNss=owlGraph.namespaces())
+            body = Uniterm(
+                prop, [variable, newVar], newNss=owlGraph.namespaces())
             for head in Th(owlGraph, o, variable=newVar):
                 yield Clause(body, head)
     elif OWL_NS.hasValue in props:
-        prop = list(owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
+        prop = list(
+            owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
         o = first(owlGraph.objects(subject=_class, predicate=OWL_NS.hasValue))
         yield Uniterm(prop, [variable, o], newNss=owlGraph.namespaces())
     elif OWL_NS.someValuesFrom in props:
-        #http://www.w3.org/TR/owl-semantics/#someValuesFrom
+        # http://www.w3.org/TR/owl-semantics/#someValuesFrom
         for s, p, o in owlGraph.triples((_class, OWL_NS.someValuesFrom, None)):
-            prop = list(owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
+            prop = list(
+                owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
             newVar = BNode()
             yield And([Uniterm(prop, [variable, newVar], newNss=owlGraph.namespaces()),
-                        generatorFlattener(Th(owlGraph, o, variable=newVar))])
+                       generatorFlattener(Th(owlGraph, o, variable=newVar))])
     elif OWL_NS.intersectionOf in props:
         from FuXi.Syntax.InfixOWL import BooleanClass
         yield And([first(Th(owlGraph, h, variable)) for h in BooleanClass(_class)])
     else:
-        #Simple class
+        # Simple class
         yield Uniterm(RDF.type, [variable,
-                                isinstance(_class, BNode) and SkolemizeExistentialClasses(_class) or _class],
-                                newNss=owlGraph.namespaces())
+                                 isinstance(_class, BNode) and SkolemizeExistentialClasses(_class) or _class],
+                      newNss=owlGraph.namespaces())
 
 
 def Tb(owlGraph, _class, variable=Variable('X')):
@@ -863,31 +893,34 @@ def Tb(owlGraph, _class, variable=Variable('X')):
             handleConjunct(conj, owlGraph, o, variable)
             return And(conj)
     elif OWL_NS.unionOf in props and not isinstance(_class, URIRef):
-        #http://www.w3.org/TR/owl-semantics/#owl_unionOf
+        # http://www.w3.org/TR/owl-semantics/#owl_unionOf
         for s, p, o in owlGraph.triples((_class, OWL_NS.unionOf, None)):
-            return Or([Tb(owlGraph, c, variable=variable) \
-                           for c in Collection(owlGraph, o)])
+            return Or([Tb(owlGraph, c, variable=variable)
+                       for c in Collection(owlGraph, o)])
     elif OWL_NS.someValuesFrom in props:
-        #http://www.w3.org/TR/owl-semantics/#owl_someValuesFrom
-        prop = list(owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
-        o = list(owlGraph.objects(subject=_class, predicate=OWL_NS.someValuesFrom))[0]
+        # http://www.w3.org/TR/owl-semantics/#owl_someValuesFrom
+        prop = list(
+            owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
+        o = list(
+            owlGraph.objects(subject=_class, predicate=OWL_NS.someValuesFrom))[0]
         newVar = Variable(BNode())
         # body = Uniterm(prop, [variable, newVar], newNss=owlGraph.namespaces())
         # head = Th(owlGraph, o, variable=newVar)
         return And([Uniterm(prop, [variable, newVar], newNss=owlGraph.namespaces()),
                     Tb(owlGraph, o, variable=newVar)])
     elif OWL_NS.hasValue in props:
-        #http://www.w3.org/TR/owl-semantics/#owl_hasValue
-        #Domain-specific rules for hasValue
-        #Can be achieved via pD semantics
-        prop = list(owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
+        # http://www.w3.org/TR/owl-semantics/#owl_hasValue
+        # Domain-specific rules for hasValue
+        # Can be achieved via pD semantics
+        prop = list(
+            owlGraph.objects(subject=_class, predicate=OWL_NS.onProperty))[0]
         o = first(owlGraph.objects(subject=_class, predicate=OWL_NS.hasValue))
         return Uniterm(prop, [variable, o], newNss=owlGraph.namespaces())
     elif OWL_NS.complementOf in props:
         return Tc(owlGraph, first(owlGraph.objects(_class, OWL_NS.complementOf)))
     else:
-        #simple class
-        #"Named" Uniterm
+        # simple class
+        # "Named" Uniterm
         _classTerm = SkolemizeExistentialClasses(_class)
         return Uniterm(RDF.type, [variable, _classTerm], newNss=owlGraph.namespaces())
 

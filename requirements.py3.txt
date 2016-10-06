@@ -1,6 +1,6 @@
 flake8
--e git://github.com/gjhiggins/html5libpy3#egg=html5lib
-pyparsing
+html5lib
 isodate
+pyparsing
 SPARQLWrapper
--e git+https://github.com/RDFLib/rdflib.git#egg=rdflib
+rdflib

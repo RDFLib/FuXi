@@ -1,16 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-===========================================================================================
-"""
 from rdflib.graph import Graph
 from rdflib import (
     BNode,
     Namespace,
-    RDF,
-    RDFS,
-    URIRef,
     Variable,
-    )
+)
 from rdflib import py3compat
 
 from .Node import Node
@@ -45,6 +39,7 @@ from pickle import dumps, PicklingError  # for memoize
 
 
 class memoize(object):
+
     """Decorator that caches a function's return value each time it is called.
     If called later with the same arguments, the cached value is returned, and
     not re-evaluated. Slow for mutable types."""
@@ -56,6 +51,7 @@ class memoize(object):
     # Weak references (a dict with weak values) can be used, like this:
     #   self._cache = weakref.WeakValueDictionary()
     #   but the keys of such dict can't be int
+
     def __init__(self, func):
         self.func = func
         self._cache = {}
@@ -84,10 +80,12 @@ class memoize(object):
 
 
 class ReteToken:
+
     """
     A ReteToken, an RDF triple in a Rete network.  Once it passes an alpha
     node test, if will have unification substitutions per variable
     """
+
     def __init__(self, triple, debug=False):
         (subject, predicate, object) = triple
         self.debug = debug
@@ -96,7 +94,7 @@ class ReteToken:
         self.object_ = (None, normalizeTerm(object))
         self.bindingDict = {}
         self._termConcat = self.concatenateTerms(
-                [self.subject, self.predicate, self.object_])
+            [self.subject, self.predicate, self.object_])
         self.hash = hash(self._termConcat)
         self.inferred = False
 
@@ -114,7 +112,10 @@ class ReteToken:
 
     @memoize
     def concatenateTerms(terms):
-        return reduce(lambda x, y: str(hash(x)) + str(hash(y)), [term[VALUE] for term in terms])
+        if py3compat.PY3:
+            return reduce(lambda x, y: str(x) + str(y), [term[VALUE] for term in terms])
+        else:
+            return reduce(lambda x, y: unicode(x) + unicode(y), [term[VALUE] for term in terms])
 
     def __eq__(self, other):
         return hash(self) == hash(other)
@@ -148,7 +149,8 @@ class ReteToken:
 
     def __repr__(self):
         return "<ReteToken: %s>" % (
-            ', '.join(["%s->%s" % (var, val) for var, val in self.getVarBindings(False)])
+            ', '.join(["%s->%s" % (var, val)
+                       for var, val in self.getVarBindings(False)])
         )
 
     def getVarBindings(self, asDict=True):
@@ -161,7 +163,7 @@ class ReteToken:
     def getUniterm(self):
         from FuXi.Horn.PositiveConditions import BuildUnitermFromTuple
         return BuildUnitermFromTuple(tuple(
-                [val for var, val in [self.subject, self.predicate, self.object_]]))
+            [val for var, val in [self.subject, self.predicate, self.object_]]))
 
     def asTuple(self):
         return (self.subject[VALUE], self.predicate[VALUE], self.object_[VALUE])
@@ -184,13 +186,14 @@ class ReteToken:
                     bindHashItems.append(var + val)
                 else:
                     bindHashItems.append(val)
-            #self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
+            # self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
             self.hash = hash(reduce(lambda x, y: x + y, bindHashItems))
             return self
         elif isinstance(thing, AlphaNode):
             self.pattern = thing.triplePattern
             self.subject = (thing.triplePattern[SUBJECT], self.subject[VALUE])
-            self.predicate = (thing.triplePattern[PREDICATE], self.predicate[VALUE])
+            self.predicate = (
+                thing.triplePattern[PREDICATE], self.predicate[VALUE])
             self.object_ = (thing.triplePattern[OBJECT], self.object_[VALUE])
             assert not self.bindingDict, self.bindingDict
             bindHashItems = []
@@ -200,23 +203,32 @@ class ReteToken:
                     bindHashItems.append(var + val)
                 else:
                     bindHashItems.append(val)
+<<<<<<< HEAD
             #self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
 
             self.hash = hash(reduce(lambda x, y: str(x) + str(y), bindHashItems))
+=======
+            # self.bindingDict := { var1 -> val1, var2 -> val2, ..  }
+            self.hash = hash(reduce(lambda x, y: x + y, bindHashItems))
+>>>>>>> 29b6d7bff057aed20dd8d8880c839a484a3acd7f
             return self
         elif isinstance(thing, dict):
             revDict = dict([(v, k) for k, v in list(thing.items())])
             # create mapping from variable to value if in range of mapping
-            self.subject = (revDict.get(self.subject[VALUE], self.subject[VALUE]), self.subject[VALUE])
-            self.predicate = (revDict.get(self.predicate[VALUE], self.predicate[VALUE]), self.predicate[VALUE])
-            self.object_ = (revDict.get(self.object_[VALUE], self.object_[VALUE]), self.object_[VALUE])
+            self.subject = (
+                revDict.get(self.subject[VALUE], self.subject[VALUE]), self.subject[VALUE])
+            self.predicate = (
+                revDict.get(self.predicate[VALUE], self.predicate[VALUE]), self.predicate[VALUE])
+            self.object_ = (
+                revDict.get(self.object_[VALUE], self.object_[VALUE]), self.object_[VALUE])
 
 
 def defaultIntraElementTest(aReteToken, triplePattern):
     """
     'Standard' Charles Forgy intra element token pattern test.
     """
-    tokenTerms = [aReteToken.subject[VALUE], aReteToken.predicate[VALUE], aReteToken.object_[VALUE]]
+    tokenTerms = [aReteToken.subject[VALUE],
+                  aReteToken.predicate[VALUE], aReteToken.object_[VALUE]]
     varBindings = {}
     for idx in [SUBJECT, PREDICATE, OBJECT]:
         tokenTerm = tokenTerms[idx]
@@ -231,9 +243,11 @@ def defaultIntraElementTest(aReteToken, triplePattern):
 
 
 class AlphaNode(Node):
+
     """
     Basic Triple Pattern Pattern check
     """
+
     def __init__(self, triplePatternOrFunc, filters=None):
         filters = filters and filters or {}
         self.relinked = False
@@ -265,8 +279,8 @@ class AlphaNode(Node):
         """
         if groundTermHash:
             return ''.join([term for term in self.triplePattern
-                            if not isinstance(term, (BNode, Variable)) or \
-                               isinstance(term, BNode) and term in skolemTerms])
+                            if not isinstance(term, (BNode, Variable)) or
+                            isinstance(term, BNode) and term in skolemTerms])
         else:
             return tuple([isinstance(term, (BNode, Variable)) and '0' or '1' for term in self.triplePattern])
 
@@ -289,7 +303,8 @@ class AlphaNode(Node):
         # aReteToken.debug = True
         aReteToken.bindVariables(self)
         for memory in self.descendentMemory:
-            singleToken = PartialInstantiation([aReteToken], consistentBindings=aReteToken.bindingDict.copy())
+            singleToken = PartialInstantiation(
+                [aReteToken], consistentBindings=aReteToken.bindingDict.copy())
             # print(memory)
             # print(self)
             # print(self.descendentMemory)
@@ -310,7 +325,7 @@ class AlphaNode(Node):
                     # aReteToken.debug = True
                     if node.unlinkedMemory is None:
                         assert len(node.descendentMemory) == 1, "%s %s %s" % (
-                                node, node.descendentMemory, memory.successor)
+                            node, node.descendentMemory, memory.successor)
                         disconnectedMemory = list(node.descendentMemory)[0]
 
                     else:
@@ -322,7 +337,8 @@ class AlphaNode(Node):
                     memory.successor.memories[LEFT_MEMORY] = disconnectedMemory
                     node.descendentBetaNodes.add(memory.successor)
                     # print(memory.successor.memories[LEFT_MEMORY])
-                    memory.successor.propagate(RIGHT_MEMORY, aReteToken.debug, wme=aReteToken)
+                    memory.successor.propagate(
+                        RIGHT_MEMORY, aReteToken.debug, wme=aReteToken)
 
                     # node._activate(singleToken, aReteToken.debug)
                     # print("Activating re-linked node", node)
@@ -352,19 +368,23 @@ class AlphaNode(Node):
                     print("Propagated from %s" % (self))
                     print(aReteToken.asTuple())
                 if memory.position == LEFT_MEMORY:
-                    memory.successor.propagate(memory.position, aReteToken.debug, singleToken)
+                    memory.successor.propagate(
+                        memory.position, aReteToken.debug, singleToken)
                 else:
-                    memory.successor.propagate(memory.position, aReteToken.debug, wme=aReteToken)
+                    memory.successor.propagate(
+                        memory.position, aReteToken.debug, wme=aReteToken)
             else:
                 if aReteToken.debug:
                     print("skipped null right activation of %s from %s" % (
-                            memory.successor, self))
+                        memory.successor, self))
 
 
 class BuiltInAlphaNode(AlphaNode):
+
     """
     An Alpha Node for Builtins which doesn't participate in intraElement tests
     """
+
     def __init__(self, n3builtin):
         self.name = BNode()
         self.n3builtin = n3builtin
@@ -384,8 +404,8 @@ class BuiltInAlphaNode(AlphaNode):
 
     def __repr__(self):
         return "<BuiltInAlphaNode %s(%s), %s : Feeds %s beta nodes>" % (
-                    self.n3builtin.func, self.n3builtin.argument,
-                    self.n3builtin.result, len(self.descendentBetaNodes))
+            self.n3builtin.func, self.n3builtin.argument,
+            self.n3builtin.result, len(self.descendentBetaNodes))
 
     def intraElementTest(self, aReteToken):
         pass

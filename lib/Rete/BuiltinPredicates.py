@@ -1,11 +1,8 @@
+# -*- coding: utf-8 -*-
 """
 See: http://www.w3.org/2000/10/swap/doc/CwmBuiltins
 """
 import unittest
-try:
-    from functools import reduce
-except ImportError:
-    pass
 try:
     from io import StringIO
 except ImportError:
@@ -55,12 +52,13 @@ def StringGreaterThan(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-            "str:greaterThan can only be used with Literals: (%s)" % term
+                "str:greaterThan can only be used with Literals: (%s)" % term
 
     def greaterThanF(s, o):
         for term in [s, o]:
             assert isinstance(term, Literal), \
-            "str:greaterThan can only be used with Literals: %s %s" % (s, o)
+                "str:greaterThan can only be used with Literals: %s %s" % (
+                    s, o)
         return str(s) > str(o)
     return greaterThanF
 
@@ -69,14 +67,14 @@ def StringLessThan(subject, object_):
     for term in [subject, object_]:
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
-            "str:lessThan can only be used with Literals (%s)" % term
+                "str:lessThan can only be used with Literals (%s)" % term
 
     def lessThanF(s, o):
         for term in [s, o]:
             assert isinstance(term, Literal), \
-            "str:lessThan can only be used with Literals: %s %s" % (s, o)
+                "str:lessThan can only be used with Literals: %s %s" % (s, o)
         return s < o
-        #return str(s) < str(o)
+        # return str(s) < str(o)
     return lessThanF
 
 
@@ -96,7 +94,7 @@ def MathEqualTo(subject, object_):
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
                 "math:equalTo can only be used with Literals (%s)" % term
-            assert isinstance(term.toPython(), (int, float)), \
+            assert isinstance(term.toPython(), (int, long, float)), \
                 "math:equalTo can only be used " + \
                 "with Numeric Literals (%s)" % term
 
@@ -104,7 +102,7 @@ def MathEqualTo(subject, object_):
         for term in [s, o]:
             assert isinstance(term, Literal), \
                 "math:equalTo can only be used with Literals (%s)" % term
-            assert isinstance(term.toPython(), (int, float)), \
+            assert isinstance(term.toPython(), (int, long, float)), \
                 "math:equalTo can only be used with " + \
                 "Numeric Literals (%s)" % term
         return s.toPython() == o.toPython()
@@ -116,7 +114,7 @@ def MathGreaterThan(subject, object_):
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
                 "math:lessThan can only be used with Literals (%s)" % term
-            assert isinstance(term.toPython(), (int, float)), \
+            assert isinstance(term.toPython(), (int, long, float)), \
                 "math:lessThan can only be used with " + \
                 "Numeric Literals (%s)" % term
 
@@ -124,7 +122,7 @@ def MathGreaterThan(subject, object_):
         for term in [s, o]:
             assert isinstance(term, Literal), \
                 "math:greaterThan can only be used with Literals (%s)" % term
-            assert isinstance(term.toPython(), (int, float)), \
+            assert isinstance(term.toPython(), (int, long, float)), \
                 "math:greaterThan can only be used " + \
                 "with Numeric Literals (%s)" % term
         return s.toPython() > o.toPython()
@@ -136,7 +134,7 @@ def MathLessThan(subject, object_):
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
                 "math:lessThan can only be used with Literals (%s)" % term
-            assert isinstance(term.toPython(), (int, float)), \
+            assert isinstance(term.toPython(), (int, long, float)), \
                 "math:lessThan can only be used with " + \
                 "Numeric Literals. (%s)" % term
 
@@ -144,7 +142,7 @@ def MathLessThan(subject, object_):
         for term in [s, o]:
             assert isinstance(term, Literal), \
                 "math:lessThan can only be used with Literals (%s)" % term
-            assert isinstance(term.toPython(), (int, float)), \
+            assert isinstance(term.toPython(), (int, long, float)), \
                 "math:lessThan can only be used with " + \
                 "Numeric Literals (%s)" % term
         return s.toPython() < o.toPython()
@@ -156,7 +154,7 @@ def MathNotLessThan(subject, object_):
         if not isinstance(term, Variable):
             assert isinstance(term, Literal), \
                 "math:notLessThan can only be used with Literals (%s)" % term
-            assert isinstance(term.toPython(), (int, float)), \
+            assert isinstance(term.toPython(), (int, long, float)), \
                 "math:lessThan can only be used with " + \
                 "Numeric Literals (%s)" % term
 
@@ -164,7 +162,7 @@ def MathNotLessThan(subject, object_):
         for term in [s, o]:
             assert isinstance(term, Literal), \
                 "math:notLessThan can only be used with Literals"
-            assert isinstance(term.toPython(), (int, float)), \
+            assert isinstance(term.toPython(), (int, long, float)), \
                 "math:lessThan can only be used with " + \
                 "Numeric Literals (%s)" % term
         return not(s.toPython() < o.toPython())
@@ -212,6 +210,7 @@ _:foo rdf:value 1;
 
 
 class NonEqualityPredicatesTestSuite(unittest.TestCase):
+
     def setUp(self):
         from FuXi.Rete.RuleStore import N3RuleStore
         from FuXi.Rete import ReteNetwork
@@ -223,16 +222,16 @@ class NonEqualityPredicatesTestSuite(unittest.TestCase):
         self.testGraph.parse(StringIO(testN3), format='n3')
         self.closureDeltaGraph = Graph()
         self.network = ReteNetwork(
-                self.ruleStore,
-                initialWorkingMemory=generateTokenSet(self.testGraph),
-                inferredTarget=self.closureDeltaGraph,
-                nsMap={})
+            self.ruleStore,
+            initialWorkingMemory=generateTokenSet(self.testGraph),
+            inferredTarget=self.closureDeltaGraph,
+            nsMap={})
 
     def testParseBuiltIns(self):
         # from FuXi.Rete.RuleStore import N3Builtin
         from FuXi.Rete.AlphaNode import BuiltInAlphaNode
-        self.failUnless(self.ruleStore.rules > 0, \
-                            "No rules parsed out from N3.")
+        self.failUnless(self.ruleStore.rules > 0,
+                        "No rules parsed out from N3.")
         for alphaNode in self.network.alphaNodes:
             if isinstance(alphaNode, BuiltInAlphaNode):
                 self.failUnless(alphaNode.n3builtin.uri == MATH_NS.greaterThan,
