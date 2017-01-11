@@ -181,7 +181,7 @@ class N3RuleStore(Store):
     >>> print(len(s.rules[0][RULE_RHS]))
     5
     >>> print(s.rules[0][RULE_LHS][1])
-    (rdflib.term.Variable('X'), rdflib.term.URIRef(%(u)s'http://metacognition.info/FuXi/test#prop1'), rdflib.term.Variable('M'))
+    (rdflib.term.Variable(%(u)s'X'), rdflib.term.URIRef(%(u)s'http://metacognition.info/FuXi/test#prop1'), rdflib.term.Variable(%(u)s'M'))
     >>> print(s.rules[0][RULE_LHS][-1])
     <http://www.w3.org/2000/10/swap/math#equalTo>(?N, 3)
 

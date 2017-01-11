@@ -14,13 +14,13 @@ try:
 except ImportError:
     from cStringIO import StringIO
 
-rules = """\
+rules = u"""\
 @prefix : <fam.n3#>.
 @keywords is, of, a.
 { ?x begat ?y } => { ?y ancestor ?x }.
 { ?x ancestor ?y. ?y ancestor ?z } => { ?x ancestor ?z }."""
 
-facts = """\
+facts = u"""\
 @prefix : <fam.n3#>.
 @keywords is, of, a.
 
