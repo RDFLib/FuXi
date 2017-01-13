@@ -40,6 +40,7 @@ from rdflib import (
     Variable
 )
 from rdflib.util import first
+from rdflib import py3compat
 try:
     from functools import reduce
 except ImportError:
@@ -202,7 +203,7 @@ class PartialInstantiation(object):
     >>> token = ReteToken((URIRef('urn:uuid:Boo'),RDF.type,URIRef('urn:uuid:Foo')))
     >>> token = token.bindVariables(aNode)
     >>> PartialInstantiation([token])
-    <PartialInstantiation: {<ReteToken: X->urn:uuid:Boo, C->urn:uuid:Foo>}>
+    <PartialInstantiation: set([<ReteToken: X->urn:uuid:Boo, C->urn:uuid:Foo>])>
     >>> for token in PartialInstantiation([token]):
     ...   print(token)
     <ReteToken: X->urn:uuid:Boo, C->urn:uuid:Foo>
@@ -441,9 +442,9 @@ class BetaNode(Node):
     >>> joinNode3.connectIncomingNodes(joinNode2,aNode3)
 
     >>> joinNode1
-    <BetaNode (pass-thru): CommonVariables: [rdflib.term.Variable('X')] (0 in left, 0 in right memories)>
+    <BetaNode (pass-thru): CommonVariables: [rdflib.term.Variable(%(u)s'X')] (0 in left, 0 in right memories)>
     >>> joinNode2
-    <BetaNode : CommonVariables: [rdflib.term.Variable('X')] (0 in left, 0 in right memories)>
+    <BetaNode : CommonVariables: [rdflib.term.Variable(%(u)s'X')] (0 in left, 0 in right memories)>
 
     Setup tokens (RDF triples):
 
@@ -519,7 +520,7 @@ class BetaNode(Node):
     # 2
     # >>> pprint(testHelper.conflictSet)
     # [<PartialInstantiation (joined on ?X): set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Beezle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>, <PartialInstantiation (joined on ?X): set([<ReteToken: Z->urn:uuid:Bar,W->urn:uuid:Bundle>, <ReteToken: X->urn:uuid:Foo>, <ReteToken: X->urn:uuid:Foo,Y->urn:uuid:Baz>])>]
-    """
+    """ #% { "u": "" if py3compat.PY3 else "u" }
 
     def __init__(self,
                  leftNode,
